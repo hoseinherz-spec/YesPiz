@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yespizz — Admin / ops
 
-## Getting Started
+Workspace: `apps/admin` · http://localhost:8052
 
-First, run the development server:
+Admin owns the menu, the quality bar, dispatch weights, crisis handling, and compensation. Because the customer never sees the kitchen, this panel is where the brand is actually operated.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Product: [`docs/PRODUCT.md`](../../docs/PRODUCT.md) · strategy: [`prd/product-strategy.md`](../../prd/product-strategy.md).
+
+## Role
+
+- Publish one menu version; define recipes, weights, cook/temp, pack and seal rules.
+- Score kitchens from complaints, delays, and errors; auto-suspend; run test orders.
+- Simulate dispatch weights before applying them. Reassign in-flight orders.
+- Run the incident command center (crash, no-answer, no-pay, SOS).
+- Restore Cash Trust after settlement. Never allow cash above €500.
+- Watch live map, at-risk ETAs, on-time rate, errors, profit, fraud.
+
+## Shipped
+
+| Route | What it does |
+|---|---|
+| `/menu` | Versions, categories, items, publish |
+| `/providers` | CRUD, pause (`acceptingOrders`), deactivate |
+| `/config` | Dispatch weights, radii, timeout, cash fail threshold, batch size |
+| `/exceptions` | Resolve kitchen exceptions |
+
+No live map, order list, reassign, metrics, cash-ban restore, or formula sandbox.
+
+## Next (P0 / P1)
+
+- Quality OS: standards, test orders, auto-suspend rules
+- Wave-dispatch config (top-3, 10–20s bid, fairness) + weight simulator
+- Live map, at-risk queue, manual reassign
+- Full order history and proof timeline
+- Incident console
+- Cash Trust + €500 cap + unban
+- Kitchen/courier KPIs (accept/reject, wait, on-time, error, complaint, profit)
+
+## Development
+
+From the monorepo root:
+
+```sh
+npm run dev:admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm run lint --workspace=admin
+npm run check-types --workspace=admin
+npm run build --workspace=admin
+```

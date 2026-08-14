@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yespizz — Courier app
 
-## Getting Started
+Workspace: `apps/courier-mobile` · http://localhost:8053
 
-First, run the development server:
+Couriers close the provable delivery chain and start incident workflows. A report button is not enough; each action must create a workflow.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Product: [`docs/PRODUCT.md`](../../docs/PRODUCT.md) · strategy: [`prd/product-strategy.md`](../../prd/product-strategy.md).
+
+## Role
+
+- Scan kitchen QR / OTP, confirm seal, record pickup time and geo.
+- Carry at most 3 orders; never hold food past the batch wait limit.
+- Collect door PIN, signature, or photo; digital cash receipt when needed.
+- Tell the customer only that there is one short extra stop — never other customers or kitchens.
+- Run incident workflows: crash, no-answer, no-pay, wrong address, damaged pack, vehicle, SOS.
+
+## Shipped
+
+| Route | What it does |
+|---|---|
+| `/login` | Courier auth |
+| `/home` | Session start/end (any non-empty start code), location share, assigned batch list (read-only) |
+
+Pickup, transit, delivery, proof, cash collection, and incidents are not implemented. Order statuses after `ASSIGNED_TO_COURIER` are not reachable.
+
+## Next (P0)
+
+- Validated pickup QR / OTP + seal + geo
+- `PICKED_UP` → `ON_THE_WAY` → `DELIVERED` → `COMPLETED`
+- Door PIN / sign / photo; cash receipt
+- Safe batch navigation + auto-split when one order slips
+- Incident actions, each with a workflow (replacement courier, wait timer, debt, SOS)
+
+## Development
+
+From the monorepo root:
+
+```sh
+npm run dev:courier
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Capacitor static export. API: `NEXT_PUBLIC_API_URL` (default `http://localhost:8058`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm run lint --workspace=courier-mobile
+npm run check-types --workspace=courier-mobile
+npm run build --workspace=courier-mobile
+```

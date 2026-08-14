@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yespizz — Provider panel
 
-## Getting Started
+Workspace: `apps/provider-panel` · http://localhost:8084
 
-First, run the development server:
+Partner kitchens execute the brand standard. They do not win orders by clicking first. They declare capacity, readiness, and a prep time; the server assigns the winner.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Product: [`docs/PRODUCT.md`](../../docs/PRODUCT.md) · strategy: [`prd/product-strategy.md`](../../prd/product-strategy.md).
+
+## Role
+
+- Follow the Kitchen Quality OS (recipe, weight, cook time, temperature, numbered seal, checklist, ready photo).
+- Set accept capacity, 86 items, pause new orders, override prep time, mark ready.
+- In a wave: respond in 10–20 seconds with ready + prep minutes. Do not race Accept.
+- Reduce a batch; never add. Split if food would wait too long.
+- Hand off to the courier with QR / OTP. Never appear in the customer app.
+
+## Shipped
+
+| Route | What it does |
+|---|---|
+| `/offers` | Accept / reject; poll every 8s. First Accept still wins (Phase 1) |
+| `/kitchen` | `PREPARING` → `READY_FOR_PICKUP` or `EXCEPTION_REPORTED` |
+| `/batches` | Suggest / create / reduce. No assign-courier UI (API exists) |
+
+`acceptingOrders` can be patched via API; there is no panel screen. No recipes, seals, photos, item 86, or per-order prep override.
+
+## Next (P0)
+
+- Wave response UI (ready + quoted prep) instead of first-accept
+- Capacity, pause, item 86, per-order prep
+- Checklist, seal id, ready photo before handoff
+- Assign courier + pickup QR / OTP
+- Quality score and suspend state (read-only; admin/API enforce)
+
+## Development
+
+From the monorepo root:
+
+```sh
+npm run dev:provider
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm run lint --workspace=provider-panel
+npm run check-types --workspace=provider-panel
+npm run build --workspace=provider-panel
+```

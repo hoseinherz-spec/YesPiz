@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Yespizz — Customer app
 
-## Getting Started
+Workspace: `apps/mobile` · http://localhost:8051
 
-First, run the development server:
+The customer never chooses a restaurant and never sees a kitchen. This app is the brand: a fixed menu, an honest time window, blind tracking, proof of delivery, and automatic make-good when we miss.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Product: [`docs/PRODUCT.md`](../../docs/PRODUCT.md) · strategy: [`prd/product-strategy.md`](../../prd/product-strategy.md).
+
+## Role
+
+- Order from the admin-owned menu only.
+- Show a **time range**, not a fake single minute.
+- Track the courier without leaking kitchen identity.
+- Collect drop-off details (entrance, floor, door code, photo) and proof (PIN / photo).
+- Offer cash only when Cash Trust allows it. Never cash above €500.
+
+## Shipped
+
+| Route | What it does |
+|---|---|
+| `/onboarding`, `/login` | Local onboarding; OTP + password. No Apple Sign-In |
+| `/home`, `/menu`, `/pizza/[id]` | Published menu + offline fallback |
+| `/cart`, `/checkout`, `/payment` | Create order + pay when authenticated |
+| `/tracking` | Poll status + courier coords (OSM link, no in-app map) |
+| `/orders` | History. Reorder only navigates to `/menu` |
+| `/profile`, `/settings` | Theme, language, prefs |
+| `/notifications`, `/help` | Stub / static |
+| `/partner` | Info |
+
+ETA on tracking is a client formula, not a server window. Schedule chips and leave-at-door are not sent to the API. Cash availability is not checked before showing cash.
+
+## Next (P0 / P1)
+
+- Server ETA window + active delay notices
+- In-app courier map; masked call / chat
+- Entrance, floor, door code, drop-off photo
+- Door PIN / photo proof
+- One-tap reorder and real scheduled orders
+- Auto compensation when SLA is missed
+- Cash Trust gating in checkout
+
+Loyalty, group order, and split pay are after MVP.
+
+## Development
+
+From the monorepo root:
+
+```sh
+npm run dev:mobile
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Capacitor static export. API: `NEXT_PUBLIC_API_URL` (default `http://localhost:8058`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm run lint --workspace=mobile
+npm run check-types --workspace=mobile
+npm run build --workspace=mobile
+```

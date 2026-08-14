@@ -2,6 +2,8 @@
 
 Yespizz is an npm workspaces and Turborepo monorepo for a blind-marketplace pizza delivery product.
 
+The menu is not the advantage. The promise is a **standard, reliable order at a stated time**, without the customer choosing a restaurant. Features should strengthen quality, success-probability assignment, and error-free operations. See [`docs/PRODUCT.md`](docs/PRODUCT.md).
+
 ## Apps
 
 | App | Workspace | Development URL |
@@ -13,8 +15,10 @@ Yespizz is an npm workspaces and Turborepo monorepo for a blind-marketplace pizz
 | Provider panel | `apps/provider-panel` | http://localhost:8084 |
 | API | `apps/api` | http://localhost:8058 |
 
-## Architecture docs
+## Product & architecture docs
 
+- [Product brief](docs/PRODUCT.md)
+- [Product strategy (PRD)](prd/product-strategy.md)
 - [System architecture](docs/ARCHITECTURE.md)
 - [Data models](docs/DATA-MODELS.md)
 - [Services & rollout](docs/SERVICES.md)
