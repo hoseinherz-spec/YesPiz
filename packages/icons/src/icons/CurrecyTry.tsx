@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function CurrecyTry({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M10 1.25C10.4142 1.25 10.75 1.58579 10.75 2V20.25H14C15.7949 20.25 17.25 18.7949 17.25 17V14.2939C17.2501 13.8798 17.5858 13.5439 18 13.5439C18.4142 13.5439 18.7499 13.8798 18.75 14.2939V17C18.75 19.6234 16.6234 21.75 14 21.75H10C9.58579 21.75 9.25 21.4142 9.25 21V2C9.25 1.58579 9.58579 1.25 10 1.25Z" fill={primary}/>
+<path d="M15 11.0635L6 17.4922V15.6494L15 9.2207V11.0635Z" fill={secondary}/>
+<path d="M15 6.06348L6 12.4922V10.6494L15 4.2207V6.06348Z" fill={secondary}/>
+    </svg>
+  );
+}

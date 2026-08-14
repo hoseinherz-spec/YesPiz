@@ -1,0 +1,35 @@
+import type { IconProps } from '../types';
+
+export function Vibrate({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M4 7C4.41421 7 4.75 7.33579 4.75 7.75V16.25C4.75 16.6642 4.41421 17 4 17C3.58579 17 3.25 16.6642 3.25 16.25V7.75C3.25 7.33579 3.58579 7 4 7Z" fill={secondary}/>
+<path d="M20 7C20.4142 7 20.75 7.33579 20.75 7.75V16.25C20.75 16.6642 20.4142 17 20 17C19.5858 17 19.25 16.6642 19.25 16.25V7.75C19.25 7.33579 19.5858 7 20 7Z" fill={secondary}/>
+<path d="M1 9C1.41421 9 1.75 9.33579 1.75 9.75V14.25C1.75 14.6642 1.41421 15 1 15C0.585786 15 0.25 14.6642 0.25 14.25V9.75C0.25 9.33579 0.585786 9 1 9Z" fill={secondary}/>
+<path d="M23 9C23.4142 9 23.75 9.33579 23.75 9.75V14.25C23.75 14.6642 23.4142 15 23 15C22.5858 15 22.25 14.6642 22.25 14.25V9.75C22.25 9.33579 22.5858 9 23 9Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M15 3.25C16.5188 3.25 17.75 4.48122 17.75 6V18C17.75 19.5188 16.5188 20.75 15 20.75H9C7.48122 20.75 6.25 19.5188 6.25 18V6C6.25 4.48122 7.48122 3.25 9 3.25H15ZM9 4.75C8.30964 4.75 7.75 5.30964 7.75 6V18C7.75 18.6904 8.30964 19.25 9 19.25H15C15.6904 19.25 16.25 18.6904 16.25 18V6C16.25 5.30964 15.6904 4.75 15 4.75H9Z" fill={primary}/>
+    </svg>
+  );
+}

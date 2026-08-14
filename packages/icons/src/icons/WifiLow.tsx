@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function WifiLow({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M11.9996 13.25C12.8859 13.25 13.7637 13.4245 14.5826 13.7637C14.8046 13.8556 15.021 13.9594 15.2311 14.0742C15.6438 14.2997 15.6857 14.8539 15.3531 15.1864C15.0947 15.4449 14.6924 15.4792 14.3664 15.314C14.2493 15.2547 14.1299 15.1998 14.0083 15.1494C13.3715 14.8857 12.6889 14.75 11.9996 14.75C11.3102 14.75 10.6276 14.8857 9.99076 15.1494C9.87755 15.1963 9.76623 15.2472 9.65696 15.3019C9.33146 15.4648 8.93113 15.4295 8.67385 15.1719C8.34047 14.8383 8.38384 14.2821 8.79877 14.0578C8.99917 13.9495 9.20528 13.8512 9.41654 13.7637C10.2354 13.4245 11.1132 13.25 11.9996 13.25Z" fill={primary}/>
+<path d="M13.25 18.5C13.25 19.1904 12.6904 19.75 12 19.75C11.3096 19.75 10.75 19.1904 10.75 18.5C10.75 17.8096 11.3096 17.25 12 17.25C12.6904 17.25 13.25 17.8096 13.25 18.5Z" fill={secondary}/>
+    </svg>
+  );
+}

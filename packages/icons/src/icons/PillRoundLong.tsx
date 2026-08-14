@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function PillRoundLong({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M16.5303 15.4688L15.4697 16.5293L7.46973 8.5293L8.53027 7.46875L16.5303 15.4688Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M11.9695 3.96996C14.1952 1.74423 17.8041 1.74454 20.03 3.96996C22.2559 6.19585 22.2559 9.80462 20.03 12.0305L12.03 20.0305C9.80413 22.2564 6.19536 22.2564 3.96947 20.0305C1.74406 17.8046 1.74374 14.1957 3.96947 11.97L11.9695 3.96996ZM18.9695 5.03051C17.3293 3.39088 14.67 3.39056 13.03 5.03051L5.03002 13.0305C3.39008 14.6705 3.39039 17.3298 5.03002 18.97C6.67012 20.6101 9.32937 20.6101 10.9695 18.97L18.9695 10.97C20.6096 9.32986 20.6096 6.67061 18.9695 5.03051Z" fill={primary}/>
+    </svg>
+  );
+}

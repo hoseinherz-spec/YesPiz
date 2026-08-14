@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function LetterYCircle({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C17.3848 2.25 21.75 6.61522 21.75 12C21.75 17.3848 17.3848 21.75 12 21.75C6.61522 21.75 2.25 17.3848 2.25 12C2.25 6.61522 6.61522 2.25 12 2.25ZM12 3.75C7.44365 3.75 3.75 7.44365 3.75 12C3.75 16.5563 7.44365 20.25 12 20.25C16.5563 20.25 20.25 16.5563 20.25 12C20.25 7.44365 16.5563 3.75 12 3.75Z" fill={primary}/>
+<path d="M15 6.25C15.4142 6.25 15.75 6.58579 15.75 7C15.75 8.15929 15.2894 9.27105 14.4697 10.0908L13.7021 10.8584C13.0927 11.4679 12.75 12.2953 12.75 13.1572V17C12.75 17.4142 12.4142 17.75 12 17.75C11.5858 17.75 11.25 17.4142 11.25 17V13.1572C11.25 12.2953 10.9073 11.4679 10.2979 10.8584L9.53027 10.0908C8.71056 9.27105 8.25 8.15929 8.25 7C8.25 6.58579 8.58579 6.25 9 6.25C9.41421 6.25 9.75 6.58579 9.75 7C9.75 7.76147 10.0524 8.49181 10.5908 9.03027L11.3584 9.79785C11.6027 10.0422 11.8166 10.311 12 10.5977C12.1834 10.311 12.3973 10.0422 12.6416 9.79785L13.4092 9.03027C13.9476 8.49181 14.25 7.76147 14.25 7C14.25 6.58579 14.5858 6.25 15 6.25Z" fill={secondary}/>
+    </svg>
+  );
+}

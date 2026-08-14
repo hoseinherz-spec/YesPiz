@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function LetterG({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M13 2.25C15.6234 2.25 17.75 4.37665 17.75 7V8C17.75 8.41421 17.4142 8.75 17 8.75C16.5858 8.75 16.25 8.41421 16.25 8V7C16.25 5.20507 14.7949 3.75 13 3.75H11C9.20507 3.75 7.75 5.20507 7.75 7V17C7.75 18.7949 9.20507 20.25 11 20.25H13C14.7949 20.25 16.25 18.7949 16.25 17V13.75H12C11.5858 13.75 11.25 13.4142 11.25 13C11.25 12.5858 11.5858 12.25 12 12.25H17C17.4142 12.25 17.75 12.5858 17.75 13V17C17.75 19.6234 15.6234 21.75 13 21.75H11C8.37665 21.75 6.25 19.6234 6.25 17V7C6.25 4.37665 8.37665 2.25 11 2.25H13Z" fill={primary}/>
+    </svg>
+  );
+}

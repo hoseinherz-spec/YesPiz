@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function LightBulb1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C16.2802 2.25 19.75 5.71979 19.75 10C19.75 12.9207 18.1336 15.4616 15.75 16.7822V18C15.75 18.4142 15.4142 18.75 15 18.75H9C8.58579 18.75 8.25 18.4142 8.25 18V16.7822C5.86639 15.4616 4.25 12.9207 4.25 10C4.25 5.71979 7.71979 2.25 12 2.25ZM12 3.75C8.54822 3.75 5.75 6.54822 5.75 10C5.75 12.4921 7.20896 14.6445 9.32227 15.6484C9.58363 15.7727 9.74992 16.0368 9.75 16.3262V17.25H14.25V16.3262C14.2501 16.0368 14.4164 15.7727 14.6777 15.6484C16.791 14.6445 18.25 12.4921 18.25 10C18.25 6.54822 15.4518 3.75 12 3.75Z" fill={primary}/>
+<path d="M15 20.25C15.4142 20.25 15.75 20.5858 15.75 21C15.75 21.4142 15.4142 21.75 15 21.75H9C8.58579 21.75 8.25 21.4142 8.25 21C8.25 20.5858 8.58579 20.25 9 20.25H15Z" fill={secondary}/>
+    </svg>
+  );
+}

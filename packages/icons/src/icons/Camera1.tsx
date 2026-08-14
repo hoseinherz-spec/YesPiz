@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function Camera1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12.7637 3.25C14.2573 3.25 15.6334 4.0131 16.4316 5.25H17C19.6233 5.25002 21.75 7.37667 21.75 10V16C21.75 18.6234 19.6234 20.75 17 20.75H7C4.37665 20.75 2.25 18.6234 2.25 16V10C2.25002 7.37667 4.37666 5.25 7 5.25H7.56836C8.36658 4.01309 9.74271 3.25 11.2363 3.25H12.7637ZM11.2363 4.75C10.1501 4.75 9.1568 5.36354 8.6709 6.33496C8.54386 6.58905 8.28408 6.75 8 6.75H7C5.20509 6.75 3.75002 8.20509 3.75 10V16C3.75 17.7949 5.20507 19.25 7 19.25H17C18.7949 19.25 20.25 17.7949 20.25 16V10C20.25 8.20509 18.7949 6.75001 17 6.75H16C15.7159 6.75 15.4561 6.58905 15.3291 6.33496C14.8432 5.36354 13.8499 4.75 12.7637 4.75H11.2363Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M12 8.25C14.6234 8.25 16.75 10.3766 16.75 13C16.75 15.6234 14.6234 17.75 12 17.75C9.37665 17.75 7.25 15.6234 7.25 13C7.25 10.3766 9.37665 8.25 12 8.25ZM12 9.75C10.2051 9.75 8.75 11.2051 8.75 13C8.75 14.7949 10.2051 16.25 12 16.25C13.7949 16.25 15.25 14.7949 15.25 13C15.25 11.2051 13.7949 9.75 12 9.75Z" fill={secondary}/>
+    </svg>
+  );
+}

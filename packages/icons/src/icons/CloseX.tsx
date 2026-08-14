@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function CloseX({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M17.4697 5.46967C17.7626 5.17678 18.2373 5.17678 18.5302 5.46967C18.8231 5.76257 18.8231 6.23734 18.5302 6.53022L6.53022 18.5302C6.23734 18.8231 5.76257 18.8231 5.46967 18.5302C5.17678 18.2373 5.17678 17.7626 5.46967 17.4697L17.4697 5.46967Z" fill={primary}/>
+<path d="M5.46967 5.46967C5.76256 5.17678 6.23732 5.17678 6.53022 5.46967L18.5302 17.4697C18.8231 17.7626 18.8231 18.2373 18.5302 18.5302C18.2373 18.8231 17.7626 18.8231 17.4697 18.5302L5.46967 6.53022C5.17678 6.23732 5.17678 5.76256 5.46967 5.46967Z" fill={secondary}/>
+    </svg>
+  );
+}

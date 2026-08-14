@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function HeartWellness({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C13.7949 2.25 15.25 3.70507 15.25 5.5C15.25 7.29493 13.7949 8.75 12 8.75C10.2051 8.75 8.75 7.29493 8.75 5.5C8.75 3.70507 10.2051 2.25 12 2.25ZM12 3.75C11.0335 3.75 10.25 4.5335 10.25 5.5C10.25 6.4665 11.0335 7.25 12 7.25C12.9665 7.25 13.75 6.4665 13.75 5.5C13.75 4.5335 12.9665 3.75 12 3.75Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M12.4698 11.4698C13.8672 10.0725 16.1329 10.0726 17.5304 11.4698C18.9279 12.8673 18.9279 15.1329 17.5304 16.5304L12.5304 21.5304C12.2375 21.8233 11.7627 21.8233 11.4698 21.5304L6.46985 16.5304C5.07263 15.1329 5.07247 12.8672 6.46985 11.4698C7.86723 10.0725 10.1329 10.0726 11.5304 11.4698L12.0001 11.9396L12.4698 11.4698ZM16.4698 12.5304C15.6582 11.719 14.342 11.7188 13.5304 12.5304L12.5304 13.5304C12.2375 13.8233 11.7627 13.8233 11.4698 13.5304L10.4698 12.5304C9.65815 11.719 8.34199 11.7188 7.5304 12.5304C6.7188 13.342 6.71897 14.6582 7.5304 15.4698L12.0001 19.9396L16.4698 15.4698C17.2815 14.6582 17.2815 13.3421 16.4698 12.5304Z" fill={primary}/>
+    </svg>
+  );
+}

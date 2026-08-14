@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function Check({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M20.9697 5.96967C21.2626 5.67678 21.7373 5.67678 22.0302 5.96967C22.3231 6.26257 22.3231 6.73734 22.0302 7.03022L11.7929 17.2675C11.4057 17.6548 11.0836 17.9777 10.7997 18.2187C10.5093 18.4653 10.2095 18.6701 9.84955 18.7871C9.29738 18.9664 8.70251 18.9664 8.15033 18.7871C7.79045 18.6701 7.49063 18.4653 7.20014 18.2187C6.91629 17.9777 6.59419 17.6547 6.20697 17.2675L2.46967 13.5302C2.17678 13.2373 2.17678 12.7626 2.46967 12.4697C2.76256 12.1768 3.23732 12.1768 3.53022 12.4697L7.26752 16.207C7.67223 16.6117 7.94455 16.883 8.17084 17.0751C8.39002 17.2612 8.51664 17.3288 8.61322 17.3603C8.86426 17.4418 9.13563 17.4419 9.38666 17.3603C9.48325 17.3288 9.60985 17.2612 9.82904 17.0751C10.0553 16.883 10.3276 16.6117 10.7324 16.207L20.9697 5.96967Z" fill={primary}/>
+    </svg>
+  );
+}

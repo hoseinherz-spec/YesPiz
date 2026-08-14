@@ -1,0 +1,63 @@
+# Yespizz
+
+Yespizz is an npm workspaces and Turborepo monorepo for a blind-marketplace pizza delivery product.
+
+## Apps
+
+| App | Workspace | Development URL |
+| --- | --- | --- |
+| Website | `apps/website` | http://localhost:8050 |
+| Mobile | `apps/mobile` | http://localhost:8051 |
+| Admin | `apps/admin` | http://localhost:8052 |
+| Courier mobile | `apps/courier-mobile` | http://localhost:8053 |
+| Provider panel | `apps/provider-panel` | http://localhost:8084 |
+| API | `apps/api` | http://localhost:8058 |
+
+## Architecture docs
+
+- [System architecture](docs/ARCHITECTURE.md)
+- [Data models](docs/DATA-MODELS.md)
+- [Services & rollout](docs/SERVICES.md)
+
+API Swagger UI: http://localhost:8058/api/docs
+
+## Development
+
+Install all workspace dependencies from the repository root:
+
+```sh
+npm install
+```
+
+Configure the API (see `apps/api/.env.example`), then seed demo data:
+
+```sh
+cp apps/api/.env.example apps/api/.env
+npm run seed --workspace=api
+```
+
+Run every app together:
+
+```sh
+npm run dev
+```
+
+Run one app:
+
+```sh
+npm run dev:website
+npm run dev:mobile
+npm run dev:admin
+npm run dev:courier
+npm run dev:provider
+npm run dev:api
+```
+
+## Validation
+
+```sh
+npm run build
+npm run lint
+npm run check-types
+npm run test
+```

@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function NumberSeven({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M11.96 3.25C12.6358 3.25 13.1919 3.24888 13.6367 3.28809C14.0875 3.32783 14.5101 3.4148 14.8896 3.64258C15.4622 3.98624 15.8903 4.5261 16.0938 5.16211C16.2285 5.58364 16.2159 6.01513 16.1514 6.46289C16.0877 6.90492 15.9595 7.44651 15.8047 8.1045L12.7305 21.1719C12.6356 21.5751 12.2313 21.8253 11.8281 21.7305C11.4249 21.6356 11.1747 21.2313 11.2695 20.8281L14.3447 7.76075C14.5058 7.07623 14.6149 6.61024 14.667 6.24903C14.7182 5.89377 14.699 5.72527 14.665 5.61914C14.5726 5.33018 14.3783 5.08492 14.1182 4.92871C14.0226 4.87136 13.8626 4.81475 13.5049 4.78321C13.1413 4.75117 12.6631 4.75 11.96 4.75H7C6.58579 4.75 6.25 4.41422 6.25 4C6.25 3.58579 6.58579 3.25 7 3.25H11.96Z" fill={primary}/>
+    </svg>
+  );
+}

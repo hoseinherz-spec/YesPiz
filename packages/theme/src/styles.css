@@ -1,0 +1,92 @@
+/*
+ * HeroUI Theme Customization — YesPiz shared tokens
+ * Apps may override these in their globals.css
+ * @see https://heroui.com/docs/react/getting-started/theming
+ */
+
+:root,
+.light,
+.default,
+[data-theme="light"],
+[data-theme="default"] {
+  --accent: #d8ff00;
+  --accent-foreground: #08111f;
+  --background: #f5f7fa;
+  --border: #e4e7ec;
+  --danger: #e5484d;
+  --danger-foreground: #ffffff;
+  --default: #eef1f6;
+  --default-foreground: #101828;
+  --field-background: #ffffff;
+  --field-border: transparent;
+  --field-foreground: #101828;
+  --field-placeholder: #98a2b3;
+  --focus: #d8ff00;
+  --foreground: #101828;
+  --muted: #98a2b3;
+  --overlay: #ffffff;
+  --overlay-foreground: #101828;
+  --scrollbar: #dddfe5;
+  --segment: #ffffff;
+  --segment-foreground: #101828;
+  --separator: #e4e7ec;
+  --success: #1bb866;
+  --success-foreground: #08111f;
+  --surface: #ffffff;
+  --surface-foreground: #101828;
+  --surface-secondary: #ffffff;
+  --surface-secondary-foreground: #101828;
+  --surface-tertiary: #eef1f6;
+  --surface-tertiary-foreground: #101828;
+  --warning: #e08a00;
+  --warning-foreground: #08111f;
+
+  --radius: 0.75rem;
+  --field-radius: 0.75rem;
+
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --card-elevated: #ffffff;
+  --text-secondary: #667085;
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #d8ff00;
+  --accent-foreground: #08111f;
+  --background: #08111f;
+  --border: rgba(255, 255, 255, 0.08);
+  --danger: #ff5f6d;
+  --danger-foreground: #ffffff;
+  --default: #182640;
+  --default-foreground: #ffffff;
+  --field-background: #121c30;
+  --field-border: transparent;
+  --field-foreground: #ffffff;
+  --field-placeholder: #8b95a8;
+  --focus: #d8ff00;
+  --foreground: #ffffff;
+  --muted: #8b95a8;
+  --overlay: #121c30;
+  --overlay-foreground: #ffffff;
+  --scrollbar: #8b95a8;
+  --segment: #182640;
+  --segment-foreground: #ffffff;
+  --separator: rgba(255, 255, 255, 0.08);
+  --success: #2eea7b;
+  --success-foreground: #08111f;
+  --surface: #0d1628;
+  --surface-foreground: #ffffff;
+  --surface-secondary: #121c30;
+  --surface-secondary-foreground: #ffffff;
+  --surface-tertiary: #182640;
+  --surface-tertiary-foreground: #ffffff;
+  --warning: #ffb547;
+  --warning-foreground: #08111f;
+
+  --card: #121c30;
+  --card-foreground: #ffffff;
+  --card-elevated: #182640;
+  --text-secondary: #c2cad6;
+}

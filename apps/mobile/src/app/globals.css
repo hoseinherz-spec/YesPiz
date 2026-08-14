@@ -1,0 +1,134 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+@import "@repo/theme/styles.css";
+
+@theme inline {
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-elevated: var(--card-elevated);
+  --color-text-secondary: var(--text-secondary);
+}
+
+:root,
+.light,
+[data-theme="light"] {
+  --accent: #d8ff00;
+  --accent-foreground: #08111f;
+  --background: #f5f7fa;
+  --foreground: #101828;
+  --border: #e4e7ec;
+  --danger: #e5484d;
+  --danger-foreground: #ffffff;
+  --default: #eef1f6;
+  --default-foreground: #101828;
+  --field-background: #ffffff;
+  --field-border: transparent;
+  --field-foreground: #101828;
+  --field-placeholder: #98a2b3;
+  --focus: #d8ff00;
+  --muted: #98a2b3;
+  --overlay: #ffffff;
+  --overlay-foreground: #101828;
+  --success: #1bb866;
+  --success-foreground: #08111f;
+  --surface: #ffffff;
+  --surface-foreground: #101828;
+  --surface-secondary: #ffffff;
+  --surface-secondary-foreground: #101828;
+  --surface-tertiary: #eef1f6;
+  --surface-tertiary-foreground: #101828;
+  --warning: #e08a00;
+  --warning-foreground: #08111f;
+  --separator: #e4e7ec;
+  --link: var(--foreground);
+  --font-sans: var(--font-poppins);
+
+  /* App aliases (mapped to HeroUI tokens) */
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --card-elevated: #ffffff;
+  --text-secondary: #667085;
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --accent: #d8ff00;
+  --accent-foreground: #08111f;
+  --background: #08111f;
+  --foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --danger: #ff5f6d;
+  --danger-foreground: #ffffff;
+  --default: #182640;
+  --default-foreground: #ffffff;
+  --field-background: #121c30;
+  --field-border: transparent;
+  --field-foreground: #ffffff;
+  --field-placeholder: #8b95a8;
+  --focus: #d8ff00;
+  --muted: #8b95a8;
+  --overlay: #121c30;
+  --overlay-foreground: #ffffff;
+  --success: #2eea7b;
+  --success-foreground: #08111f;
+  --surface: #0d1628;
+  --surface-foreground: #ffffff;
+  --surface-secondary: #121c30;
+  --surface-secondary-foreground: #ffffff;
+  --surface-tertiary: #182640;
+  --surface-tertiary-foreground: #ffffff;
+  --warning: #ffb547;
+  --warning-foreground: #08111f;
+  --separator: rgba(255, 255, 255, 0.08);
+  --link: var(--foreground);
+  --font-sans: var(--font-poppins);
+
+  --card: #121c30;
+  --card-foreground: #ffffff;
+  --card-elevated: #182640;
+  --text-secondary: #c2cad6;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+@layer components {
+  .button--primary {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    box-shadow: 0 8px 24px rgba(216, 255, 0, 0.28);
+  }
+
+  .button--primary:hover {
+    background-color: color-mix(in oklab, var(--accent) 92%, black);
+  }
+}

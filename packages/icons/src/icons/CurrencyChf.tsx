@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function CurrencyChf({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M18 3.25C18.4142 3.25 18.75 3.58579 18.75 4C18.75 4.41421 18.4142 4.75 18 4.75H14.4004C13.268 4.75 12.4634 4.75035 11.834 4.80176C11.2134 4.85247 10.8289 4.94936 10.5244 5.10449C9.91305 5.41605 9.41605 5.91305 9.10449 6.52442C8.94936 6.82889 8.85247 7.21336 8.80176 7.83399C8.75035 8.46335 8.75 9.26798 8.75 10.4004V11.25H17C17.4142 11.25 17.75 11.5858 17.75 12C17.75 12.4142 17.4142 12.75 17 12.75H8.75V22C8.75 22.4142 8.41421 22.75 8 22.75C7.58579 22.75 7.25 22.4142 7.25 22V10.4004C7.25 9.29277 7.24909 8.41651 7.30664 7.71192C7.36492 6.99862 7.48682 6.39487 7.76758 5.84375C8.22298 4.94998 8.94998 4.22298 9.84375 3.76758C10.3949 3.48682 10.9986 3.36492 11.7119 3.30664C12.4165 3.24909 13.2928 3.25 14.4004 3.25H18Z" fill={primary}/>
+<path d="M13 16.25C13.4142 16.25 13.75 16.5858 13.75 17C13.75 17.4142 13.4142 17.75 13 17.75H5C4.58579 17.75 4.25 17.4142 4.25 17C4.25 16.5858 4.58579 16.25 5 16.25H13Z" fill={secondary}/>
+    </svg>
+  );
+}

@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function ArrowDownRight({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M17.5303 17.5303C17.2374 17.8232 16.7627 17.8232 16.4698 17.5303L5.46978 6.53033C5.17695 6.23743 5.17691 5.76266 5.46978 5.46978C5.76266 5.17691 6.23743 5.17695 6.53033 5.46978L17.5303 16.4698C17.8232 16.7627 17.8232 17.2374 17.5303 17.5303Z" fill={primary}/>
+<path d="M7 18.75C6.58578 18.75 6.25 18.4142 6.25 18C6.25 17.5858 6.58578 17.25 7 17.25H14.7998C15.3722 17.25 15.7569 17.2498 16.0527 17.2256C16.3397 17.2021 16.4768 17.1594 16.5674 17.1133C16.8025 16.9935 16.9935 16.8025 17.1133 16.5674C17.1594 16.4768 17.2021 16.3397 17.2256 16.0527C17.2498 15.7569 17.25 15.3722 17.25 14.7998V7C17.25 6.58578 17.5858 6.25 18 6.25C18.4142 6.25 18.75 6.58578 18.75 7V14.7998C18.75 15.3475 18.751 15.8037 18.7207 16.1748C18.6897 16.5545 18.6219 16.9109 18.4502 17.248C18.1865 17.7655 17.7655 18.1865 17.248 18.4502C16.9109 18.6219 16.5545 18.6897 16.1748 18.7207C15.8037 18.751 15.3475 18.75 14.7998 18.75H7Z" fill={secondary}/>
+    </svg>
+  );
+}

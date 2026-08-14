@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function ShoppingBag({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 3.25C14.6234 3.25 16.75 5.37665 16.75 8H15.25C15.25 6.20507 13.7949 4.75 12 4.75C10.2051 4.75 8.75 6.20507 8.75 8H7.25C7.25 5.37665 9.37665 3.25 12 3.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M20.8192 7.25C21.9005 7.25011 22.7235 8.22148 22.5457 9.28809L21.2967 16.7812C20.9148 19.0714 18.9329 20.7499 16.6111 20.75H7.38849C5.06663 20.75 3.08483 19.0715 2.70295 16.7812L1.45392 9.28809C1.27614 8.22141 2.09909 7.25 3.18048 7.25H20.8192ZM3.18048 8.75C3.02604 8.75 2.9081 8.88868 2.93341 9.04102L4.18244 16.5342C4.44363 18.1013 5.79978 19.25 7.38849 19.25H16.6111C18.1998 19.2499 19.556 18.1012 19.8172 16.5342L21.0662 9.04102C21.0915 8.88875 20.9735 8.75011 20.8192 8.75H3.18048Z" fill={primary}/>
+    </svg>
+  );
+}

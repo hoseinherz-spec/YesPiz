@@ -1,0 +1,13 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@repo/i18n/node$": "<rootDir>/../../../packages/i18n/dist/src/node.js",
+    "^@repo/i18n$": "<rootDir>/../../../packages/i18n/src/index.ts"
+  }
+}

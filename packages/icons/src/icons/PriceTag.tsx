@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function PriceTag({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M10.3428 2.25C11.6026 2.25 12.8113 2.7508 13.7021 3.6416L20.7021 10.6416C22.5567 12.4965 22.5567 15.5035 20.7021 17.3584L17.3584 20.7021C15.5035 22.5567 12.4965 22.5567 10.6416 20.7021L3.6416 13.7021C2.7508 12.8114 2.25 11.6026 2.25 10.3428V7C2.25 4.37665 4.37665 2.25 7 2.25H10.3428ZM7 3.75C5.20507 3.75 3.75 5.20507 3.75 7V10.3428C3.75 11.2047 4.09265 12.0321 4.70215 12.6416L11.7021 19.6416C12.9713 20.9104 15.0287 20.9104 16.2979 19.6416L19.6416 16.2979C20.9104 15.0287 20.9104 12.9713 19.6416 11.7021L12.6416 4.70215C12.0321 4.09266 11.2047 3.75 10.3428 3.75H7Z" fill={primary}/>
+<circle cx="7.5" cy="7.5" r="1.25" fill={secondary}/>
+    </svg>
+  );
+}

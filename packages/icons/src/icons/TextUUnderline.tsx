@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function TextUUnderline({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M18 2.25C18.4142 2.25 18.75 2.58579 18.75 3V12C18.75 15.1756 16.1756 17.75 13 17.75H11C7.82436 17.75 5.25 15.1756 5.25 12V3C5.25 2.58579 5.58579 2.25 6 2.25C6.41421 2.25 6.75 2.58579 6.75 3V12C6.75 14.3472 8.65279 16.25 11 16.25H13C15.3472 16.25 17.25 14.3472 17.25 12V3C17.25 2.58579 17.5858 2.25 18 2.25Z" fill={primary}/>
+<path d="M19 20.25C19.4142 20.25 19.75 20.5858 19.75 21C19.75 21.4142 19.4142 21.75 19 21.75H5C4.58579 21.75 4.25 21.4142 4.25 21C4.25 20.5858 4.58579 20.25 5 20.25H19Z" fill={secondary}/>
+    </svg>
+  );
+}

@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function LockUnlocked1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 1.25C14.2143 1.25 16.0733 2.76493 16.6006 4.81348C16.7035 5.21447 16.4615 5.62336 16.0605 5.72656C15.6595 5.82954 15.2507 5.58753 15.1475 5.18652C14.7865 3.78484 13.5132 2.75 12 2.75C10.2051 2.75 8.75 4.20507 8.75 6V8.25H16C18.6234 8.25 20.75 10.3766 20.75 13V17C20.75 19.6234 18.6234 21.75 16 21.75H8C5.37665 21.75 3.25 19.6234 3.25 17V13C3.25 10.6318 4.98299 8.66816 7.25 8.30859V6C7.25 3.37665 9.37665 1.25 12 1.25ZM8 9.75C6.20507 9.75 4.75 11.2051 4.75 13V17C4.75 18.7949 6.20507 20.25 8 20.25H16C17.7949 20.25 19.25 18.7949 19.25 17V13C19.25 11.2051 17.7949 9.75 16 9.75H8Z" fill={primary}/>
+    </svg>
+  );
+}

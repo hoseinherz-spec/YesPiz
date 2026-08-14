@@ -1,0 +1,28 @@
+{
+  "common": {
+    "appName": "Yespizz",
+    "loading": "Wird geladen…",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "hello": "Hallo Welt!"
+  },
+  "errors": {
+    "badRequest": "Ungültige Anfrage",
+    "unauthorized": "Nicht autorisiert",
+    "forbidden": "Zugriff verweigert",
+    "notFound": "Ressource nicht gefunden",
+    "conflict": "Konflikt",
+    "internal": "Interner Serverfehler",
+    "validation": "Validierung fehlgeschlagen",
+    "mongoConnection": "Datenbankverbindung fehlgeschlagen",
+    "invalidCredentials": "E-Mail oder Passwort ungültig",
+    "otpInvalid": "Ungültiger oder abgelaufener Bestätigungscode",
+    "otpSendFailed": "Bestätigungscode konnte nicht gesendet werden",
+    "twilioNotConfigured": "SMS-Verifizierung ist nicht konfiguriert",
+    "googleNotConfigured": "Google-Anmeldung ist nicht konfiguriert",
+    "googleAuthFailed": "Google-Anmeldung fehlgeschlagen",
+    "roleNotAllowed": "Kein Zugriff für diese Rolle",
+    "profileNameRequired": "Vor- und Nachname sind erforderlich"
+  }
+}

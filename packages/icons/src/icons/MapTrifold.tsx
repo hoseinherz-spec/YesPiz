@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function MapTrifold({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M15 5.25C15.4142 5.25 15.75 5.58579 15.75 6V20C15.75 20.4142 15.4142 20.75 15 20.75C14.5858 20.75 14.25 20.4142 14.25 20V6C14.25 5.58579 14.5858 5.25 15 5.25Z" fill={secondary}/>
+<path d="M9 3.25C9.41421 3.25 9.75 3.58579 9.75 4V18C9.75 18.4142 9.41421 18.75 9 18.75C8.58579 18.75 8.25 18.4142 8.25 18V4C8.25 3.58579 8.58579 3.25 9 3.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M19.7217 3.30384C19.9527 3.21153 20.2149 3.2396 20.4209 3.37904C20.6268 3.51856 20.75 3.75143 20.75 4.00013V18.0001C20.75 18.3068 20.563 18.5825 20.2783 18.6964L15.2783 20.6964C15.1137 20.7622 14.9309 20.7681 14.7627 20.712L9.02246 18.798L4.27832 20.6964C4.04729 20.7888 3.78513 20.7607 3.5791 20.6212C3.37323 20.4817 3.25 20.2489 3.25 20.0001V6.00013C3.25006 5.69351 3.43698 5.41772 3.72168 5.30384L8.72168 3.30384L8.84766 3.26576C8.97646 3.23905 9.11105 3.24614 9.2373 3.28822L14.9766 5.20131L19.7217 3.30384ZM4.75 6.50697V18.8917L8.72168 17.3038L8.84766 17.2658C8.97646 17.239 9.11105 17.2461 9.2373 17.2882L14.9766 19.2013L19.25 17.4923V5.10756L15.2783 6.69642C15.1137 6.76224 14.9309 6.76812 14.7627 6.71205L9.02246 4.79798L4.75 6.50697Z" fill={primary}/>
+    </svg>
+  );
+}

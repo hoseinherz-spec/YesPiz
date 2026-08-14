@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function TextA({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M17 13.75H7V12.25H17V13.75Z" fill={secondary}/>
+<path d="M12 3.25C12.2759 3.25 12.5293 3.4016 12.6602 3.64453L18.2383 14.0029C18.693 14.8474 18.9503 15.3229 19.1465 15.8232C19.4163 16.5116 19.5977 17.2318 19.6865 17.9658C19.7511 18.4996 19.75 19.0406 19.75 20C19.75 20.4142 19.4142 20.75 19 20.75C18.5858 20.75 18.25 20.4142 18.25 20C18.25 19.006 18.2485 18.5699 18.1973 18.1465C18.1237 17.5382 17.9736 16.9415 17.75 16.3711C17.5943 15.974 17.3883 15.5891 16.917 14.7139L12 5.58105L7.08301 14.7139C6.61171 15.5891 6.40566 15.974 6.25 16.3711C6.0264 16.9415 5.87631 17.5382 5.80274 18.1465C5.75153 18.5699 5.75 19.006 5.75 20C5.75 20.4142 5.41421 20.75 5 20.75C4.58579 20.75 4.25 20.4142 4.25 20C4.25 19.0406 4.24892 18.4996 4.31348 17.9658C4.40229 17.2318 4.5837 16.5116 4.85352 15.8232C5.04969 15.3229 5.30701 14.8474 5.76172 14.0029L11.3398 3.64453L11.3945 3.55762C11.5345 3.366 11.7587 3.25 12 3.25Z" fill={primary}/>
+    </svg>
+  );
+}

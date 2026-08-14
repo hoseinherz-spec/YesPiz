@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function Rx({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M9.46967 10.4697C9.76256 10.1768 10.2373 10.1768 10.5302 10.4697L15.9999 15.9394L19.4697 12.4697C19.7626 12.1768 20.2373 12.1768 20.5302 12.4697C20.8231 12.7626 20.8231 13.2373 20.5302 13.5302L17.0605 16.9999L20.5302 20.4697C20.8231 20.7626 20.8231 21.2373 20.5302 21.5302C20.2373 21.8231 19.7626 21.8231 19.4697 21.5302L15.9999 18.0605L12.5302 21.5302C12.2373 21.8231 11.7626 21.8231 11.4697 21.5302C11.1768 21.2373 11.1768 20.7626 11.4697 20.4697L14.9394 16.9999L9.46967 11.5302C9.17678 11.2373 9.17678 10.7626 9.46967 10.4697Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M11 2.25C13.6234 2.25 15.75 4.37665 15.75 7C15.75 9.62335 13.6234 11.75 11 11.75H6.75V18C6.75 18.4142 6.41421 18.75 6 18.75C5.58579 18.75 5.25 18.4142 5.25 18V3.5C5.25 2.80965 5.80964 2.25 6.5 2.25H11ZM6.75 10.25H11C12.7949 10.25 14.25 8.79493 14.25 7C14.25 5.20507 12.7949 3.75 11 3.75H6.75V10.25Z" fill={primary}/>
+    </svg>
+  );
+}

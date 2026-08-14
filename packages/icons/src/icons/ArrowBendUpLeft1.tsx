@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function ArrowBendUpLeft1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M14 7.25C16.6234 7.25 18.75 9.37665 18.75 12V21C18.75 21.4142 18.4142 21.75 18 21.75C17.5858 21.75 17.25 21.4142 17.25 21V12C17.25 10.2051 15.7949 8.75 14 8.75H5C4.58579 8.75 4.25 8.41421 4.25 8C4.25 7.58579 4.58579 7.25 5 7.25H14Z" fill={primary}/>
+<path d="M8.47035 2.46959C8.76325 2.17685 9.23805 2.17675 9.53089 2.46959C9.82353 2.76245 9.82357 3.23731 9.53089 3.53014L5.94495 7.11608C5.457 7.6042 5.457 8.39554 5.94495 8.88366L9.53089 12.4696C9.82353 12.7625 9.82357 13.2373 9.53089 13.5301C9.23807 13.823 8.76325 13.8228 8.47035 13.5301L4.88441 9.9442C3.81067 8.8703 3.81066 7.12944 4.88441 6.05553L8.47035 2.46959Z" fill={secondary}/>
+    </svg>
+  );
+}

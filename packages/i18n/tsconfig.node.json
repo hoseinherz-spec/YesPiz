@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2021",
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/node.ts",
+    "src/config.ts",
+    "src/translate.ts",
+    "src/get-messages.ts",
+    "messages/**/*.json"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

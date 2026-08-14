@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function CurrencyRub({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M15 2.25C17.6234 2.25 19.75 4.37665 19.75 7V10C19.75 12.6234 17.6234 14.75 15 14.75H8.75V22C8.75 22.4142 8.41421 22.75 8 22.75C7.58579 22.75 7.25 22.4142 7.25 22V14.75H4C3.58579 14.75 3.25 14.4142 3.25 14C3.25 13.5858 3.58579 13.25 4 13.25H7.25V3C7.25 2.58579 7.58579 2.25 8 2.25H15ZM8.75 13.25H15C16.7949 13.25 18.25 11.7949 18.25 10V7C18.25 5.20507 16.7949 3.75 15 3.75H8.75V13.25Z" fill={primary}/>
+<path d="M14 17.25C14.4142 17.25 14.75 17.5858 14.75 18C14.75 18.4142 14.4142 18.75 14 18.75H4C3.58579 18.75 3.25 18.4142 3.25 18C3.25 17.5858 3.58579 17.25 4 17.25H14Z" fill={secondary}/>
+    </svg>
+  );
+}

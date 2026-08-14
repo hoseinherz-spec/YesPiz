@@ -1,0 +1,35 @@
+import type { IconProps } from '../types';
+
+export function CurrencyBtc({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M9 18.25C9.41421 18.25 9.75 18.5858 9.75 19V22C9.75 22.4142 9.41421 22.75 9 22.75C8.58579 22.75 8.25 22.4142 8.25 22V19C8.25 18.5858 8.58579 18.25 9 18.25Z" fill={secondary}/>
+<path d="M13 18.25C13.4142 18.25 13.75 18.5858 13.75 19V22C13.75 22.4142 13.4142 22.75 13 22.75C12.5858 22.75 12.25 22.4142 12.25 22V19C12.25 18.5858 12.5858 18.25 13 18.25Z" fill={secondary}/>
+<path d="M9 1.25C9.41421 1.25 9.75 1.58579 9.75 2V5C9.75 5.41421 9.41421 5.75 9 5.75C8.58579 5.75 8.25 5.41421 8.25 5V2C8.25 1.58579 8.58579 1.25 9 1.25Z" fill={secondary}/>
+<path d="M13 1.25C13.4142 1.25 13.75 1.58579 13.75 2V5C13.75 5.41421 13.4142 5.75 13 5.75C12.5858 5.75 12.25 5.41421 12.25 5V2C12.25 1.58579 12.5858 1.25 13 1.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M13 4.25C15.0711 4.25 16.75 5.92893 16.75 8C16.75 8.99726 16.3595 9.90247 15.7246 10.5742C17.4951 11.2646 18.75 12.9852 18.75 15C18.75 17.6234 16.6234 19.75 14 19.75H6C5.58579 19.75 5.25 19.4142 5.25 19C5.25 18.5858 5.58579 18.25 6 18.25H7.25V5.75H6C5.58579 5.75 5.25 5.41421 5.25 5C5.25 4.58579 5.58579 4.25 6 4.25H13ZM8.75 18.25H14C15.7949 18.25 17.25 16.7949 17.25 15C17.25 13.2051 15.7949 11.75 14 11.75H8.75V18.25ZM8.75 10.25H13C14.2426 10.25 15.25 9.24264 15.25 8C15.25 6.75736 14.2426 5.75 13 5.75H8.75V10.25Z" fill={primary}/>
+    </svg>
+  );
+}

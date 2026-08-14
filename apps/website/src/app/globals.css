@@ -1,0 +1,325 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@theme {
+  --radius: 0.75rem;
+  --field-radius: 0.75rem;
+
+  --font-poppins: var(--font-poppins-family), sans-serif;
+  --font-sans: var(--font-poppins);
+  --font-serif: var(--font-poppins);
+  --font-mono: var(--font-poppins);
+
+  --color-brand-lime: #cbfb04;
+  --color-brand-purple: #030212;
+  --color-brand-olive: #222a00;
+}
+
+@layer base {
+  :root,
+  .light,
+  [data-theme="light"] {
+    --accent: #030212;
+    --accent-foreground: oklch(99.11% 0 0);
+    --background: oklch(97.02% 0.0052 264);
+    --border: oklch(90% 0.0052 264);
+    --danger: oklch(65.32% 0.2352 30.85);
+    --danger-foreground: oklch(99.11% 0 0);
+    --default: oklch(94% 0.0052 264);
+    --default-foreground: oklch(21.03% 0.0059 264);
+    --field-background: oklch(100% 0.0026 264);
+    --field-border: transparent;
+    --field-foreground: oklch(21.03% 0.0052 264);
+    --field-placeholder: oklch(55.17% 0.0104 264);
+    --focus: #030212;
+    --foreground: oklch(21.03% 0.0052 264);
+    --muted: oklch(55.17% 0.0104 264);
+    --overlay: oklch(100% 0.0016 264);
+    --overlay-foreground: oklch(21.03% 0.0052 264);
+    --backdrop: oklch(0% 0 0 / 20%);
+    --segment: oklch(100% 0.0052 264);
+    --segment-foreground: oklch(21.03% 0.0052 264);
+    --separator: oklch(92% 0.0052 264);
+    --success: oklch(73.29% 0.1955 155.92);
+    --success-foreground: oklch(21.03% 0.0059 155.92);
+    --surface: oklch(100% 0.0026 264);
+    --surface-foreground: oklch(21.03% 0.0052 264);
+    --surface-secondary: oklch(95.24% 0.0042 264);
+    --surface-secondary-foreground: oklch(21.03% 0.0052 264);
+    --surface-tertiary: oklch(93.73% 0.0042 264);
+    --surface-tertiary-foreground: oklch(21.03% 0.0052 264);
+    --warning: oklch(78.19% 0.1601 77.44);
+    --warning-foreground: oklch(21.03% 0.0059 77.44);
+    --link: var(--foreground);
+
+    --surface-shadow:
+      0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06),
+      0 0 1px 0 rgba(0, 0, 0, 0.06);
+    --overlay-shadow:
+      0 2px 8px 0 rgba(0, 0, 0, 0.02), 0 -6px 12px 0 rgba(0, 0, 0, 0.01),
+      0 14px 28px 0 rgba(0, 0, 0, 0.03);
+    --field-shadow:
+      0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06),
+      0 0 1px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  .dark,
+  [data-theme="dark"] {
+    --accent: #030212;
+    --accent-foreground: oklch(99.11% 0 0);
+    --background: oklch(12% 0.0052 264);
+    --border: oklch(28% 0.0052 264);
+    --danger: oklch(59.4% 0.1987 29.74);
+    --danger-foreground: oklch(99.11% 0 0);
+    --default: oklch(27.4% 0.0052 264);
+    --default-foreground: oklch(99.11% 0 0);
+    --field-background: oklch(21.03% 0.0104 264);
+    --field-border: transparent;
+    --field-foreground: oklch(99.11% 0.0052 264);
+    --field-placeholder: oklch(70.5% 0.0104 264);
+    --focus: #030212;
+    --foreground: oklch(99.11% 0.0052 264);
+    --muted: oklch(70.5% 0.0104 264);
+    --overlay: oklch(21.03% 0.0104 264);
+    --overlay-foreground: oklch(99.11% 0.0052 264);
+    --backdrop: oklch(0% 0 0 / 20%);
+    --segment: oklch(39.64% 0.0052 264);
+    --segment-foreground: oklch(99.11% 0.0052 264);
+    --separator: oklch(25% 0.0052 264);
+    --success: oklch(73.29% 0.1955 155.92);
+    --success-foreground: oklch(21.03% 0.0059 155.92);
+    --surface: oklch(21.03% 0.0104 264);
+    --surface-foreground: oklch(99.11% 0.0052 264);
+    --surface-secondary: oklch(25.7% 0.0078 264);
+    --surface-secondary-foreground: oklch(99.11% 0.0052 264);
+    --surface-tertiary: oklch(27.21% 0.0078 264);
+    --surface-tertiary-foreground: oklch(99.11% 0.0052 264);
+    --warning: oklch(82.03% 0.1402 81.45);
+    --warning-foreground: oklch(21.03% 0.0059 81.45);
+    --link: var(--foreground);
+
+    --surface-shadow: 0 0 0 0 transparent inset;
+    --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+    --field-shadow: 0 0 0 0 transparent inset;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 45s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-fade-in-up {
+    animation: none;
+  }
+
+  .split-line {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Landing section palettes */
+.landing-page {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.landing-page ::selection {
+  background: color-mix(in oklab, var(--accent) 25%, transparent);
+}
+
+.landing-section--canvas {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.landing-section--surface {
+  background: var(--surface-secondary);
+  color: var(--foreground);
+}
+
+.landing-section--immersive {
+  --section-bg: var(--color-brand-olive);
+  --section-fg: var(--accent-foreground);
+  --section-muted: color-mix(in oklab, var(--section-fg) 62%, transparent);
+  --section-border: color-mix(in oklab, var(--section-fg) 14%, transparent);
+  --section-surface: color-mix(in oklab, var(--section-fg) 8%, transparent);
+  background: var(--section-bg);
+  color: var(--section-fg);
+}
+
+.landing-card {
+  background: var(--surface);
+  color: var(--surface-foreground);
+  border: 1px solid var(--border);
+  box-shadow: var(--surface-shadow);
+}
+
+.landing-card--elevated {
+  background: var(--surface);
+  color: var(--surface-foreground);
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  box-shadow: var(--overlay-shadow);
+}
+
+.landing-eyebrow {
+  color: var(--muted);
+}
+
+.landing-hero-glow {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    color-mix(in oklab, var(--accent) 14%, transparent),
+    transparent
+  );
+}
+
+.landing-fade-top {
+  background: linear-gradient(to bottom, var(--background), transparent);
+}
+
+.landing-fade-bottom {
+  background: linear-gradient(to top, var(--background), transparent);
+}
+
+.landing-nav--scrolled {
+  border-color: color-mix(in oklab, var(--border) 80%, transparent);
+  background: color-mix(in oklab, var(--background) 90%, transparent);
+}
+
+.landing-field {
+  min-height: 3rem;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--field-background);
+  color: var(--field-foreground);
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.landing-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+
+.landing-field::placeholder {
+  color: var(--field-placeholder);
+}
+
+/* Hero section — synced with brand palette */
+.hero-section {
+  --hero-bg: var(--color-brand-purple);
+  --hero-accent: var(--color-brand-lime);
+  --hero-fg: var(--accent-foreground);
+  --hero-shadow: var(--color-brand-olive);
+  background: var(--hero-bg);
+  color: var(--hero-fg);
+}
+
+.hero-section ::selection {
+  background: var(--hero-accent);
+  color: var(--hero-shadow);
+}
+
+.hero-section__grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--hero-fg) 8%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--hero-fg) 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 4rem 4rem;
+}
+
+.hero-display-text {
+  font-family: "Arial Black", Impact, sans-serif;
+  text-shadow:
+    1px 1px 0 var(--hero-shadow),
+    2px 2px 0 var(--hero-shadow),
+    3px 3px 0 var(--hero-shadow),
+    4px 4px 0 var(--hero-shadow),
+    5px 5px 0 var(--hero-shadow),
+    6px 6px 0 var(--hero-shadow),
+    7px 7px 0 var(--hero-shadow),
+    8px 8px 0 var(--hero-shadow),
+    9px 9px 0 var(--hero-shadow),
+    10px 10px 0 var(--hero-shadow),
+    11px 11px 0 var(--hero-shadow),
+    12px 12px 0 var(--hero-shadow),
+    13px 13px 0 var(--hero-shadow),
+    14px 14px 0 var(--hero-shadow);
+}
+
+/* Footer section — synced with hero palette */
+.footer-section {
+  --footer-bg: var(--color-brand-purple);
+  --footer-fg: var(--accent-foreground);
+  --footer-muted: color-mix(in oklab, var(--footer-fg) 62%, transparent);
+  --footer-accent: var(--color-brand-lime);
+  --footer-shadow: var(--color-brand-olive);
+  background: var(--footer-bg);
+  color: var(--footer-fg);
+}
+
+.footer-section ::selection {
+  background: var(--footer-accent);
+  color: var(--footer-shadow);
+}
+
+.footer-section__grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--footer-fg) 8%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--footer-fg) 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 4rem 4rem;
+}

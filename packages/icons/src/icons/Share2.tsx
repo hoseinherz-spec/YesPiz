@@ -1,0 +1,35 @@
+import type { IconProps } from '../types';
+
+export function Share2({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M14.3594 15.7061L13.6406 17.0225L8.64062 14.2949L9.35938 12.9785L14.3594 15.7061Z" fill={secondary}/>
+<path d="M14.3594 8.29492L9.35938 11.0225L8.64062 9.70605L13.6406 6.97852L14.3594 8.29492Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M17 14.25C19.0711 14.25 20.75 15.9289 20.75 18C20.75 20.0711 19.0711 21.75 17 21.75C14.9289 21.75 13.25 20.0711 13.25 18C13.25 15.9289 14.9289 14.25 17 14.25ZM17 15.75C15.7574 15.75 14.75 16.7574 14.75 18C14.75 19.2426 15.7574 20.25 17 20.25C18.2426 20.25 19.25 19.2426 19.25 18C19.25 16.7574 18.2426 15.75 17 15.75Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M6 8.25C8.07107 8.25 9.75 9.92893 9.75 12C9.75 14.0711 8.07107 15.75 6 15.75C3.92893 15.75 2.25 14.0711 2.25 12C2.25 9.92893 3.92893 8.25 6 8.25ZM6 9.75C4.75736 9.75 3.75 10.7574 3.75 12C3.75 13.2426 4.75736 14.25 6 14.25C7.24264 14.25 8.25 13.2426 8.25 12C8.25 10.7574 7.24264 9.75 6 9.75Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M17 2.25C19.0711 2.25 20.75 3.92893 20.75 6C20.75 8.07107 19.0711 9.75 17 9.75C14.9289 9.75 13.25 8.07107 13.25 6C13.25 3.92893 14.9289 2.25 17 2.25ZM17 3.75C15.7574 3.75 14.75 4.75736 14.75 6C14.75 7.24264 15.7574 8.25 17 8.25C18.2426 8.25 19.25 7.24264 19.25 6C19.25 4.75736 18.2426 3.75 17 3.75Z" fill={primary}/>
+    </svg>
+  );
+}

@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function NumberNine({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 3.25C14.6234 3.25 16.75 5.37665 16.75 8V14C16.75 14.9214 16.7501 15.6501 16.71 16.2393C16.6693 16.8351 16.585 17.3433 16.3887 17.8174C15.9066 18.9813 14.9813 19.9066 13.8174 20.3887C13.3433 20.585 12.8351 20.6693 12.2393 20.71C11.6501 20.7501 10.9214 20.75 10 20.75C9.58579 20.75 9.25 20.4142 9.25 20C9.25 19.5858 9.58579 19.25 10 19.25C10.9421 19.25 11.6113 19.2498 12.1377 19.2139C12.6573 19.1784 12.9832 19.111 13.2441 19.0029C14.0403 18.6731 14.6731 18.0403 15.0029 17.2441C15.111 16.9832 15.1784 16.6573 15.2139 16.1377C15.2498 15.6113 15.25 14.9421 15.25 14V12.75H12C9.37665 12.75 7.25 10.6234 7.25 8C7.25 5.37665 9.37665 3.25 12 3.25ZM12 4.75C10.2051 4.75 8.75 6.20507 8.75 8C8.75 9.79493 10.2051 11.25 12 11.25H15.25V8C15.25 6.20507 13.7949 4.75 12 4.75Z" fill={primary}/>
+    </svg>
+  );
+}

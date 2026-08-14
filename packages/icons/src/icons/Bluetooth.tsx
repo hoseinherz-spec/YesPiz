@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function Bluetooth({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M11.6952 2.31459C11.9656 2.19447 12.2819 2.24459 12.5019 2.44252L17.5019 6.94252C17.6598 7.08471 17.7499 7.28761 17.7499 7.50014C17.7499 7.71267 17.6598 7.91553 17.5019 8.05775L13.121 12.0001L17.5019 15.9425C17.6598 16.0847 17.7499 16.2876 17.7499 16.5001C17.7499 16.7127 17.6598 16.9155 17.5019 17.0578L12.5019 21.5578C12.2819 21.7558 11.9657 21.8059 11.6952 21.6857C11.4247 21.5652 11.2499 21.2963 11.2499 21.0001V13.8107L6.53018 18.5304C6.23729 18.8233 5.76253 18.8233 5.46964 18.5304C5.17681 18.2375 5.17677 17.7627 5.46964 17.4699L10.9394 12.0001L5.46964 6.53041C5.17681 6.23751 5.17677 5.76273 5.46964 5.46986C5.76252 5.17711 6.23733 5.17708 6.53018 5.46986L11.2499 10.1896V3.00014C11.25 2.70403 11.4247 2.43506 11.6952 2.31459ZM12.7499 19.3156L15.8778 16.5001L12.7499 13.6837V19.3156ZM12.7499 10.3156L15.8778 7.50014L12.7499 4.68373V10.3156Z" fill={primary}/>
+    </svg>
+  );
+}

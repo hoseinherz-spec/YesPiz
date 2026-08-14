@@ -1,0 +1,40 @@
+{
+  "name": "yespizz",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:website": "turbo run dev --filter=website",
+    "dev:mobile": "turbo run dev --filter=mobile",
+    "dev:admin": "turbo run dev --filter=admin",
+    "dev:courier": "turbo run dev --filter=courier-mobile",
+    "dev:provider": "turbo run dev --filter=provider-panel",
+    "dev:api": "turbo run dev --filter=api",
+    "swagger:export": "npm run swagger:export --workspace=api",
+    "mobile:apk": "npm run android:apk --workspace=mobile",
+    "mobile:aab": "npm run android:aab --workspace=mobile",
+    "mobile:ios": "npm run ios:export --workspace=mobile",
+    "courier:apk": "npm run android:apk --workspace=courier-mobile",
+    "courier:aab": "npm run android:aab --workspace=courier-mobile",
+    "courier:ios": "npm run ios:export --workspace=courier-mobile",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "seed:api": "npm run seed --workspace=api"
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4",
+    "turbo": "^2.10.9",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.2.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

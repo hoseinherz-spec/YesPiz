@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function ChevronLeft({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M14.4698 3.46967C14.7627 3.17678 15.2374 3.17678 15.5303 3.46967C15.8232 3.76256 15.8232 4.23732 15.5303 4.53021L12.0557 8.00482C11.255 8.80553 10.687 9.37502 10.2784 9.85639C9.87544 10.331 9.67204 10.6711 9.56645 10.996C9.35448 11.6486 9.35447 12.3513 9.56645 13.0038C9.67205 13.3288 9.87542 13.6688 10.2784 14.1435C10.687 14.6249 11.255 15.1943 12.0557 15.9951L15.5303 19.4697C15.8232 19.7626 15.8232 20.2373 15.5303 20.5302C15.2374 20.823 14.7626 20.8231 14.4698 20.5302L10.9952 17.0556C10.2119 16.2724 9.59234 15.6531 9.13481 15.1142C8.67165 14.5686 8.33085 14.056 8.1397 13.4677C7.82973 12.5137 7.82974 11.4862 8.1397 10.5322C8.33084 9.94393 8.67167 9.43126 9.13481 8.88568C9.59233 8.34676 10.212 7.72749 10.9952 6.94428L14.4698 3.46967Z" fill={primary}/>
+    </svg>
+  );
+}

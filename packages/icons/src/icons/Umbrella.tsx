@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function Umbrella({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 11.25C12.4142 11.25 12.75 11.5858 12.75 12V19C12.75 19.6904 13.3096 20.25 14 20.25C14.6904 20.25 15.25 19.6904 15.25 19V18C15.25 17.5858 15.5858 17.25 16 17.25C16.4142 17.25 16.75 17.5858 16.75 18V19C16.75 20.5188 15.5188 21.75 14 21.75C12.4812 21.75 11.25 20.5188 11.25 19V12C11.25 11.5858 11.5858 11.25 12 11.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C12.9107 2.25 13.4204 2.24897 13.8574 2.29199C18.0117 2.70116 21.2988 5.98828 21.708 10.1426C21.751 10.5796 21.75 11.0893 21.75 12C21.75 12.4142 21.4142 12.75 21 12.75H3C2.58579 12.75 2.25 12.4142 2.25 12C2.25 11.0893 2.24897 10.5796 2.29199 10.1426C2.70116 5.98828 5.98828 2.70116 10.1426 2.29199C10.5796 2.24897 11.0893 2.25 12 2.25ZM12 3.75C11.0535 3.75 10.6343 3.75116 10.2891 3.78516C6.8472 4.12431 4.12431 6.8472 3.78516 10.2891C3.76184 10.5258 3.7555 10.7975 3.75293 11.25H20.2471C20.2445 10.7975 20.2382 10.5258 20.2148 10.2891C19.8757 6.8472 17.1528 4.12431 13.7109 3.78516C13.3657 3.75116 12.9465 3.75 12 3.75Z" fill={primary}/>
+    </svg>
+  );
+}

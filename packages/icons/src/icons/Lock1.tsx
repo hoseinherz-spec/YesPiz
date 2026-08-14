@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function Lock1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 2.25C14.6234 2.25 16.75 4.37665 16.75 7V9H15.25V7C15.25 5.20507 13.7949 3.75 12 3.75C10.2051 3.75 8.75 5.20507 8.75 7V9H7.25V7C7.25 4.37665 9.37665 2.25 12 2.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M16 8.25C18.6234 8.25 20.75 10.3766 20.75 13V17C20.75 19.6234 18.6234 21.75 16 21.75H8C5.37665 21.75 3.25 19.6234 3.25 17V13C3.25 10.3766 5.37665 8.25 8 8.25H16ZM8 9.75C6.20507 9.75 4.75 11.2051 4.75 13V17C4.75 18.7949 6.20507 20.25 8 20.25H16C17.7949 20.25 19.25 18.7949 19.25 17V13C19.25 11.2051 17.7949 9.75 16 9.75H8Z" fill={primary}/>
+    </svg>
+  );
+}

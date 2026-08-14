@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function ShoppingCart1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M1 2.25C2.91919 2.25 4.60014 3.4735 5.21484 5.25H21C21.2174 5.25 21.424 5.34454 21.5664 5.50879C21.7088 5.67304 21.7729 5.89122 21.7422 6.10645L21.2334 9.67188C20.8991 12.0118 18.8949 13.7498 16.5312 13.75H7.07324C7.41992 15.2118 8.72491 16.2499 10.2334 16.25H20C20.4142 16.25 20.75 16.5858 20.75 17C20.75 17.4142 20.4142 17.75 20 17.75H10.2334C7.99371 17.7499 6.05815 16.1851 5.58887 13.9951L3.89551 6.09082C3.60296 4.72561 2.39621 3.75 1 3.75C0.585786 3.75 0.25 3.41421 0.25 3C0.25 2.58579 0.585786 2.25 1 2.25ZM6.74902 12.25H16.5312C18.1483 12.2498 19.5192 11.0608 19.748 9.45996L20.1357 6.75H5.57129L6.74902 12.25Z" fill={primary}/>
+<path d="M8.5 19.25C9.19036 19.25 9.75 19.8096 9.75 20.5C9.75 21.1904 9.19036 21.75 8.5 21.75C7.80964 21.75 7.25 21.1904 7.25 20.5C7.25 19.8096 7.80964 19.25 8.5 19.25Z" fill={secondary}/>
+<path d="M18.5 19.25C19.1904 19.25 19.75 19.8096 19.75 20.5C19.75 21.1904 19.1904 21.75 18.5 21.75C17.8096 21.75 17.25 21.1904 17.25 20.5C17.25 19.8096 17.8096 19.25 18.5 19.25Z" fill={secondary}/>
+    </svg>
+  );
+}

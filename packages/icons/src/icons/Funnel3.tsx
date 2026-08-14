@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function Funnel3({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M22 16.25C22.4142 16.25 22.75 16.5858 22.75 17C22.75 17.4142 22.4142 17.75 22 17.75H2C1.58579 17.75 1.25 17.4142 1.25 17C1.25 16.5858 1.58579 16.25 2 16.25H22Z" fill={primary}/>
+<path d="M22 6.25C22.4142 6.25 22.75 6.58579 22.75 7C22.75 7.41421 22.4142 7.75 22 7.75H2C1.58579 7.75 1.25 7.41421 1.25 7C1.25 6.58579 1.58579 6.25 2 6.25H22Z" fill={primary}/>
+<path d="M22 11.25C22.4142 11.25 22.75 11.5858 22.75 12C22.75 12.4142 22.4142 12.75 22 12.75H2C1.58579 12.75 1.25 12.4142 1.25 12C1.25 11.5858 1.58579 11.25 2 11.25H22Z" fill={secondary}/>
+    </svg>
+  );
+}

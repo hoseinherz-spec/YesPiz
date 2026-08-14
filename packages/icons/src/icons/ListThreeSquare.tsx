@@ -1,0 +1,36 @@
+import type { IconProps } from '../types';
+
+export function ListThreeSquare({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M6 15.75C6.9665 15.75 7.75 16.5335 7.75 17.5V18.5C7.75 19.4665 6.9665 20.25 6 20.25H5C4.0335 20.25 3.25 19.4665 3.25 18.5V17.5C3.25 16.5335 4.0335 15.75 5 15.75H6ZM5 17.25C4.86193 17.25 4.75 17.3619 4.75 17.5V18.5C4.75 18.6381 4.86193 18.75 5 18.75H6C6.13807 18.75 6.25 18.6381 6.25 18.5V17.5C6.25 17.3619 6.13807 17.25 6 17.25H5Z" fill={primary}/>
+<path d="M21 17.25C21.4142 17.25 21.75 17.5858 21.75 18C21.75 18.4142 21.4142 18.75 21 18.75H10C9.58579 18.75 9.25 18.4142 9.25 18C9.25 17.5858 9.58579 17.25 10 17.25H21Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M6 3.75C6.9665 3.75 7.75 4.5335 7.75 5.5V6.5C7.75 7.4665 6.9665 8.25 6 8.25H5C4.0335 8.25 3.25 7.4665 3.25 6.5V5.5C3.25 4.5335 4.0335 3.75 5 3.75H6ZM5 5.25C4.86193 5.25 4.75 5.36193 4.75 5.5V6.5C4.75 6.63807 4.86193 6.75 5 6.75H6C6.13807 6.75 6.25 6.63807 6.25 6.5V5.5C6.25 5.36193 6.13807 5.25 6 5.25H5Z" fill={primary}/>
+<path d="M21 5.25C21.4142 5.25 21.75 5.58579 21.75 6C21.75 6.41421 21.4142 6.75 21 6.75H10C9.58579 6.75 9.25 6.41421 9.25 6C9.25 5.58579 9.58579 5.25 10 5.25H21Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M6 9.75C6.9665 9.75 7.75 10.5335 7.75 11.5V12.5C7.75 13.4665 6.9665 14.25 6 14.25H5C4.0335 14.25 3.25 13.4665 3.25 12.5V11.5C3.25 10.5335 4.0335 9.75 5 9.75H6ZM5 11.25C4.86193 11.25 4.75 11.3619 4.75 11.5V12.5C4.75 12.6381 4.86193 12.75 5 12.75H6C6.13807 12.75 6.25 12.6381 6.25 12.5V11.5C6.25 11.3619 6.13807 11.25 6 11.25H5Z" fill={secondary}/>
+<path d="M21 11.25C21.4142 11.25 21.75 11.5858 21.75 12C21.75 12.4142 21.4142 12.75 21 12.75H10C9.58579 12.75 9.25 12.4142 9.25 12C9.25 11.5858 9.58579 11.25 10 11.25H21Z" fill={secondary}/>
+    </svg>
+  );
+}

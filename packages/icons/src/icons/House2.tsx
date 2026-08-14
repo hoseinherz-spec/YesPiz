@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function House2({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12.0001 2.25C16.8325 2.25 20.75 6.16751 20.75 11V14.333C20.75 15.8232 20.76 16.7543 20.4981 17.5264C20.0234 18.9247 18.9248 20.0234 17.5264 20.498C16.7544 20.76 15.8232 20.75 14.3331 20.75H9.66704C8.17692 20.75 7.24575 20.76 6.47368 20.498C5.07535 20.0234 3.97668 18.9247 3.502 17.5264C3.24005 16.7543 3.25005 15.8231 3.25005 14.333V11C3.25005 6.16753 7.16758 2.25003 12.0001 2.25ZM12.0001 3.75C7.99601 3.75003 4.75005 6.99595 4.75005 11V14.333C4.75005 15.9453 4.76046 16.5664 4.9229 17.0449C5.2477 18.0014 5.99865 18.7523 6.95513 19.0771C7.43367 19.2396 8.05477 19.25 9.66704 19.25H14.3331C15.9453 19.25 16.5664 19.2396 17.045 19.0771C18.0015 18.7523 18.7524 18.0014 19.0772 17.0449C19.2396 16.5664 19.25 15.9453 19.25 14.333V11C19.25 6.99594 16.0041 3.75 12.0001 3.75Z" fill={primary}/>
+<path d="M14 15.25C14.4142 15.25 14.75 15.5858 14.75 16C14.75 16.4142 14.4142 16.75 14 16.75H10C9.58579 16.75 9.25 16.4142 9.25 16C9.25 15.5858 9.58579 15.25 10 15.25H14Z" fill={secondary}/>
+    </svg>
+  );
+}

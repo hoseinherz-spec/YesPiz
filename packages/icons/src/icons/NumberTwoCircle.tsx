@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function NumberTwoCircle({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C17.3848 2.25 21.75 6.61522 21.75 12C21.75 17.3848 17.3848 21.75 12 21.75C6.61522 21.75 2.25 17.3848 2.25 12C2.25 6.61522 6.61522 2.25 12 2.25ZM12 3.75C7.44365 3.75 3.75 7.44365 3.75 12C3.75 16.5563 7.44365 20.25 12 20.25C16.5563 20.25 20.25 16.5563 20.25 12C20.25 7.44365 16.5563 3.75 12 3.75Z" fill={primary}/>
+<path d="M12 7.25C13.5188 7.25 14.75 8.48122 14.75 10C14.75 11.5188 13.5188 12.75 12 12.75C11.3096 12.75 10.75 13.3096 10.75 14V15.25H14C14.4142 15.25 14.75 15.5858 14.75 16C14.75 16.4142 14.4142 16.75 14 16.75H10C9.58579 16.75 9.25 16.4142 9.25 16V14C9.25 12.4812 10.4812 11.25 12 11.25C12.6904 11.25 13.25 10.6904 13.25 10C13.25 9.30964 12.6904 8.75 12 8.75H10C9.58579 8.75 9.25 8.41421 9.25 8C9.25 7.58579 9.58579 7.25 10 7.25H12Z" fill={secondary}/>
+    </svg>
+  );
+}

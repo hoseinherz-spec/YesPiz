@@ -1,0 +1,28 @@
+{
+  "common": {
+    "appName": "Yespizz",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "hello": "Hello World!"
+  },
+  "errors": {
+    "badRequest": "Bad request",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "notFound": "Resource not found",
+    "conflict": "Conflict",
+    "internal": "Internal server error",
+    "validation": "Validation failed",
+    "mongoConnection": "Database connection failed",
+    "invalidCredentials": "Invalid email or password",
+    "otpInvalid": "Invalid or expired verification code",
+    "otpSendFailed": "Failed to send verification code",
+    "twilioNotConfigured": "SMS verification is not configured",
+    "googleNotConfigured": "Google sign-in is not configured",
+    "googleAuthFailed": "Google sign-in failed",
+    "roleNotAllowed": "You do not have access for this role",
+    "profileNameRequired": "First name and last name are required"
+  }
+}

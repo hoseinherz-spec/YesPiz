@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function ShapesTriangleSquareCirclce({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M11.0392 2.14338C11.5343 1.54334 12.4659 1.54337 12.961 2.14338L13.0597 2.28107L17.1583 8.83771C17.6782 9.67021 17.0794 10.7498 16.0978 10.7498H7.90246C6.92109 10.7496 6.32234 9.6701 6.84191 8.83771L10.9405 2.28107L11.0392 2.14338ZM8.35363 9.24982H15.6466L12.0001 3.41486L8.35363 9.24982Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M17.5 13C19.9853 13 22 15.0147 22 17.5C22 19.9853 19.9853 22 17.5 22C15.0147 22 13 19.9853 13 17.5C13 15.0147 15.0147 13 17.5 13ZM17.5 14.5C15.8431 14.5 14.5 15.8431 14.5 17.5C14.5 19.1569 15.8431 20.5 17.5 20.5C19.1569 20.5 20.5 19.1569 20.5 17.5C20.5 15.8431 19.1569 14.5 17.5 14.5Z" fill={primary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M8.5 13.25C9.74264 13.25 10.75 14.2574 10.75 15.5V19.5C10.75 20.7426 9.74264 21.75 8.5 21.75H4.5C3.25736 21.75 2.25 20.7426 2.25 19.5V15.5C2.25 14.2574 3.25736 13.25 4.5 13.25H8.5ZM4.5 14.75C4.08579 14.75 3.75 15.0858 3.75 15.5V19.5C3.75 19.9142 4.08579 20.25 4.5 20.25H8.5C8.91421 20.25 9.25 19.9142 9.25 19.5V15.5C9.25 15.0858 8.91421 14.75 8.5 14.75H4.5Z" fill={primary}/>
+    </svg>
+  );
+}

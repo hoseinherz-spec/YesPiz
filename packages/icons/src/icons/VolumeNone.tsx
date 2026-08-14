@@ -1,0 +1,31 @@
+import type { IconProps } from '../types';
+
+export function VolumeNone({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M14.6025 2.36418C14.8336 2.21975 15.1249 2.2117 15.3633 2.34368C15.6017 2.47585 15.75 2.72729 15.75 2.99993V20.9999C15.75 21.2725 15.6017 21.524 15.3633 21.6562C15.1249 21.7881 14.8336 21.7801 14.6025 21.6357L7.02832 16.9023C6.86952 16.803 6.68531 16.7499 6.49805 16.7499C4.15201 16.7498 2.2502 14.8479 2.25 12.5019V11.498C2.25016 9.15191 4.15199 7.25009 6.49805 7.24993C6.6853 7.24993 6.86953 7.19682 7.02832 7.09758L14.6025 2.36418ZM7.82324 8.37004C7.42605 8.61828 6.96643 8.74993 6.49805 8.74993C4.98041 8.75009 3.75016 9.98034 3.75 11.498V12.5019C3.7502 14.0195 4.98044 15.2498 6.49805 15.2499C6.96644 15.2499 7.42604 15.3816 7.82324 15.6298L14.25 19.6464V4.35246L7.82324 8.37004Z" fill={primary}/>
+    </svg>
+  );
+}

@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function LetterZCircle({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C17.3848 2.25 21.75 6.61522 21.75 12C21.75 17.3848 17.3848 21.75 12 21.75C6.61522 21.75 2.25 17.3848 2.25 12C2.25 6.61522 6.61522 2.25 12 2.25ZM12 3.75C7.44365 3.75 3.75 7.44365 3.75 12C3.75 16.5563 7.44365 20.25 12 20.25C16.5563 20.25 20.25 16.5563 20.25 12C20.25 7.44365 16.5563 3.75 12 3.75Z" fill={primary}/>
+<path d="M14.699 6.75C16.3433 6.75022 17.0799 8.81307 15.8074 9.85449L9.14427 15.3066C8.96243 15.4554 9.06752 15.75 9.30247 15.75H15.572C15.9861 15.7501 16.322 16.0859 16.322 16.5C16.322 16.9141 15.9861 17.2499 15.572 17.25H9.30247C7.65785 17.25 6.9212 15.1869 8.19407 14.1455L14.8572 8.69336C15.0387 8.5446 14.9336 8.25022 14.699 8.25H8.42942C8.01521 8.25 7.67942 7.91421 7.67942 7.5C7.67942 7.08579 8.01521 6.75 8.42942 6.75H14.699Z" fill={secondary}/>
+    </svg>
+  );
+}

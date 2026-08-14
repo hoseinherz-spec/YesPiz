@@ -1,0 +1,33 @@
+import type { IconProps } from '../types';
+
+export function ChartBar3({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12 2.25C12.4142 2.25 12.75 2.58579 12.75 3V21C12.75 21.4142 12.4142 21.75 12 21.75C11.5858 21.75 11.25 21.4142 11.25 21V3C11.25 2.58579 11.5858 2.25 12 2.25Z" fill={secondary}/>
+<path d="M6 8.25C6.41421 8.25 6.75 8.58579 6.75 9V21C6.75 21.4142 6.41421 21.75 6 21.75C5.58579 21.75 5.25 21.4142 5.25 21V9C5.25 8.58579 5.58579 8.25 6 8.25Z" fill={primary}/>
+<path d="M18 14.25C18.4142 14.25 18.75 14.5858 18.75 15V21C18.75 21.4142 18.4142 21.75 18 21.75C17.5858 21.75 17.25 21.4142 17.25 21V15C17.25 14.5858 17.5858 14.25 18 14.25Z" fill={primary}/>
+    </svg>
+  );
+}

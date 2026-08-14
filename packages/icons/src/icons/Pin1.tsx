@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function Pin1({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path d="M12.75 22.25L12 23L11.25 22.25V15H12.75V22.25Z" fill={secondary}/>
+<path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C14.6234 2.25 16.75 4.37665 16.75 7V8.34277C16.75 9.20473 17.0927 10.0321 17.7021 10.6416L18.3584 11.2979C19.2492 12.1887 19.75 13.3974 19.75 14.6572V15C19.75 15.4142 19.4142 15.75 19 15.75H5C4.58579 15.75 4.25 15.4142 4.25 15V14.6572C4.25 13.3974 4.7508 12.1886 5.6416 11.2979L6.29785 10.6416C6.90734 10.0321 7.25 9.20473 7.25 8.34277V7C7.25 4.37665 9.37665 2.25 12 2.25ZM12 3.75C10.2051 3.75 8.75 5.20507 8.75 7V8.34277C8.75 9.60255 8.2492 10.8114 7.3584 11.7021L6.70215 12.3584C6.18938 12.8712 5.8662 13.5381 5.77637 14.25H18.2246C18.1348 13.5381 17.8107 12.8712 17.2979 12.3584L16.6416 11.7021C15.7508 10.8114 15.25 9.60255 15.25 8.34277V7C15.25 5.20507 13.7949 3.75 12 3.75Z" fill={primary}/>
+    </svg>
+  );
+}

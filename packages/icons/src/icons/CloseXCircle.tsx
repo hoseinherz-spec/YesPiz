@@ -1,0 +1,32 @@
+import type { IconProps } from '../types';
+
+export function CloseXCircle({
+  size = 24,
+  color = 'currentColor',
+  secondaryColor = '#84CC16',
+  title,
+  className,
+  style,
+  ...props
+}: IconProps) {
+  const primary = color;
+  const secondary = secondaryColor;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      {...props}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.25C17.3848 2.25 21.75 6.61522 21.75 12C21.75 17.3848 17.3848 21.75 12 21.75C6.61522 21.75 2.25 17.3848 2.25 12C2.25 6.61522 6.61522 2.25 12 2.25ZM12 3.75C7.44365 3.75 3.75 7.44365 3.75 12C3.75 16.5563 7.44365 20.25 12 20.25C16.5563 20.25 20.25 16.5563 20.25 12C20.25 7.44365 16.5563 3.75 12 3.75Z" fill={primary}/>
+<path d="M15.4697 7.46967C15.7626 7.17678 16.2373 7.17678 16.5302 7.46967C16.8231 7.76257 16.8231 8.23734 16.5302 8.53022L13.0605 11.9999L16.5302 15.4697C16.8231 15.7626 16.8231 16.2373 16.5302 16.5302C16.2373 16.8231 15.7626 16.8231 15.4697 16.5302L11.9999 13.0605L8.53022 16.5302C8.23734 16.8231 7.76257 16.8231 7.46967 16.5302C7.17678 16.2373 7.17678 15.7626 7.46967 15.4697L10.9394 11.9999L7.46967 8.53022C7.17678 8.23732 7.17678 7.76256 7.46967 7.46967C7.76256 7.17678 8.23732 7.17678 8.53022 7.46967L11.9999 10.9394L15.4697 7.46967Z" fill={secondary}/>
+    </svg>
+  );
+}
