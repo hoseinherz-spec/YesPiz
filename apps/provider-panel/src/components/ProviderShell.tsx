@@ -9,6 +9,7 @@ import { clearProviderToken } from '@/lib/auth';
 const NAV = [
   { href: '/offers', label: 'Offers' },
   { href: '/kitchen', label: 'Kitchen' },
+  { href: '/operations', label: 'Operations' },
   { href: '/batches', label: 'Batches' },
 ] as const;
 

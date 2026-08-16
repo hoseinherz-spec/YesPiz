@@ -1,5 +1,6 @@
 export type UserRole = 'client' | 'provider' | 'courier' | 'admin';
 export type AuthMethod = 'password' | 'google' | 'otp';
+export type InviteRole = 'provider' | 'courier' | 'admin';
 
 export type LocationDto = {
   address?: string;
@@ -35,7 +36,7 @@ export type AuthResponse = {
 
 export type SendOtpRequest = {
   phone: string;
-  role: UserRole;
+  role?: 'client' | 'customer';
   channel?: 'sms';
 };
 
@@ -49,7 +50,7 @@ export type SendOtpResponse = {
 export type ConfirmOtpRequest = {
   phone: string;
   code: string;
-  role: UserRole;
+  role?: 'client' | 'customer';
   firstName?: string;
   lastName?: string;
   location?: LocationDto;
@@ -63,6 +64,7 @@ export type LoginRequest = {
   idToken?: string;
   firstName?: string;
   lastName?: string;
+  inviteToken?: string;
 };
 
 export type RegisterRequest = {
@@ -70,8 +72,55 @@ export type RegisterRequest = {
   lastName: string;
   email: string;
   password: string;
-  role: UserRole;
+  /** Public registration ignores privileged roles; customer only. */
+  role?: 'client' | 'customer';
   location?: LocationDto;
+};
+
+export type CreateInviteRequest = {
+  role: InviteRole;
+  email?: string;
+  expiresInHours?: number;
+};
+
+export type CreateInviteResponse = {
+  id: string;
+  role: UserRole;
+  email?: string;
+  expiresAt: string;
+  token: string;
+};
+
+export type AcceptInviteRequest = {
+  token: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  location?: LocationDto;
+};
+
+export type BootstrapAdminRequest = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  bootstrapSecret?: string;
+};
+
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+export type ForgotPasswordResponse = {
+  status: string;
+  /** Present only in non-production for local/demo flows */
+  resetToken?: string;
+};
+
+export type ResetPasswordRequest = {
+  token: string;
+  password: string;
 };
 
 export type ProfileResponse = {
@@ -88,4 +137,11 @@ export type ProfileResponse = {
   emailVerifiedAt?: string;
   createdAt: string;
   updatedAt: string;
+  cashBanned?: boolean;
+  failedCashCount?: number;
+  cashTrustScore?: number;
+  cashTrustTier?: string;
+  creditCents?: number;
+  cashRestoredAt?: string;
+  cashRestoreReason?: string;
 };

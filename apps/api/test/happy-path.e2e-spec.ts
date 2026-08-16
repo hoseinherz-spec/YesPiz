@@ -50,48 +50,46 @@ describe('Happy path (e2e)', () => {
   it('registers admin, publishes menu, customer orders, provider accepts', async () => {
     const server = app.getHttpServer();
 
-    await request(server)
-      .post('/api/v1/account/auth/register')
+    const adminBoot = await request(server)
+      .post('/api/v1/account/auth/bootstrap-admin')
       .send({
         firstName: 'Admin',
         lastName: 'Test',
         email: 'admin@test.local',
         password: 'Admin123!',
-        role: 'admin',
       })
       .expect(201);
-
-    const adminLogin = await request(server)
-      .post('/api/v1/account/auth/admin/login')
-      .send({
-        method: 'password',
-        email: 'admin@test.local',
-        password: 'Admin123!',
-      })
-      .expect(201);
-    const adminToken = adminLogin.body.accessToken as string;
+    const adminToken = adminBoot.body.accessToken as string;
 
     await request(server)
       .post('/api/v1/account/auth/register')
       .send({
+        firstName: 'Evil',
+        lastName: 'Admin',
+        email: 'evil@test.local',
+        password: 'Evil123!',
+        role: 'admin',
+      })
+      .expect(400);
+
+    const invite = await request(server)
+      .post('/api/v1/account/admin/invites')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'provider', email: 'provider@test.local' })
+      .expect(201);
+
+    const providerAccepted = await request(server)
+      .post('/api/v1/account/auth/invites/accept')
+      .send({
+        token: invite.body.token,
         firstName: 'Kitchen',
         lastName: 'Demo',
         email: 'provider@test.local',
         password: 'Provider123!',
-        role: 'provider',
       })
       .expect(201);
-
-    const providerLogin = await request(server)
-      .post('/api/v1/account/auth/provider/login')
-      .send({
-        method: 'password',
-        email: 'provider@test.local',
-        password: 'Provider123!',
-      })
-      .expect(201);
-    providerToken = providerLogin.body.accessToken;
-    providerUserId = providerLogin.body.user.id;
+    providerToken = providerAccepted.body.accessToken;
+    providerUserId = providerAccepted.body.user.id;
 
     await request(server)
       .post('/api/v1/providers')

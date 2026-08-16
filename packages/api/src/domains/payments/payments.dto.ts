@@ -14,6 +14,9 @@ export type CashAvailabilityResponse = {
   failedCashCount: number;
   threshold: number;
   hardCapCents: number;
+  cashTrustScore?: number;
+  cashTrustTier?: string;
+  reasonCode?: string;
 };
 
 export type Payment = {

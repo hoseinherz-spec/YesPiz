@@ -4,6 +4,7 @@ import {
   type AuthRequestOptions,
 } from '../../core';
 import type {
+  AtRiskDashboardResponse,
   CourierLocationView,
   CreateAddressRequest,
   CreateOrderRequest,
@@ -11,6 +12,7 @@ import type {
   DeleteAddressResponse,
   DeliveryAddress,
   Order,
+  ReorderPreviewResponse,
   ResolveAdminReviewRequest,
   UpdateKitchenStatusRequest,
 } from './orders.dto';
@@ -56,6 +58,20 @@ export const ordersClient = {
     return apiRequest<Order[]>(
       ordersEndpoints.adminReview,
       withAuth({ ...options, method: 'GET' }),
+    );
+  },
+
+  listAtRisk(options?: AuthRequestOptions) {
+    return apiRequest<AtRiskDashboardResponse>(
+      ordersEndpoints.adminAtRisk,
+      withAuth({ ...options, method: 'GET' }),
+    );
+  },
+
+  reorder(orderId: string, options?: AuthRequestOptions) {
+    return apiRequest<ReorderPreviewResponse>(
+      ordersEndpoints.reorder(orderId),
+      withAuth({ ...options, method: 'POST' }),
     );
   },
 

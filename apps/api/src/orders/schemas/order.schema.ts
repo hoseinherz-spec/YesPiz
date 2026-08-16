@@ -198,6 +198,37 @@ export class Order {
 
   @Prop({ type: Types.ObjectId, ref: "DeliveryProof" })
   proofId?: Types.ObjectId;
+
+  @Prop({ default: false })
+  leaveAtDoor!: boolean;
+
+  @Prop()
+  scheduledAt?: Date;
+
+  @Prop()
+  deliveryEntrance?: string;
+
+  @Prop()
+  deliveryFloor?: string;
+
+  @Prop()
+  deliveryUnit?: string;
+
+  @Prop()
+  deliveryDoorCode?: string;
+
+  @Prop()
+  deliveryInstructions?: string;
+
+  /** SLA auto-compensation granted once when delivery missed ETA max. */
+  @Prop()
+  compensationCents?: number;
+
+  @Prop()
+  compensatedAt?: Date;
+
+  @Prop()
+  completedAt?: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

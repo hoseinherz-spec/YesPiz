@@ -45,6 +45,9 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
   const lines =
     (plain.lines as Array<Record<string, unknown>> | undefined) ?? [];
 
+  const handoffStage =
+    projection === "onway" || projection === "driver";
+
   const view: Record<string, unknown> = {
     id: String(plain._id ?? plain.id),
     menuVersion: plain.menuVersion,
@@ -63,12 +66,20 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     paymentStatus: plain.paymentStatus,
     addressId: String(plain.addressId),
     notes: plain.notes,
+    leaveAtDoor: Boolean(plain.leaveAtDoor),
+    scheduledAt: plain.scheduledAt,
+    deliveryEntrance: plain.deliveryEntrance,
+    deliveryFloor: plain.deliveryFloor,
+    deliveryUnit: plain.deliveryUnit,
+    deliveryInstructions: plain.deliveryInstructions,
     etaPrepMin: plain.etaPrepMin,
     etaPrepMax: plain.etaPrepMax,
     etaDeliveryMin: plain.etaDeliveryMin,
     etaDeliveryMax: plain.etaDeliveryMax,
     etaComputedAt: plain.etaComputedAt,
     hasShortExtraStop: Boolean(plain.hasShortExtraStop),
+    requiresDeliveryPin: handoffStage && Boolean(plain.doorPin),
+    deliveryPin: handoffStage ? plain.doorPin : undefined,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
   };

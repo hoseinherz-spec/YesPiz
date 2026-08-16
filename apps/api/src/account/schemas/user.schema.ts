@@ -89,6 +89,16 @@ export class User {
   @Prop({ default: 0 })
   failedCashCount!: number;
 
+  /** Cash Trust Score 0–100; server-owned, never shown as fraud signals to customers. */
+  @Prop({ default: 100, min: 0, max: 100 })
+  cashTrustScore!: number;
+
+  @Prop({ default: "full" })
+  cashTrustTier!: string;
+
+  @Prop({ default: 0, min: 0 })
+  creditCents!: number;
+
   @Prop({ default: false })
   cashBanned!: boolean;
 

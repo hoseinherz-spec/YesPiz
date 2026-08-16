@@ -6,11 +6,19 @@ import {
   qualityClient,
   type KitchenStatusUpdate,
   type Order,
+  type ProviderQualityView,
 } from '@repo/api';
 import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { requireProviderToken } from '@/lib/auth';
 import { entityId, formatCents } from '@/lib/ids';
+
+const BASE_CHECKS = [
+  'Weight check',
+  'Packaging seal',
+  'Temperature',
+  'Allergen review',
+];
 
 const ACTIONS: Array<{
   status: KitchenStatusUpdate;
@@ -34,20 +42,52 @@ const ACTIONS: Array<{
   },
 ];
 
-const DEFAULT_CHECKLIST = ['Weight check', 'Packaging seal', 'Temperature'];
+function checklistItemsForOrder(order: Order): string[] {
+  const lineChecks = (order.lines ?? []).map(
+    (line) => `${line.name} — recipe verified`,
+  );
+  return [...lineChecks, ...BASE_CHECKS];
+}
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [quality, setQuality] = useState<ProviderQualityView | null>(null);
+  const [checkedByOrder, setCheckedByOrder] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
+  const [sealByOrder, setSealByOrder] = useState<Record<string, string>>({});
+  const [photoByOrder, setPhotoByOrder] = useState<Record<string, string>>({});
+  const [qualityByOrder, setQualityByOrder] = useState<
+    Record<string, { checklistDone: boolean; sealDone: boolean; photoDone: boolean }>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [sealByOrder, setSealByOrder] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const token = requireProviderToken();
-      const list = await ordersClient.listKitchen({ accessToken: token });
+      const [list, me] = await Promise.all([
+        ordersClient.listKitchen({ accessToken: token }),
+        qualityClient.getMe({ accessToken: token }),
+      ]);
       setOrders(list);
+      setQuality(me);
+
+      setQualityByOrder((prev) => {
+        const next = { ...prev };
+        for (const order of list) {
+          const id = entityId(order);
+          if (!next[id]) {
+            next[id] = {
+              checklistDone: Boolean(order.checklistCompletedAt),
+              sealDone: Boolean(order.sealId),
+              photoDone: Boolean(order.readyPhotoUrl),
+            };
+          }
+        }
+        return next;
+      });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load kitchen');
     }
@@ -66,21 +106,127 @@ export default function KitchenPage() {
     };
   }, [load]);
 
-  async function completeQualityThenReady(orderId: string) {
+  const checklistByOrderId = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const order of orders) {
+      map[entityId(order)] = checklistItemsForOrder(order);
+    }
+    return map;
+  }, [orders]);
+
+  function toggleCheck(orderId: string, item: string) {
+    setCheckedByOrder((prev) => ({
+      ...prev,
+      [orderId]: {
+        ...(prev[orderId] ?? {}),
+        [item]: !(prev[orderId]?.[item] ?? false),
+      },
+    }));
+  }
+
+  function allChecked(orderId: string): boolean {
+    const items = checklistByOrderId[orderId] ?? [];
+    const checked = checkedByOrder[orderId] ?? {};
+    return items.length > 0 && items.every((item) => checked[item] === true);
+  }
+
+  async function submitChecklist(orderId: string) {
+    const items = checklistByOrderId[orderId] ?? [];
+    if (!allChecked(orderId)) {
+      setError('Confirm every checklist item before submitting');
+      return;
+    }
+
     setBusyId(orderId);
     setError(null);
     try {
       const token = requireProviderToken();
-      const sealId = (sealByOrder[orderId] ?? '').trim() || `YP-${orderId.slice(-6)}`;
-
       await qualityClient.submitChecklist(
         orderId,
         {
-          answers: DEFAULT_CHECKLIST.map((item) => ({ item, ok: true })),
+          answers: items.map((item) => ({ item, ok: true })),
         },
         { accessToken: token },
       );
+      setQualityByOrder((prev) => ({
+        ...prev,
+        [orderId]: { ...prev[orderId], checklistDone: true },
+      }));
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Checklist submit failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function submitSeal(orderId: string) {
+    const sealId = (sealByOrder[orderId] ?? '').trim();
+    if (!sealId) {
+      setError('Enter a numbered seal ID');
+      return;
+    }
+
+    setBusyId(orderId);
+    setError(null);
+    try {
+      const token = requireProviderToken();
       await qualityClient.submitSeal(orderId, { sealId }, { accessToken: token });
+      setQualityByOrder((prev) => ({
+        ...prev,
+        [orderId]: { ...prev[orderId], sealDone: true },
+      }));
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Seal submit failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function submitPhoto(orderId: string) {
+    const photoUrl = (photoByOrder[orderId] ?? '').trim();
+    if (!photoUrl) {
+      setError('Enter a ready photo URL');
+      return;
+    }
+
+    setBusyId(orderId);
+    setError(null);
+    try {
+      const token = requireProviderToken();
+      await qualityClient.submitReadyPhoto(
+        orderId,
+        { photoUrl },
+        { accessToken: token },
+      );
+      setQualityByOrder((prev) => ({
+        ...prev,
+        [orderId]: { ...prev[orderId], photoDone: true },
+      }));
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Photo submit failed');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function markReady(orderId: string) {
+    const q = qualityByOrder[orderId];
+    if (!q?.checklistDone) {
+      setError('Complete and submit the quality checklist first');
+      return;
+    }
+    if (!q?.sealDone) {
+      setError('Submit the numbered seal first');
+      return;
+    }
+
+    setBusyId(orderId);
+    setError(null);
+    try {
+      const token = requireProviderToken();
       await ordersClient.updateKitchenStatus(
         orderId,
         { status: 'READY_FOR_PICKUP' },
@@ -91,7 +237,7 @@ export default function KitchenPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Quality checklist / ready update failed',
+          : 'Ready update failed — complete all required quality gates',
       );
     } finally {
       setBusyId(null);
@@ -100,7 +246,7 @@ export default function KitchenPage() {
 
   async function updateStatus(orderId: string, status: KitchenStatusUpdate) {
     if (status === 'READY_FOR_PICKUP') {
-      await completeQualityThenReady(orderId);
+      await markReady(orderId);
       return;
     }
 
@@ -129,13 +275,32 @@ export default function KitchenPage() {
             Active kitchen
           </Typography>
           <p className="text-muted text-sm">
-            Checklist + numbered seal required before ready for pickup
+            Confirm each quality check explicitly before handoff
           </p>
         </div>
         <Button size="sm" variant="secondary" onPress={load}>
           Refresh
         </Button>
       </div>
+
+      {quality ? (
+        <Card className="p-4">
+          <Card.Content className="flex flex-col gap-1 p-0 text-sm">
+            <Typography type="h3" className="font-medium">
+              Quality score
+            </Typography>
+            <p>
+              Score {quality.qualityScore} · complaints {quality.complaintCount}{' '}
+              · delays {quality.delayCount} · errors {quality.errorCount}
+            </p>
+            {quality.autoSuspended ? (
+              <p className="text-red-500">
+                Suspended{quality.suspendReason ? `: ${quality.suspendReason}` : ''}
+              </p>
+            ) : null}
+          </Card.Content>
+        </Card>
+      ) : null}
 
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
@@ -149,6 +314,10 @@ export default function KitchenPage() {
 
       {orders.map((order) => {
         const id = entityId(order);
+        const items = checklistByOrderId[id] ?? [];
+        const q = qualityByOrder[id];
+        const preparing = order.status === 'PREPARING';
+
         return (
           <Card key={id} className="p-4">
             <Card.Content className="flex flex-col gap-2 p-0">
@@ -166,20 +335,109 @@ export default function KitchenPage() {
                   </li>
                 ))}
               </ul>
-              {order.status === 'PREPARING' ? (
-                <input
-                  aria-label="Seal ID"
-                  placeholder="Numbered seal ID"
-                  value={sealByOrder[id] ?? ''}
-                  onChange={(e) =>
-                    setSealByOrder((prev) => ({
-                      ...prev,
-                      [id]: e.target.value,
-                    }))
-                  }
-                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
-                />
+
+              {preparing ? (
+                <div className="border-border flex flex-col gap-3 rounded-md border p-3">
+                  <Typography type="h3" className="text-sm font-medium">
+                    Quality checklist
+                  </Typography>
+                  {q?.checklistDone ? (
+                    <p className="text-muted text-sm">Checklist submitted</p>
+                  ) : (
+                    <>
+                      <ul className="space-y-2 text-sm">
+                        {items.map((item) => (
+                          <li key={item}>
+                            <label className="flex items-start gap-2">
+                              <input
+                                type="checkbox"
+                                checked={checkedByOrder[id]?.[item] === true}
+                                onChange={() => toggleCheck(id, item)}
+                              />
+                              <span>{item}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        isDisabled={busyId === id || !allChecked(id)}
+                        onPress={() => submitChecklist(id)}
+                      >
+                        Submit checklist
+                      </Button>
+                    </>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    <Typography type="h3" className="text-sm font-medium">
+                      Numbered seal
+                    </Typography>
+                    {q?.sealDone ? (
+                      <p className="text-muted text-sm">
+                        Seal recorded{order.sealId ? `: ${order.sealId}` : ''}
+                      </p>
+                    ) : (
+                      <>
+                        <input
+                          aria-label="Seal ID"
+                          placeholder="Seal ID on package"
+                          value={sealByOrder[id] ?? ''}
+                          onChange={(e) =>
+                            setSealByOrder((prev) => ({
+                              ...prev,
+                              [id]: e.target.value,
+                            }))
+                          }
+                          className="border-border bg-background rounded-md border px-3 py-2 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isDisabled={busyId === id || !q?.checklistDone}
+                          onPress={() => submitSeal(id)}
+                        >
+                          Submit seal
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Typography type="h3" className="text-sm font-medium">
+                      Ready photo (when required)
+                    </Typography>
+                    {q?.photoDone ? (
+                      <p className="text-muted text-sm">Photo URL saved</p>
+                    ) : (
+                      <>
+                        <input
+                          aria-label="Ready photo URL"
+                          placeholder="https://…"
+                          value={photoByOrder[id] ?? ''}
+                          onChange={(e) =>
+                            setPhotoByOrder((prev) => ({
+                              ...prev,
+                              [id]: e.target.value,
+                            }))
+                          }
+                          className="border-border bg-background rounded-md border px-3 py-2 text-sm"
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isDisabled={busyId === id}
+                          onPress={() => submitPhoto(id)}
+                        >
+                          Submit ready photo
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
               ) : null}
+
               <div className="flex flex-wrap gap-2 pt-1">
                 {ACTIONS.filter((a) => a.from.includes(order.status)).map(
                   (action) => (
@@ -191,7 +449,11 @@ export default function KitchenPage() {
                           ? 'secondary'
                           : 'primary'
                       }
-                      isDisabled={busyId === id}
+                      isDisabled={
+                        busyId === id ||
+                        (action.status === 'READY_FOR_PICKUP' &&
+                          (!q?.checklistDone || !q?.sealDone))
+                      }
                       onPress={() => updateStatus(id, action.status)}
                     >
                       {action.label}

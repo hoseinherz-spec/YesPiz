@@ -10,7 +10,16 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
-const ROLES = ["customer", "client", "admin", "provider", "courier"] as const;
+/** Public signup/login role selection — never privileged. */
+export const PUBLIC_ROLES = ["customer", "client"] as const;
+export const ALL_LOGIN_ROLES = [
+  "customer",
+  "client",
+  "admin",
+  "provider",
+  "courier",
+] as const;
+export const INVITE_ROLES = ["admin", "provider", "courier"] as const;
 
 export class LocationDto {
   @ApiPropertyOptional()
@@ -72,9 +81,11 @@ export class RegisterDto {
   @MinLength(6)
   password!: string;
 
-  @ApiProperty({ enum: ROLES })
-  @IsIn(ROLES)
-  role!: string;
+  /** Ignored if present; public registration is always customer. */
+  @ApiPropertyOptional({ enum: PUBLIC_ROLES })
+  @IsOptional()
+  @IsIn(PUBLIC_ROLES)
+  role?: string;
 
   @ApiPropertyOptional({ type: LocationDto })
   @IsOptional()
@@ -88,9 +99,10 @@ export class SendOtpDto {
   @IsString()
   phone!: string;
 
-  @ApiProperty({ enum: ROLES })
-  @IsIn(ROLES)
-  role!: string;
+  @ApiPropertyOptional({ enum: PUBLIC_ROLES })
+  @IsOptional()
+  @IsIn(PUBLIC_ROLES)
+  role?: string;
 
   @ApiPropertyOptional({ default: "sms" })
   @IsOptional()
@@ -107,9 +119,10 @@ export class ConfirmOtpDto {
   @IsString()
   code!: string;
 
-  @ApiProperty({ enum: ROLES })
-  @IsIn(ROLES)
-  role!: string;
+  @ApiPropertyOptional({ enum: PUBLIC_ROLES })
+  @IsOptional()
+  @IsIn(PUBLIC_ROLES)
+  role?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -133,8 +146,8 @@ export class LoginDto {
   @IsIn(["password", "google"])
   method!: "password" | "google";
 
-  @ApiProperty({ enum: ROLES })
-  @IsIn(ROLES)
+  @ApiProperty({ enum: ALL_LOGIN_ROLES })
+  @IsIn(ALL_LOGIN_ROLES)
   role!: string;
 
   @ApiPropertyOptional()
@@ -161,6 +174,12 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  /** Required to attach a privileged role via Google when invited. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
 }
 
 export class RoleLoginDto {
@@ -192,4 +211,96 @@ export class RoleLoginDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  inviteToken?: string;
+}
+
+export class CreateInviteDto {
+  @ApiProperty({ enum: INVITE_ROLES })
+  @IsIn(INVITE_ROLES)
+  role!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  /** Hours until expiry (default 72, max 168). */
+  @ApiPropertyOptional({ default: 72 })
+  @IsOptional()
+  @IsNumber()
+  expiresInHours?: number;
+}
+
+export class AcceptInviteDto {
+  @ApiProperty()
+  @IsString()
+  token!: string;
+
+  @ApiProperty()
+  @IsString()
+  firstName!: string;
+
+  @ApiProperty()
+  @IsString()
+  lastName!: string;
+
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @ApiPropertyOptional({ type: LocationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  location?: LocationDto;
+}
+
+export class BootstrapAdminDto {
+  @ApiProperty()
+  @IsString()
+  firstName!: string;
+
+  @ApiProperty()
+  @IsString()
+  lastName!: string;
+
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bootstrapSecret?: string;
+}
+
+export class ForgotPasswordDto {
+  @ApiProperty()
+  @IsEmail()
+  email!: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty()
+  @IsString()
+  token!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password!: string;
 }

@@ -24,6 +24,16 @@ export type ProviderSelfUpdateRequest = {
   acceptingOrders?: boolean;
   logoUrl?: string;
   acceptCap?: number;
+  pausedUntil?: string;
+};
+
+export type EightySixRequest = {
+  menuItemIds: string[];
+};
+
+export type PauseOrdersRequest = {
+  reason?: string;
+  until?: string;
 };
 
 export type Provider = {
@@ -47,6 +57,9 @@ export type Provider = {
   openOrders: number;
   isActive: boolean;
   acceptingOrders: boolean;
+  pausedUntil?: string;
+  pauseReason?: string;
+  unavailableItemIds?: string[];
   createdAt?: string;
   updatedAt?: string;
 };

@@ -61,26 +61,67 @@ describe("Full lifecycle all roles (e2e)", () => {
     await mongo?.stop();
   });
 
-  async function registerAndLogin(
-    role: string,
+  async function bootstrapAdmin(email: string, password: string) {
+    const server = app.getHttpServer();
+    const res = await request(server)
+      .post("/api/v1/account/auth/bootstrap-admin")
+      .send({
+        firstName: "Admin",
+        lastName: "QA",
+        email,
+        password,
+      })
+      .expect(201);
+    return {
+      token: res.body.accessToken as string,
+      userId: res.body.user.id as string,
+    };
+  }
+
+  async function inviteAndRegister(
+    adminToken: string,
+    role: "provider" | "courier" | "admin",
     email: string,
     password: string,
-    loginRole: string,
   ) {
     const server = app.getHttpServer();
-    await request(server)
-      .post("/api/v1/account/auth/register")
+    const invite = await request(server)
+      .post("/api/v1/account/admin/invites")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ role, email })
+      .expect(201);
+
+    const accepted = await request(server)
+      .post("/api/v1/account/auth/invites/accept")
       .send({
+        token: invite.body.token,
         firstName: role,
         lastName: "QA",
         email,
         password,
-        role,
+      })
+      .expect(201);
+
+    return {
+      token: accepted.body.accessToken as string,
+      userId: accepted.body.user.id as string,
+    };
+  }
+
+  async function registerCustomer(email: string, password: string) {
+    const server = app.getHttpServer();
+    await request(server)
+      .post("/api/v1/account/auth/register")
+      .send({
+        firstName: "Customer",
+        lastName: "QA",
+        email,
+        password,
       })
       .expect(201);
 
     const login = await request(server)
-      .post(`/api/v1/account/auth/${loginRole}/login`)
+      .post("/api/v1/account/auth/client/login")
       .send({ method: "password", email, password })
       .expect(201);
 
@@ -114,36 +155,29 @@ describe("Full lifecycle all roles (e2e)", () => {
   it("boots roles, menu, happy path through COMPLETED + ETA + proof", async () => {
     const server = app.getHttpServer();
 
-    const admin = await registerAndLogin(
-      "admin",
-      "qa.admin@test.local",
-      "Admin123!",
-      "admin",
-    );
+    const admin = await bootstrapAdmin("qa.admin@test.local", "Admin123!");
     adminToken = admin.token;
 
-    const provider = await registerAndLogin(
+    const provider = await inviteAndRegister(
+      adminToken,
       "provider",
       "qa.provider@test.local",
       "Provider123!",
-      "provider",
     );
     providerToken = provider.token;
     providerUserId = provider.userId;
 
-    const customer = await registerAndLogin(
-      "client",
+    const customer = await registerCustomer(
       "qa.customer@test.local",
       "Customer123!",
-      "client",
     );
     customerToken = customer.token;
 
-    const courier = await registerAndLogin(
+    const courier = await inviteAndRegister(
+      adminToken,
       "courier",
       "qa.courier@test.local",
       "Courier123!",
-      "courier",
     );
     courierToken = courier.token;
     courierUserId = courier.userId;

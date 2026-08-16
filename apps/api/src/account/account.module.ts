@@ -3,9 +3,15 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MongooseModule } from "@nestjs/mongoose";
 import { PassportModule } from "@nestjs/passport";
+import { AuditService } from "../common/security/audit.service";
 import { AccountController } from "./account.controller";
 import { AccountService } from "./account.service";
+import { Invite, InviteSchema } from "./schemas/invite.schema";
 import { OtpChallenge, OtpChallengeSchema } from "./schemas/otp.schema";
+import {
+  PasswordReset,
+  PasswordResetSchema,
+} from "./schemas/password-reset.schema";
 import { User, UserSchema } from "./schemas/user.schema";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 
@@ -26,10 +32,12 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: OtpChallenge.name, schema: OtpChallengeSchema },
+      { name: Invite.name, schema: InviteSchema },
+      { name: PasswordReset.name, schema: PasswordResetSchema },
     ]),
   ],
   controllers: [AccountController],
-  providers: [AccountService, JwtStrategy],
-  exports: [AccountService, MongooseModule],
+  providers: [AccountService, JwtStrategy, AuditService],
+  exports: [AccountService, MongooseModule, AuditService],
 })
 export class AccountModule {}

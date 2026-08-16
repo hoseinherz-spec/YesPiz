@@ -20,6 +20,7 @@ export default function BatchesPage() {
   );
   const [batches, setBatches] = useState<Batch[]>([]);
   const [keepByBatch, setKeepByBatch] = useState<Record<string, string[]>>({});
+  const [courierByBatch, setCourierByBatch] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -118,6 +119,30 @@ export default function BatchesPage() {
     });
   }
 
+  async function assignCourier(batchId: string) {
+    const courierId = (courierByBatch[batchId] ?? '').trim();
+    if (!courierId) {
+      setError('Enter a courier ID');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const token = requireProviderToken();
+      await batchesClient.assignCourier(
+        batchId,
+        { courierId },
+        { accessToken: token },
+      );
+      setCourierByBatch((prev) => ({ ...prev, [batchId]: '' }));
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Assign courier failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div>
@@ -183,6 +208,9 @@ export default function BatchesPage() {
                   </span>
                 </div>
                 <p className="text-muted text-xs">Batch {id}</p>
+                {batch.courierId ? (
+                  <p className="text-sm">Courier: {String(batch.courierId)}</p>
+                ) : null}
                 <ul className="space-y-1 text-sm">
                   {orderIds.map((orderId) => (
                     <li key={orderId}>
@@ -205,6 +233,32 @@ export default function BatchesPage() {
                 >
                   Reduce to checked
                 </Button>
+                {batch.status === 'open' && !batch.courierId ? (
+                  <div className="flex flex-col gap-2 pt-2">
+                    <label className="flex flex-col gap-1 text-sm">
+                      <span className="text-muted">Assign courier</span>
+                      <input
+                        placeholder="Courier user / document ID"
+                        value={courierByBatch[id] ?? ''}
+                        onChange={(e) =>
+                          setCourierByBatch((prev) => ({
+                            ...prev,
+                            [id]: e.target.value,
+                          }))
+                        }
+                        className="border-border bg-background rounded-md border px-3 py-2"
+                      />
+                    </label>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      isDisabled={busy}
+                      onPress={() => assignCourier(id)}
+                    >
+                      Assign courier
+                    </Button>
+                  </div>
+                ) : null}
               </Card.Content>
             </Card>
           );

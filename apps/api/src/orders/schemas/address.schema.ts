@@ -41,6 +41,21 @@ export class DeliveryAddress {
 
   @Prop({ default: false })
   isDefault!: boolean;
+
+  @Prop()
+  entrance?: string;
+
+  @Prop()
+  floor?: string;
+
+  @Prop()
+  unit?: string;
+
+  @Prop()
+  doorCode?: string;
+
+  @Prop()
+  instructions?: string;
 }
 
 export const DeliveryAddressSchema =

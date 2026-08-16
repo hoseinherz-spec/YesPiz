@@ -3,6 +3,7 @@ import * as bcrypt from "bcrypt";
 import { Model } from "mongoose";
 import { getModelToken } from "@nestjs/mongoose";
 import { AppModule } from "../app.module";
+import { AccountService } from "../account/account.service";
 import { User, UserDocument } from "../account/schemas/user.schema";
 import { UserRole } from "../common/enums";
 import { CatalogService } from "../catalog/catalog.service";
@@ -27,17 +28,16 @@ async function seed() {
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@yespizz.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "Admin123!";
+  const account = app.get(AccountService);
 
   let admin = await users.findOne({ email: adminEmail }).exec();
   if (!admin) {
-    admin = await users.create({
+    admin = await account.provisionUser({
       firstName: "Admin",
       lastName: "Yespizz",
       email: adminEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 10),
-      roles: [UserRole.ADMIN],
-      activeRole: UserRole.ADMIN,
-      emailVerifiedAt: new Date(),
+      password: adminPassword,
+      role: UserRole.ADMIN,
     });
     console.log(`Created admin ${adminEmail}`);
   } else {
@@ -48,14 +48,12 @@ async function seed() {
     .findOne({ email: "provider.munich@yespizz.local" })
     .exec();
   if (!providerUser) {
-    providerUser = await users.create({
+    providerUser = await account.provisionUser({
       firstName: "Demo",
       lastName: "Kitchen",
       email: "provider.munich@yespizz.local",
-      passwordHash: await bcrypt.hash("Provider123!", 10),
-      roles: [UserRole.PROVIDER],
-      activeRole: UserRole.PROVIDER,
-      emailVerifiedAt: new Date(),
+      password: "Provider123!",
+      role: UserRole.PROVIDER,
     });
   }
 
@@ -79,19 +77,37 @@ async function seed() {
   const courierEmail = "courier@yespizz.local";
   let courierUser = await users.findOne({ email: courierEmail }).exec();
   if (!courierUser) {
-    courierUser = await users.create({
+    courierUser = await account.provisionUser({
       firstName: "Demo",
       lastName: "Courier",
       email: courierEmail,
-      passwordHash: await bcrypt.hash("Courier123!", 10),
-      roles: [UserRole.COURIER],
-      activeRole: UserRole.COURIER,
-      emailVerifiedAt: new Date(),
+      password: "Courier123!",
+      role: UserRole.COURIER,
     });
     console.log(`Created courier ${courierEmail}`);
   } else {
     console.log(`Courier already exists: ${courierEmail}`);
   }
+
+  const customerEmail = "customer@yespizz.local";
+  let customerUser = await users.findOne({ email: customerEmail }).exec();
+  if (!customerUser) {
+    customerUser = await users.create({
+      firstName: "Demo",
+      lastName: "Customer",
+      email: customerEmail,
+      passwordHash: await bcrypt.hash("Customer123!", 10),
+      roles: [UserRole.CUSTOMER],
+      activeRole: UserRole.CUSTOMER,
+    });
+    console.log(`Created customer ${customerEmail} / Customer123!`);
+  }
+
+  console.log("Demo logins:");
+  console.log(`  admin     ${adminEmail} / ${adminPassword}`);
+  console.log("  provider  provider.munich@yespizz.local / Provider123!");
+  console.log("  courier   courier@yespizz.local / Courier123!");
+  console.log("  customer  customer@yespizz.local / Customer123!");
 
   const courierProfile = await couriers.getOrCreateProfile(courierUser.id);
   // Link courier to demo kitchen via vehicleType tag for ops demos
@@ -107,22 +123,9 @@ async function seed() {
     );
   }
 
-  let customer = await users
-    .findOne({ email: "customer@yespizz.local" })
-    .exec();
+  const customer = await users.findOne({ email: customerEmail }).exec();
   if (!customer) {
-    customer = await users.create({
-      firstName: "Demo",
-      lastName: "Customer",
-      email: "customer@yespizz.local",
-      passwordHash: await bcrypt.hash("Customer123!", 10),
-      roles: [UserRole.CUSTOMER],
-      activeRole: UserRole.CUSTOMER,
-      emailVerifiedAt: new Date(),
-    });
-    console.log("Created demo customer customer@yespizz.local / Customer123!");
-  } else {
-    console.log("Demo customer already exists: customer@yespizz.local");
+    throw new Error("Demo customer missing after seed create");
   }
 
   const customerAddresses = await orders.listAddresses(customer.id);

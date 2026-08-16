@@ -16,6 +16,10 @@ import {
   DeliveryAddressSchema,
 } from "./schemas/address.schema";
 import { Order, OrderSchema } from "./schemas/order.schema";
+import {
+  Incident,
+  IncidentSchema,
+} from "../incidents/schemas/incident.schema";
 
 @Module({
   imports: [
@@ -23,6 +27,7 @@ import { Order, OrderSchema } from "./schemas/order.schema";
       { name: Order.name, schema: OrderSchema },
       { name: DeliveryAddress.name, schema: DeliveryAddressSchema },
       { name: CourierSession.name, schema: CourierSessionSchema },
+      { name: Incident.name, schema: IncidentSchema },
     ]),
     AccountModule,
     CatalogModule,

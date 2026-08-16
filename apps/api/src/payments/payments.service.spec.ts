@@ -219,6 +219,7 @@ describe("PaymentsService", () => {
     findUserById.mockResolvedValue({
       cashBanned: true,
       failedCashCount: 2,
+      cashTrustScore: 0,
     });
 
     const avail = await service.cashAvailability(customerId);
@@ -226,8 +227,24 @@ describe("PaymentsService", () => {
       available: false,
       failedCashCount: 2,
       threshold: 3,
-      hardCapCents: 50_000,
+      hardCapCents: 0,
+      cashTrustScore: 0,
+      cashTrustTier: "banned",
+      reasonCode: "cash_trust_restricted",
     });
+  });
+
+  it("blocks cash when trust score is below 40", async () => {
+    findUserById.mockResolvedValue({
+      cashBanned: false,
+      failedCashCount: 1,
+      cashTrustScore: 35,
+    });
+
+    const avail = await service.cashAvailability(customerId);
+    expect(avail.available).toBe(false);
+    expect(avail.reasonCode).toBe("cash_trust_low");
+    expect(avail.hardCapCents).toBe(0);
   });
 
   it("rejects cash initiate when cashBanned", async () => {
@@ -236,6 +253,7 @@ describe("PaymentsService", () => {
     findUserById.mockResolvedValue({
       cashBanned: true,
       failedCashCount: 1,
+      cashTrustScore: 0,
     });
 
     await expect(
@@ -258,6 +276,7 @@ describe("PaymentsService", () => {
     findUserById.mockResolvedValue({
       cashBanned: false,
       failedCashCount: 0,
+      cashTrustScore: 100,
     });
 
     await expect(

@@ -9,6 +9,9 @@ import { clearAdminToken } from '@/lib/auth';
 const NAV = [
   { href: '/menu', label: 'Menu' },
   { href: '/providers', label: 'Providers' },
+  { href: '/quality', label: 'Quality' },
+  { href: '/incidents', label: 'Incidents' },
+  { href: '/live', label: 'Live ops' },
   { href: '/config', label: 'Config' },
   { href: '/exceptions', label: 'Exceptions' },
 ] as const;

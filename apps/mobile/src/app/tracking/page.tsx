@@ -8,8 +8,15 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { AppFrame } from '@/components/AppFrame';
 import { mapCustomerOrder, ORDER_STEPS, useApp } from '@/context/AppContext';
+import {
+  etaArrivalTimestamp,
+  formatEtaRange,
+  isEtaStale,
+} from '@/lib/eta';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
+
+const MASKED_COMMS_ENABLED = process.env.NEXT_PUBLIC_MASKED_COMMS_ENABLED === 'true';
 
 export default function TrackingPage() {
   const router = useRouter();
@@ -104,12 +111,20 @@ export default function TrackingPage() {
   const currentStep = ORDER_STEPS[safeStep];
   const latitude = courierLoc?.latitude;
   const longitude = courierLoc?.longitude;
-  const coordinateLabel = latitude != null && longitude != null
+  const hasLiveLocation = latitude != null && longitude != null;
+  const coordinateLabel = hasLiveLocation
     ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
     : null;
-  const osmHref = latitude != null && longitude != null
+  const osmHref = hasLiveLocation
     ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
     : null;
+
+  const etaLabel = delivered ? t('tracking.arrived') : formatEtaRange(order.eta, t);
+  const etaStale = !delivered && isEtaStale(order.eta.computedAt);
+  const arrivalAt = etaArrivalTimestamp(order.eta.computedAt, order.eta.max);
+  const showPinHandoff =
+    !delivered &&
+    (order.requiresDeliveryPin || order.customerStatus === 'onway' || order.customerStatus === 'driver');
 
   return (
     <AppFrame padded={false} className="bg-[#202126]">
@@ -121,6 +136,21 @@ export default function TrackingPage() {
         <div className="absolute right-16 top-20 h-44 w-16 rotate-[18deg] rounded-full bg-black" />
         <div className="absolute left-8 top-36 h-24 w-28 rotate-12 rounded-[18px] bg-[#2d2e34]" />
         <div className="absolute right-6 bottom-20 h-20 w-28 -rotate-12 rounded-[18px] bg-[#2d2e34]" />
+
+        {hasLiveLocation ? (
+          <div
+            className="absolute z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg"
+            style={{ left: '58%', top: '34%' }}
+          >
+            <Truck size={25} />
+            <span className="absolute -bottom-5 size-4 animate-pulse rounded-full border-4 border-[#1b1b22] bg-white" />
+          </div>
+        ) : (
+          <div className="absolute left-[62%] top-[35%] z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg">
+            <Truck size={25} />
+            <span className="absolute -bottom-5 size-4 rounded-full border-4 border-[#1b1b22] bg-white" />
+          </div>
+        )}
 
         <Button
           isIconOnly
@@ -138,10 +168,6 @@ export default function TrackingPage() {
 
         <div className="absolute left-[13%] top-[48%] h-1 w-[52%] -rotate-[24deg] bg-white shadow-[0_0_0_2px_#111]">
           <span className="absolute -left-3 -top-3 size-7 rounded-full border-[7px] border-white bg-[#202126] shadow-[0_0_0_3px_#111]" />
-        </div>
-        <div className="absolute left-[62%] top-[35%] z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg">
-          <Truck size={25} />
-          <span className="absolute -bottom-5 size-4 rounded-full border-4 border-[#1b1b22] bg-white" />
         </div>
 
         {osmHref ? (
@@ -171,24 +197,28 @@ export default function TrackingPage() {
               <Typography type="body-xs" className={hx.caption}>{t('tracking.courier')}</Typography>
               <Typography type="h6" className={cn(hx.title, 'truncate')}>{t('tracking.courierName')}</Typography>
             </div>
-            <Button
-              isIconOnly
-              variant="secondary"
-              aria-label={t('tracking.callCourier')}
-              onPress={() => router.push('/call/')}
-              className="size-11 min-w-11 rounded-full border-0 bg-accent text-accent-foreground shadow-none"
-            >
-              <Phone size={18} />
-            </Button>
-            <Button
-              isIconOnly
-              variant="secondary"
-              aria-label={t('tracking.chatCourier')}
-              onPress={() => router.push('/chat/')}
-              className="size-11 min-w-11 rounded-full border border-border bg-card text-foreground shadow-none"
-            >
-              <MessageCircle size={18} />
-            </Button>
+            {MASKED_COMMS_ENABLED ? (
+              <>
+                <Button
+                  isIconOnly
+                  variant="secondary"
+                  aria-label={t('tracking.callCourier')}
+                  onPress={() => router.push('/call/')}
+                  className="size-11 min-w-11 rounded-full border-0 bg-accent text-accent-foreground shadow-none"
+                >
+                  <Phone size={18} />
+                </Button>
+                <Button
+                  isIconOnly
+                  variant="secondary"
+                  aria-label={t('tracking.chatCourier')}
+                  onPress={() => router.push('/chat/')}
+                  className="size-11 min-w-11 rounded-full border border-border bg-card text-foreground shadow-none"
+                >
+                  <MessageCircle size={18} />
+                </Button>
+              </>
+            ) : null}
           </Card.Content>
         </Card>
 
@@ -198,10 +228,45 @@ export default function TrackingPage() {
             <MapPin size={21} className="mt-0.5 shrink-0" />
             <p className="text-[17px] font-bold">{address?.detail ?? t('tracking.savedAddress')}</p>
           </div>
-          <Typography type="body-sm" className="mt-6 text-[13px] font-medium opacity-60">{delivered ? t('step.delivered.label') : t('tracking.estimate')}</Typography>
-          <p className="mt-1 text-[25px] font-bold">
-            {delivered ? t('tracking.arrived') : t('tracking.minutes', { n: order.eta })}
-          </p>
+
+          {order.leaveAtDoor ? (
+            <Typography type="body-xs" className="mt-3 text-[12px] font-semibold text-warning">
+              {t('tracking.leaveAtDoorNote')}
+            </Typography>
+          ) : null}
+
+          {showPinHandoff ? (
+            <div className="mt-5 rounded-[20px] bg-current/10 px-4 py-3">
+              <Typography type="body-sm" className="text-[13px] font-semibold opacity-80">
+                {t('tracking.pinTitle')}
+              </Typography>
+              <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
+                {order.deliveryPin
+                  ? t('tracking.pinBodyWithCode', { pin: order.deliveryPin })
+                  : t('tracking.pinBodyPending')}
+              </Typography>
+            </div>
+          ) : null}
+
+          <Typography type="body-sm" className="mt-6 text-[13px] font-medium opacity-60">
+            {delivered ? t('step.delivered.label') : t('tracking.estimate')}
+          </Typography>
+          <p className="mt-1 text-[25px] font-bold">{etaLabel}</p>
+          {arrivalAt && !delivered ? (
+            <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
+              {t('tracking.arrivalBy', { time: arrivalAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
+            </Typography>
+          ) : null}
+          {etaStale ? (
+            <Typography type="body-xs" className="mt-2 text-[12px] font-semibold text-warning">
+              {t('tracking.etaStale')}
+            </Typography>
+          ) : null}
+          {order.hasShortExtraStop ? (
+            <Typography type="body-xs" className="mt-2 text-[12px] font-semibold text-warning">
+              {t('tracking.delayNotice')}
+            </Typography>
+          ) : null}
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-current/20">
             <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${progress}%` }} />
           </div>

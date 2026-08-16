@@ -20,6 +20,13 @@ export type ProviderOffer = {
   score?: number;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
+  /** Wave bid window end (ISO) */
+  expiresAt?: string;
+  /** Kitchen already responded in this wave */
+  respondedAt?: string;
+  ready?: boolean;
+  quotedPrepMinutes?: number;
+  wave?: boolean;
 };
 
 export type AcceptOfferResponse = {
@@ -40,3 +47,23 @@ export type RejectOfferResponse =
       status: OrderStatus;
       remainingOffers: number;
     };
+
+export type WaveRespondRequest = {
+  ready: boolean;
+  quotedPrepMinutes?: number;
+};
+
+export type WaveRespondResponse = {
+  orderId: string;
+  status?: OrderStatus;
+  ready?: boolean;
+  awaitingResponses?: number;
+  /** Set when this provider won the wave */
+  providerId?: string;
+  quotedPrepMinutes?: number;
+  waveScore?: number;
+  skipped?: boolean;
+  waiting?: boolean;
+  bidWindowEndsAt?: string;
+  winnerProviderId?: string;
+};

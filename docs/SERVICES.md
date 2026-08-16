@@ -2,7 +2,10 @@
 
 Product: [`docs/PRODUCT.md`](PRODUCT.md) · strategy: [`prd/product-strategy.md`](../prd/product-strategy.md).
 
-Execution-ready tasks and acceptance criteria: [`IMPLEMENTATION-BACKLOG.md`](IMPLEMENTATION-BACKLOG.md).
+Execution-ready tasks: [`IMPLEMENTATION-BACKLOG.md`](IMPLEMENTATION-BACKLOG.md).
+Local click-through: [`DEMO.md`](DEMO.md) · platform runbooks: [`PLATFORM.md`](PLATFORM.md).
+
+**Local demo runbook:** [`DEMO.md`](DEMO.md) (seed, logins, ports, click-through lifecycle).
 
 P0 is quality, wave dispatch, ETA, proof chain, safe batching, and incident workflows.
 P1 is Cash Trust, ops dashboards, auto compensation, and retention.
@@ -10,7 +13,7 @@ Loyalty, ads, and predictive ML beyond history-based ETA are after MVP.
 
 ## Phase 1 — shipped skeleton (`apps/api`)
 
-Happy path today ends at **courier assigned + blind location poll**.
+Happy path E2E reaches **completed delivery** with proof chain when Phase 2 flows are exercised.
 See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 
 | Module | Endpoints (prefix `/api/v1`) |
@@ -75,28 +78,28 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 
 | Work | Status |
 |---|---|
-| Kitchen Quality OS | API shipped: recipe fields on menu items, checklist/seal/ready-photo endpoints, handoff gate before `READY_FOR_PICKUP`, quality score + auto-suspend, admin test orders |
+| Kitchen Quality OS | **API shipped.** Provider panel: checklist/seal/ready-photo. **Admin:** quality list/detail, penalties, unsuspend, test orders (`/quality`) |
 | Cash hygiene | API shipped: €500 hard cap (`cashHardCapCents`), `POST /orders/:id/failed-cash`, admin cash restore, threshold from app config |
 | Capacity + inventory | **Shipped:** `acceptCap` enforced; 86 items; pause/resume; prep override; `openOrders` decremented on complete/cancel/failed-cash |
 | Wave dispatch | **Shipped:** bid window (`waveSize`/`bidWindowSeconds`); ready + quoted prep; server pick; expand N + radius |
 | Server ETA | **Shipped:** prep + delivery window on order; customer view exposes ranges |
-| Proof chain | **Shipped:** `DeliveryProof`; pickup → en-route → deliver → cash receipt → complete |
+| Proof chain | **Shipped:** `DeliveryProof`; pickup → en-route → deliver → cash receipt → complete. Courier mobile proof flow wired |
 | Safe batch | **Shipped:** proximity/ready-time suggest; safety checks; auto-split; `hasShortExtraStop` |
-| Incident workflows | **Shipped:** typed courier incidents + workflow steps; admin resolve/reassign |
+| Incident workflows | **Shipped:** typed courier incidents + workflow steps; admin resolve/reassign (`/incidents`) |
 
 ## Phase 2 — P0 operations (next)
 
-API for rows 1–8 below is largely done; UI surfaces still follow.
+API for rows 1–8 below is largely done; remaining UI is mostly customer/courier polish and ADMIN-003 dashboard.
 
 | # | Work | Done when |
 |---|---|---|
-| 1 | Kitchen Quality OS | **API done.** UI: provider checklist + admin score still thin |
+| 1 | Kitchen Quality OS | **API done.** Provider checklist shipped. **Admin minimum done** (score/evidence/unsuspend/test order). Audit trail UI still thin |
 | 2 | Capacity + inventory | **API done.** Kitchen UI for 86/pause/cap |
-| 3 | Wave dispatch | **API done.** Use `POST /dispatch/orders/:id/respond` |
+| 3 | Wave dispatch | **API done.** Provider uses `POST /dispatch/orders/:id/respond` |
 | 4 | Server ETA window | **API done.** Mobile should render range |
-| 5 | Proof chain | **API done.** Courier app screens still needed |
+| 5 | Proof chain | **API done.** Courier app proof screens wired |
 | 6 | Safe batch engine | **API done.** Provider/courier UI still thin |
-| 7 | Incident workflows | **API done.** Courier/admin UI still needed |
+| 7 | Incident workflows | **API done.** Courier report + **admin command center minimum done** |
 | 8 | Cash hygiene | **Done (API):** €500 hard cap; failed-cash HTTP; admin restore. Full Cash Trust score is P1 |
 
 ## Phase 3 — P1 trust and repeat
@@ -135,3 +138,4 @@ npm run seed --workspace=api
 ```
 
 Creates admin user, published pizza menu, and a demo Munich-area provider.
+Demo logins and click-through steps: [`DEMO.md`](DEMO.md).

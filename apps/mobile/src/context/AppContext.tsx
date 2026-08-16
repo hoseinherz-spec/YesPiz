@@ -21,6 +21,7 @@ import React, {
 import { Language, makeTranslator, Translator } from '@/constants/i18n';
 import { palettes, Palette } from '@/constants/theme';
 import { entityId } from '@/lib/entity-id';
+import { pickDeliveryEta, type EtaWindow } from '@/lib/eta';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -48,7 +49,12 @@ export type Order = {
   placedAt: number;
   status: 'active' | 'completed' | 'cancelled';
   stepIndex: number;
-  eta: number;
+  eta: EtaWindow;
+  customerStatus?: CustomerOrderProjection | null;
+  requiresDeliveryPin?: boolean;
+  deliveryPin?: string;
+  leaveAtDoor?: boolean;
+  hasShortExtraStop?: boolean;
   thumbnail?: string;
 };
 
@@ -157,7 +163,7 @@ const SAMPLE_ORDERS: Order[] = [
     placedAt: Date.now() - 1000 * 60 * 60 * 26,
     status: 'completed',
     stepIndex: 5,
-    eta: 0,
+    eta: {},
   },
   {
     id: 'o-1000',
@@ -166,7 +172,7 @@ const SAMPLE_ORDERS: Order[] = [
     placedAt: Date.now() - 1000 * 60 * 60 * 72,
     status: 'completed',
     stepIndex: 5,
-    eta: 0,
+    eta: {},
   },
   {
     id: 'o-0999',
@@ -175,7 +181,7 @@ const SAMPLE_ORDERS: Order[] = [
     placedAt: Date.now() - 1000 * 60 * 60 * 120,
     status: 'cancelled',
     stepIndex: 0,
-    eta: 0,
+    eta: {},
   },
 ];
 
@@ -252,7 +258,12 @@ export function mapCustomerOrder(view: CustomerOrderView): Order {
     placedAt: view.createdAt ? new Date(view.createdAt).getTime() : Date.now(),
     status: cancelled ? 'cancelled' : delivered ? 'completed' : 'active',
     stepIndex,
-    eta: delivered ? 0 : Math.max(5, 32 - stepIndex * 5),
+    eta: delivered ? {} : pickDeliveryEta(view),
+    customerStatus: view.customerStatus,
+    requiresDeliveryPin: view.requiresDeliveryPin,
+    deliveryPin: view.deliveryPin,
+    leaveAtDoor: view.leaveAtDoor,
+    hasShortExtraStop: view.hasShortExtraStop,
   };
 }
 
@@ -637,7 +648,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...o,
           stepIndex: next,
           status: next === ORDER_STEPS.length - 1 ? 'completed' : 'active',
-          eta: Math.max(0, o.eta - 3),
         };
       }),
     );

@@ -11,6 +11,7 @@ import { AppConfigService } from "../app-config/app-config.service";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "../common/enums";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
 import { ProvidersService } from "../providers/providers.service";
+import { SlaService } from "../sla/sla.service";
 import { PushService } from "../push/push.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import {
@@ -34,6 +35,7 @@ export class ProofService {
     private readonly config: AppConfigService,
     private readonly realtime: RealtimeGateway,
     private readonly push: PushService,
+    private readonly sla: SlaService,
   ) {}
 
   /**
@@ -255,6 +257,7 @@ export class ProofService {
     }
 
     order.status = OrderStatus.COMPLETED;
+    order.completedAt = new Date();
     if (order.paymentMethod === PaymentMethod.CASH) {
       order.paymentStatus = PaymentStatus.CAPTURED;
     }
@@ -271,6 +274,7 @@ export class ProofService {
     });
     await proof.save();
     this.emitStatus(order);
+    await this.sla.evaluateOrder(order.id);
     return { orderId: order.id, status: order.status };
   }
 

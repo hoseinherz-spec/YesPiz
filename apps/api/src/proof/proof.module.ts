@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Order, OrderSchema } from "../orders/schemas/order.schema";
 import { ProvidersModule } from "../providers/providers.module";
+import { SlaModule } from "../sla/sla.module";
 import { ProofController } from "./proof.controller";
 import { ProofService } from "./proof.service";
 import {
@@ -16,6 +17,7 @@ import {
       { name: Order.name, schema: OrderSchema },
     ]),
     ProvidersModule,
+    SlaModule,
   ],
   controllers: [ProofController],
   providers: [ProofService],

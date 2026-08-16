@@ -1,7 +1,9 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ScheduleModule } from "@nestjs/schedule";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AccountModule } from "./account/account.module";
 import { AppConfigModule } from "./app-config/app-config.module";
 import { AppController } from "./app.controller";
@@ -20,10 +22,18 @@ import { PushModule } from "./push/push.module";
 import { QualityModule } from "./quality/quality.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { RedisModule } from "./redis/redis.module";
+import { SlaModule } from "./sla/sla.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        name: "default",
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     ScheduleModule.forRoot(),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -50,8 +60,15 @@ import { RedisModule } from "./redis/redis.module";
     ProofModule,
     BatchesModule,
     IncidentsModule,
+    SlaModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

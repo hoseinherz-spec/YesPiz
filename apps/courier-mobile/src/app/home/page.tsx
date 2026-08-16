@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  ApiError,
   batchesClient,
   couriersClient,
   type Batch,
@@ -9,10 +8,13 @@ import {
   type CourierSession,
 } from '@repo/api';
 import { Button, Spinner, Typography } from '@heroui/react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { AppFrame } from '@/components/AppFrame';
+import { ErrorBanner } from '@/components/ProofUi';
+import { formatApiError } from '@/lib/api-errors';
 import {
   clearCourierToken,
   getCourierToken,
@@ -28,12 +30,10 @@ export default function CourierHomePage() {
   const [profile, setProfile] = useState<CourierProfile | null>(null);
   const [session, setSession] = useState<CourierSession | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [code, setCode] = useState('DEMO-QR');
+  const [code, setCode] = useState('');
   const [endCode, setEndCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [lastLocation, setLastLocation] = useState<string | null>(null);
-  const [shareLocation, setShareLocation] = useState(false);
 
   const load = useCallback(async () => {
     const token = requireCourierToken();
@@ -54,57 +54,12 @@ export default function CourierHomePage() {
       load()
         .then(() => setReady(true))
         .catch((err) => {
-          setError(err instanceof ApiError ? err.message : 'Failed to load');
+          setError(formatApiError(err, 'Failed to load'));
           setReady(true);
         });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [load, router]);
-
-  const postLocation = useCallback(async () => {
-    try {
-      const token = requireCourierToken();
-      let longitude = 11.5755;
-      let latitude = 48.1374;
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              timeout: 5000,
-              maximumAge: 15_000,
-            });
-          });
-          longitude = pos.coords.longitude;
-          latitude = pos.coords.latitude;
-        } catch {
-          // keep demo coords
-        }
-      }
-      const res = await couriersClient.updateLocation(
-        { longitude, latitude },
-        { accessToken: token },
-      );
-      setLastLocation(
-        `${res.latitude.toFixed(5)}, ${res.longitude.toFixed(5)} @ ${res.updatedAt}`,
-      );
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Location update failed');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!shareLocation || !profile?.onDuty) return;
-    const immediate = window.setTimeout(() => {
-      void postLocation();
-    }, 0);
-    const id = window.setInterval(() => {
-      void postLocation();
-    }, 15_000);
-    return () => {
-      window.clearTimeout(immediate);
-      window.clearInterval(id);
-    };
-  }, [shareLocation, profile?.onDuty, postLocation]);
 
   async function startSession() {
     setBusy(true);
@@ -112,14 +67,14 @@ export default function CourierHomePage() {
     try {
       const token = requireCourierToken();
       const started = await couriersClient.startSession(
-        { code },
+        { code: code.trim() },
         { accessToken: token },
       );
       setSession(started);
       if (started.endCode) setEndCode(started.endCode);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Start failed');
+      setError(formatApiError(err, 'Start failed'));
     } finally {
       setBusy(false);
     }
@@ -131,13 +86,13 @@ export default function CourierHomePage() {
     try {
       const token = requireCourierToken();
       const ended = await couriersClient.endSession(
-        { code: endCode || '000000' },
+        { code: endCode.trim() },
         { accessToken: token },
       );
       setSession(ended);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'End failed');
+      setError(formatApiError(err, 'End failed'));
     } finally {
       setBusy(false);
     }
@@ -178,19 +133,15 @@ export default function CourierHomePage() {
         </Button>
       </header>
 
-      {error ? (
-        <p role="alert" className="mb-4 rounded-[18px] border border-border bg-card px-4 py-3 text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorBanner message={error} className="mb-4" /> : null}
 
       <section className={cn(hx.card, 'mb-4 flex flex-col gap-3')}>
         <Typography type="h3" className={hx.title}>
-          Session
+          Shift session
         </Typography>
         <p className={hx.bodySm}>
-          Scan QR / enter OTP to start. End with the session end code (or 000000
-          in demo).
+          Scan the depot QR or enter the OTP from dispatch to go on duty. End your shift
+          with the session end code when finished.
         </p>
         {!profile?.onDuty ? (
           <>
@@ -200,6 +151,7 @@ export default function CourierHomePage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 className={cn(hx.field, 'h-14 bg-field-background')}
+                placeholder="From QR scan or dispatch"
               />
             </label>
             <Button
@@ -216,7 +168,7 @@ export default function CourierHomePage() {
           <>
             {session?.endCode || endCode ? (
               <p className="text-sm text-foreground">
-                End code hint:{' '}
+                End code:{' '}
                 <span className="font-mono">{session?.endCode || endCode}</span>
               </p>
             ) : null}
@@ -226,39 +178,18 @@ export default function CourierHomePage() {
                 value={endCode}
                 onChange={(e) => setEndCode(e.target.value)}
                 className={cn(hx.field, 'h-14 bg-field-background')}
-                placeholder="000000"
+                placeholder="Session end code"
               />
             </label>
             <Button
               variant="secondary"
               fullWidth
-              isDisabled={busy}
+              isDisabled={busy || !endCode.trim()}
               onPress={endSession}
               className={cn(hx.btnSecondary, 'h-14 text-base')}
             >
               End session
             </Button>
-            <Button
-              size="sm"
-              variant={shareLocation ? 'primary' : 'secondary'}
-              fullWidth
-              className="h-12 rounded-full"
-              onPress={() => setShareLocation((v) => !v)}
-            >
-              {shareLocation ? 'Stop sharing location' : 'Share live location'}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              fullWidth
-              className="h-12 rounded-full border border-border bg-card"
-              onPress={() => void postLocation()}
-            >
-              Post location once
-            </Button>
-            {lastLocation ? (
-              <p className={hx.caption}>Last: {lastLocation}</p>
-            ) : null}
           </>
         )}
       </section>
@@ -272,42 +203,49 @@ export default function CourierHomePage() {
             size="sm"
             variant="secondary"
             className="rounded-full border border-border bg-card"
-            onPress={load}
+            onPress={() => void load()}
           >
             Refresh
           </Button>
         </div>
 
-        {!batches.length ? (
+        {!profile?.onDuty ? (
           <div className={cn(hx.card, hx.bodySm)}>
-            No assigned batches. Pickup marking lands when Phase 4 delivery
-            endpoints ship — for now open batch details by id via API.
+            Start your session to see assigned batches and run the pickup → delivery proof
+            chain.
+          </div>
+        ) : null}
+
+        {profile?.onDuty && !batches.length ? (
+          <div className={cn(hx.card, hx.bodySm)}>
+            No assigned batches right now. Pull to refresh when dispatch assigns you.
           </div>
         ) : null}
 
         {batches.map((batch) => {
           const id = entityId(batch);
+          const active = batch.status === 'assigned' || batch.status === 'in_progress';
           return (
-            <div key={id} className={cn(hx.card, 'flex flex-col gap-1')}>
+            <Link
+              key={id}
+              href={`/home/batch/?id=${encodeURIComponent(id)}`}
+              className={cn(
+                hx.card,
+                'block transition-opacity hover:opacity-90',
+                active && 'ring-2 ring-accent/40',
+              )}
+            >
               <div className="flex justify-between gap-2">
                 <Typography type="h3" className={hx.title}>
-                  {batch.status}
+                  {batch.status.replaceAll('_', ' ')}
                 </Typography>
-                <span className={hx.caption}>
-                  {batch.orderIds?.length ?? 0} orders
-                </span>
+                <span className={hx.caption}>{batch.orderIds?.length ?? 0} stops</span>
               </div>
-              <p className={hx.caption}>Batch {id}</p>
-              <ul className="mt-1 text-sm text-foreground">
-                {(batch.orderIds ?? []).map((oid) => (
-                  <li key={String(oid)}>{String(oid)}</li>
-                ))}
-              </ul>
-              <p className={cn(hx.caption, 'mt-2')}>
-                Pickup flow: show this batch at the kitchen counter. Status
-                updates arrive when courier pickup endpoints are enabled.
+              <p className={cn(hx.caption, 'mt-1 font-mono')}>{id}</p>
+              <p className={cn(hx.bodySm, 'mt-2')}>
+                Tap to open stops — pickup, en route, deliver, and complete each order.
               </p>
-            </div>
+            </Link>
           );
         })}
       </section>

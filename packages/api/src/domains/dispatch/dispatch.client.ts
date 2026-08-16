@@ -8,6 +8,8 @@ import type {
   DispatchBroadcastResponse,
   ProviderOffer,
   RejectOfferResponse,
+  WaveRespondRequest,
+  WaveRespondResponse,
 } from './dispatch.dto';
 import { dispatchEndpoints } from './dispatch.endpoint';
 
@@ -19,6 +21,13 @@ export const dispatchClient = {
     );
   },
 
+  resolveWave(orderId: string, options?: AuthRequestOptions) {
+    return apiRequest<WaveRespondResponse>(
+      dispatchEndpoints.resolveWave(orderId),
+      withAuth({ ...options, method: 'POST' }),
+    );
+  },
+
   listOffers(options?: AuthRequestOptions) {
     return apiRequest<ProviderOffer[]>(
       dispatchEndpoints.offers,
@@ -26,6 +35,18 @@ export const dispatchClient = {
     );
   },
 
+  respond(
+    orderId: string,
+    body: WaveRespondRequest,
+    options?: AuthRequestOptions,
+  ) {
+    return apiRequest<WaveRespondResponse>(
+      dispatchEndpoints.respond(orderId),
+      withAuth({ ...options, method: 'POST', body }),
+    );
+  },
+
+  /** @deprecated Prefer respond() */
   accept(orderId: string, options?: AuthRequestOptions) {
     return apiRequest<AcceptOfferResponse>(
       dispatchEndpoints.accept(orderId),

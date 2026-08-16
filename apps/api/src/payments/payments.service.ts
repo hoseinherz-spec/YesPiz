@@ -9,6 +9,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import Stripe from "stripe";
+import { cashAvailabilityFromTrust } from "../account/cash-trust.util";
 import { AccountService } from "../account/account.service";
 import { AppConfigService } from "../app-config/app-config.service";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "../common/enums";
@@ -46,11 +47,20 @@ export class PaymentsService {
     const user = await this.accounts.findById(userId);
     if (!user) throw new NotFoundException("errors.notFound");
     const cfg = await this.appConfig.get();
+    const score = user.cashTrustScore ?? 100;
+    const trust = cashAvailabilityFromTrust(
+      score,
+      user.cashBanned,
+      cfg.cashHardCapCents,
+    );
     return {
-      available: !user.cashBanned,
+      available: trust.available,
       failedCashCount: user.failedCashCount,
       threshold: cfg.cashFailThreshold,
-      hardCapCents: cfg.cashHardCapCents,
+      hardCapCents: trust.effectiveCapCents,
+      cashTrustScore: score,
+      cashTrustTier: trust.tier,
+      reasonCode: trust.reasonCode,
     };
   }
 

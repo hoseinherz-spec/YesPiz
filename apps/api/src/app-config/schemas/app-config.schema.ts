@@ -89,6 +89,10 @@ export class AppConfig {
   /** Half-width of ETA window (± minutes) */
   @Prop({ default: 5 })
   etaWindowPaddingMinutes!: number;
+
+  /** One-time SLA miss credit in cents (e.g. €5). */
+  @Prop({ default: 500 })
+  slaCompensationCents!: number;
 }
 
 export const AppConfigSchema = SchemaFactory.createForClass(AppConfig);

@@ -3,6 +3,8 @@ import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
+  IsDateString,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -47,6 +49,31 @@ export class CreateAddressDto {
   @ApiPropertyOptional()
   @IsOptional()
   isDefault?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  entrance?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  floor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  doorCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  instructions?: string;
 }
 
 export class OrderLineDto {
@@ -84,6 +111,41 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  leaveAtDoor?: boolean;
+
+  @ApiPropertyOptional({ description: "ISO8601 delivery slot; omit for ASAP" })
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryEntrance?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryFloor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryUnit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryDoorCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  deliveryInstructions?: string;
 }
 
 export class UpdateKitchenStatusDto {

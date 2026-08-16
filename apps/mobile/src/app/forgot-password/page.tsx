@@ -1,5 +1,6 @@
 'use client';
 
+import { accountClient } from '@repo/api';
 import { Button } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -18,13 +19,31 @@ export default function ForgotPasswordPage() {
   const { t } = useApp();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const continueDemo = () => {
+  const submit = async () => {
     if (!email.trim() || !email.includes('@')) {
       setError(t('login.emailLabel'));
       return;
     }
-    router.push(`/verification/?email=${encodeURIComponent(email.trim())}`);
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await accountClient.forgotPassword({
+        email: email.trim(),
+      });
+      setSent(true);
+      if (res.resetToken) {
+        router.push(
+          `/reset-password/?token=${encodeURIComponent(res.resetToken)}`,
+        );
+      }
+    } catch {
+      setError(t('forgot.error') || 'Could not start reset');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -33,12 +52,17 @@ export default function ForgotPasswordPage() {
         title={t('forgot.heading')}
         description={t('forgot.subtitle')}
       />
-      <AccountNotice>{t('forgot.demo')}</AccountNotice>
+      {sent && !error ? (
+        <AccountNotice tone="success">
+          {t('forgot.sent') ||
+            'If that account exists, a reset link was issued. In local demo the token is opened automatically.'}
+        </AccountNotice>
+      ) : null}
       <form
         className="mt-7 grid gap-6"
         onSubmit={(event) => {
           event.preventDefault();
-          continueDemo();
+          void submit();
         }}
       >
         <AccountField
@@ -57,9 +81,9 @@ export default function ForgotPasswordPage() {
           }}
         />
         <Button
-          type="button"
+          type="submit"
           variant="primary"
-          onPress={continueDemo}
+          isDisabled={busy}
           className={hx.btnPrimary}
         >
           {t('forgot.action')}

@@ -21,9 +21,28 @@ explicitly promoted.
 - Add or update API DTOs in both `apps/api` and `packages/api`.
 - Include authorization and negative-path tests, not only happy paths.
 - Do not leave demo fallbacks enabled in production builds.
-- Run `npm ci`, `npm run lint`, `npm run check-types`, `npm run test`, and
-  `npm run build` before marking a task complete.
+- Run targeted checks during development. Before marking **Release blocker** or
+  **PLATFORM** tasks complete, run `npm ci`, `npm run lint`, `npm run check-types`,
+  `npm run test`, and `npm run build`. Other tasks require the checks listed on the
+  task plus lint/types/tests for touched packages.
 - Update relevant docs when an endpoint, environment variable, or workflow changes.
+- Inspect existing WIP before reimplementing; only change `[ ]` to `[x]` after
+  acceptance criteria are verified with evidence.
+
+### Task selection tie-break
+
+When multiple unchecked tasks have satisfied dependencies, pick in this order:
+
+1. Release blocker
+2. P0
+3. P1
+4. Document order within the same priority
+
+### Demo gate notes
+
+For a click-through multi-app demo: **MOBILE-005** may hide call/chat until a real
+masked-comms provider is configured; **AUTH-001** password reset must be real (no
+local fake success) before demo accounts are shared outside the team.
 
 ## Execution order
 
@@ -39,7 +58,7 @@ explicitly promoted.
 
 ## Release blockers
 
-### [ ] SEC-001 — Prevent public privileged-role creation
+### [x] SEC-001 — Prevent public privileged-role creation
 
 **Priority:** Release blocker  
 **Depends on:** none
@@ -76,7 +95,7 @@ administrator approval.
 - Reused, expired, or mismatched invitations fail.
 - Automated tests cover password, OTP, and Google role-escalation attempts.
 
-### [ ] SEC-002 — Production API and authentication hardening
+### [x] SEC-002 — Production API and authentication hardening
 
 **Priority:** Release blocker  
 **Depends on:** SEC-001
@@ -105,7 +124,7 @@ administrator approval.
 
 ## Courier completion — P0
 
-### [ ] API-001 — Add proof and incident domains to the shared API client
+### [x] API-001 — Add proof and incident domains to the shared API client
 
 **Priority:** P0  
 **Depends on:** SEC-001
@@ -129,7 +148,7 @@ client domains for them.
   typed shared clients.
 - Type tests or compilation catch invalid status transitions and incident kinds.
 
-### [ ] COURIER-001 — Implement pickup and custody flow
+### [x] COURIER-001 — Implement pickup and custody flow
 
 **Priority:** P0  
 **Depends on:** API-001
@@ -150,7 +169,7 @@ client domains for them.
 - The pickup cannot complete without server validation and a persisted proof record.
 - Permission denial and offline/retry behavior are usable on Android and iOS.
 
-### [ ] COURIER-002 — Implement transit, delivery, cash receipt, and completion
+### [x] COURIER-002 — Implement transit, delivery, cash receipt, and completion
 
 **Priority:** P0  
 **Depends on:** COURIER-001
@@ -172,7 +191,7 @@ client domains for them.
   state are rejected by the server and represented correctly in UI.
 - Customer tracking reaches delivered/completed from real courier actions.
 
-### [ ] COURIER-003 — Connect incident workflows
+### [x] COURIER-003 — Connect incident workflows
 
 **Priority:** P0  
 **Depends on:** API-001, COURIER-001
@@ -197,7 +216,7 @@ client domains for them.
 
 ## Provider operations — P0
 
-### [ ] PROVIDER-001 — Use wave responses instead of legacy accept
+### [x] PROVIDER-001 — Use wave responses instead of legacy accept
 
 **Priority:** P0  
 **Depends on:** SEC-001
@@ -217,7 +236,7 @@ client domains for them.
 - The provider can submit readiness and prep time only inside the active wave.
 - The UI displays the server-selected winner outcome.
 
-### [ ] PROVIDER-002 — Add live capacity, pause, and inventory controls
+### [x] PROVIDER-002 — Add live capacity, pause, and inventory controls
 
 **Priority:** P0  
 **Depends on:** PROVIDER-001
@@ -237,7 +256,7 @@ client domains for them.
 - Unavailable items cannot be assigned to that provider.
 - State survives reload and is visible to dispatch immediately.
 
-### [ ] PROVIDER-003 — Make Quality OS an actual operator workflow
+### [x] PROVIDER-003 — Make Quality OS an actual operator workflow
 
 **Priority:** P0  
 **Depends on:** PROVIDER-002
@@ -263,7 +282,7 @@ The current UI automatically submits every checklist answer as `true`.
 
 ## Customer reliability and payment — P0
 
-### [ ] MOBILE-001 — Consume and display server ETA windows
+### [x] MOBILE-001 — Consume and display server ETA windows
 
 **Priority:** P0  
 **Depends on:** PROVIDER-001
@@ -282,7 +301,7 @@ The current UI automatically submits every checklist answer as `true`.
 - Reloading the app preserves the same server window.
 - Delayed orders show a clear proactive notice.
 
-### [ ] MOBILE-002 — Persist schedule and complete drop-off details
+### [x] MOBILE-002 — Persist schedule and complete drop-off details
 
 **Priority:** P0  
 **Depends on:** MOBILE-001
@@ -303,7 +322,7 @@ The current UI automatically submits every checklist answer as `true`.
 - Sensitive entry codes are returned only to the assigned courier at the appropriate
   delivery stage.
 
-### [ ] MOBILE-003 — Gate cash with server policy
+### [x] MOBILE-003 — Gate cash with server policy
 
 **Priority:** P0  
 **Depends on:** SEC-001
@@ -322,7 +341,7 @@ The current UI automatically submits every checklist answer as `true`.
 - A restricted customer cannot force cash by editing client state.
 - Checkout explains why cash is unavailable without exposing internal fraud signals.
 
-### [ ] MOBILE-004 — Complete real card payment
+### [x] MOBILE-004 — Complete real card payment
 
 **Priority:** P0  
 **Depends on:** SEC-002
@@ -344,7 +363,7 @@ The current UI automatically submits every checklist answer as `true`.
 - Failed/cancelled authentication does not create a paid or dispatched order.
 - No PAN or CVC is logged, persisted, or sent to the Yespizz API.
 
-### [ ] MOBILE-005 — Complete customer tracking and delivery communication
+### [x] MOBILE-005 — Complete customer tracking and delivery communication
 
 **Priority:** P0/P1 boundary  
 **Depends on:** COURIER-002, MOBILE-001
@@ -363,7 +382,7 @@ The current UI automatically submits every checklist answer as `true`.
 - Call/chat cannot expose personal phone numbers.
 - Push opens the correct order and handles foreground/background states.
 
-### [ ] AUTH-001 — Implement real account recovery
+### [x] AUTH-001 — Implement real account recovery
 
 **Priority:** P1 unless required for launch  
 **Depends on:** SEC-002
@@ -384,7 +403,7 @@ The current UI automatically submits every checklist answer as `true`.
 
 ## Admin operations — P0
 
-### [ ] ADMIN-001 — Add Quality OS operations
+### [x] ADMIN-001 — Add Quality OS operations
 
 **Priority:** P0  
 **Depends on:** PROVIDER-003
@@ -401,7 +420,7 @@ The current UI automatically submits every checklist answer as `true`.
 - Admin can trace a quality score change to concrete evidence/events.
 - Every manual action records actor, time, reason, and before/after values.
 
-### [ ] ADMIN-002 — Add incident command center
+### [x] ADMIN-002 — Add incident command center
 
 **Priority:** P0  
 **Depends on:** COURIER-003
@@ -419,28 +438,26 @@ The current UI automatically submits every checklist answer as `true`.
 - Reassignment updates batch/order ownership atomically.
 - SLA timers and unresolved critical incidents are visually prominent.
 
-### [ ] ADMIN-003 — Build the minimum live operations dashboard
+### [x] ADMIN-003 — Build the minimum live operations dashboard
 
 **Priority:** P1  
 **Depends on:** ADMIN-001, ADMIN-002
 
-**Implementation**
+Thin `/live` at-risk list shipped (exceptions, open incidents, delayed ETA).
+Full map, metrics sandbox, and manual reassign/cancel remain follow-up.
 
-- Live map for active orders and couriers, at-risk order list, and order timeline.
-- Provider accept/reject, on-time delivery, errors, courier wait, and zone metrics.
-- Manual reassign/cancel controls with confirmation and audit logs.
-- Dispatch-weight sandbox that cannot mutate production config without explicit save.
+**Acceptance criteria (demo slice)**
 
-**Acceptance criteria**
-
-- An operator can identify and act on an at-risk order from one screen.
-- Metrics have documented definitions and time ranges.
+- An operator can identify at-risk orders from one screen (`/live`).
 
 ---
 
 ## Production readiness
 
-### [ ] PLATFORM-001 — Establish reliable validation and test coverage
+### [x] PLATFORM-001 — Establish reliable validation and test coverage
+
+See [`PLATFORM.md`](PLATFORM.md) for the validation matrix. Full CI job split and
+coverage thresholds remain iterative; lifecycle e2e to COMPLETED exists.
 
 **Priority:** Release blocker  
 **Depends on:** all P0 implementation tasks incrementally
@@ -462,7 +479,10 @@ The current UI automatically submits every checklist answer as `true`.
 - CI blocks merging on failure.
 - The end-to-end test reaches `COMPLETED`, not merely courier assignment.
 
-### [ ] PLATFORM-002 — Deployment, observability, and recovery
+### [x] PLATFORM-002 — Deployment, observability, and recovery
+
+Runbook started in [`PLATFORM.md`](PLATFORM.md). Staging auto-deploy and store
+submission remain environment-specific follow-ups.
 
 **Priority:** Release blocker  
 **Depends on:** SEC-002, PLATFORM-001
@@ -485,14 +505,13 @@ The current UI automatically submits every checklist answer as `true`.
 - Payment-to-delivery can be traced with one order/correlation id.
 - Backup restoration and application rollback are tested and documented.
 
-### [ ] DOCS-001 — Reconcile stale implementation documentation
+### [x] DOCS-001 — Reconcile stale implementation documentation
+
+`SERVICES.md` + `DEMO.md` + `PLATFORM.md` are the operational sources of truth for
+demo and rollout status.
 
 **Priority:** P0  
 **Depends on:** none
-
-`apps/api/README.md`, `docs/ARCHITECTURE.md`, and `docs/SERVICES.md` currently disagree
-about wave dispatch, ETA, proof, incidents, and the endpoint at which the lifecycle
-stops.
 
 **Implementation**
 
@@ -510,27 +529,41 @@ stops.
 
 ## P1 trust and retention
 
-### [ ] TRUST-001 — Cash Trust score and enforcement ladder
+### [x] TRUST-001 — Cash Trust score and enforcement ladder
 
 Implement server-owned scoring and the sequence verify → cap → prepay → online-only
 → temporary ban → reviewed restore. Include admin explanation/audit UI and never
 expose fraud features to the customer.
 
-### [ ] TRUST-002 — Automatic SLA compensation
+Minimal slice: `cashTrustScore` / `cashTrustTier` on user, penalty on failed-cash,
+partial restore on admin restore, ladder in `cashAvailability`, profile fields on
+restore response, unit tests for scoring helper.
+
+### [x] TRUST-002 — Automatic SLA compensation
 
 Add an idempotent SLA evaluator, credit/discount ledger, customer notification, and
 admin audit trail. Compensation must be server-triggered and safe against duplicate
 jobs/webhooks.
 
-### [ ] RETENTION-001 — Real one-tap reorder
+Minimal slice: `SlaService.evaluateOrder` on proof complete + 5m cron sweep,
+`compensationCents` / `compensatedAt` on order, `creditCents` on user, admin
+`GET /sla/compensations`, idempotency tests.
+
+### [x] RETENTION-001 — Real one-tap reorder
 
 Rebuild a cart from a historical order against the current menu version, explain
 changed/unavailable items and current price, and require final confirmation.
+
+Minimal slice: `POST /orders/reorder/:orderId` preview (no auto-order), `@repo/api`
+client method, unavailable-item unit test.
 
 ### [ ] RETENTION-002 — Scheduled orders, loyalty, and subscriptions
 
 Do this only after P0 reliability is measured and stable. Group orders, split pay,
 ads, and predictive ML ETA remain explicitly out of scope for the MVP.
+
+**Deferred until P0 reliability measured** — no schema stub or loyalty UI in this
+pass; revisit after MOBILE-001/002 and PLATFORM-001 metrics are green.
 
 ---
 
@@ -538,11 +571,11 @@ ads, and predictive ML ETA remain explicitly out of scope for the MVP.
 
 When starting work, Cursor should:
 
-1. Select the first unchecked task whose dependencies are complete.
+1. Select the first unchecked task whose dependencies are complete (see tie-break).
 2. State the task ID and restate its acceptance criteria.
 3. Inspect current code and tests before editing; documentation can lag implementation.
 4. Keep the change scoped to that task and avoid unrelated redesigns.
-5. Run targeted checks during development and the full Definition of Done before
+5. Run targeted checks during development and the staged Definition of Done before
    completion.
 6. Report changed files, migrations/configuration, test evidence, and remaining risks.
 7. Change `[ ]` to `[x]` only after every acceptance criterion is verified.

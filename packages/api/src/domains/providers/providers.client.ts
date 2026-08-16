@@ -5,6 +5,8 @@ import {
 } from '../../core';
 import type {
   CreateProviderRequest,
+  EightySixRequest,
+  PauseOrdersRequest,
   Provider,
   ProviderSelfUpdateRequest,
   UpdateProviderRequest,
@@ -58,6 +60,34 @@ export const providersClient = {
     return apiRequest<Provider>(
       providersEndpoints.meProfile,
       withAuth({ ...options, method: 'PATCH', body }),
+    );
+  },
+
+  eightySix(body: EightySixRequest, options?: AuthRequestOptions) {
+    return apiRequest<Provider>(
+      providersEndpoints.eightySix,
+      withAuth({ ...options, method: 'POST', body }),
+    );
+  },
+
+  clearEightySix(body: EightySixRequest, options?: AuthRequestOptions) {
+    return apiRequest<Provider>(
+      providersEndpoints.eightySix,
+      withAuth({ ...options, method: 'DELETE', body }),
+    );
+  },
+
+  pause(body: PauseOrdersRequest, options?: AuthRequestOptions) {
+    return apiRequest<Provider>(
+      providersEndpoints.pause,
+      withAuth({ ...options, method: 'POST', body }),
+    );
+  },
+
+  resume(options?: AuthRequestOptions) {
+    return apiRequest<Provider>(
+      providersEndpoints.resume,
+      withAuth({ ...options, method: 'POST' }),
     );
   },
 };

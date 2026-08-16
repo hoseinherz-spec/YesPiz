@@ -42,6 +42,11 @@ export type CreateAddressRequest = {
   longitude: number;
   latitude: number;
   isDefault?: boolean;
+  entrance?: string;
+  floor?: string;
+  unit?: string;
+  doorCode?: string;
+  instructions?: string;
 };
 
 export type DeliveryAddress = {
@@ -56,6 +61,11 @@ export type DeliveryAddress = {
   latitude: number;
   location: { type: 'Point'; coordinates: [number, number] };
   isDefault: boolean;
+  entrance?: string;
+  floor?: string;
+  unit?: string;
+  doorCode?: string;
+  instructions?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -71,6 +81,13 @@ export type CreateOrderRequest = {
   paymentMethod: PaymentMethod;
   lines: OrderLineRequest[];
   notes?: string;
+  leaveAtDoor?: boolean;
+  scheduledAt?: string;
+  deliveryEntrance?: string;
+  deliveryFloor?: string;
+  deliveryUnit?: string;
+  deliveryDoorCode?: string;
+  deliveryInstructions?: string;
 };
 
 export type KitchenStatusUpdate =
@@ -116,6 +133,20 @@ export type CustomerOrderView = {
   paymentStatus: PaymentStatus;
   addressId: string;
   notes?: string;
+  leaveAtDoor?: boolean;
+  scheduledAt?: string;
+  deliveryEntrance?: string;
+  deliveryFloor?: string;
+  deliveryUnit?: string;
+  deliveryInstructions?: string;
+  etaPrepMin?: number;
+  etaPrepMax?: number;
+  etaDeliveryMin?: number;
+  etaDeliveryMax?: number;
+  etaComputedAt?: string;
+  hasShortExtraStop?: boolean;
+  requiresDeliveryPin?: boolean;
+  deliveryPin?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -156,10 +187,83 @@ export type Order = {
   offers?: OrderOffer[];
   radiusExpanded?: boolean;
   notes?: string;
+  sealId?: string | null;
+  checklistCompletedAt?: string | null;
+  checklistAnswers?: Array<{ item: string; ok: boolean }>;
+  readyPhotoUrl?: string | null;
+  quotedPrepMinutes?: number;
   createdAt?: string;
   updatedAt?: string;
 };
 
 export type DeleteAddressResponse = {
   deleted: true;
+};
+
+export type ReorderLinePreview = {
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  unitPriceCents: number;
+  previousUnitPriceCents: number;
+};
+
+export type ReorderChangedLine = ReorderLinePreview & {
+  change: 'price';
+};
+
+export type ReorderUnavailableLine = {
+  menuItemId: string;
+  name: string;
+  quantity: number;
+  reason: string;
+};
+
+export type ReorderPreviewResponse = {
+  sourceOrderId: string;
+  menuVersion: number;
+  available: ReorderLinePreview[];
+  changed: ReorderChangedLine[];
+  unavailable: ReorderUnavailableLine[];
+  cartLines: Array<{
+    menuItemId: string;
+    name: string;
+    quantity: number;
+    unitPriceCents: number;
+  }>;
+  subtotalCents: number;
+  deliveryFeeCents: number;
+  estimatedTotalCents: number;
+};
+
+export type AtRiskOrderRow = {
+  orderId: string;
+  status: OrderStatus;
+  totalCents: number;
+  updatedAt?: string;
+  risk: 'exception' | 'delayed_eta';
+  etaDeliveryMax?: number;
+  etaComputedAt?: string;
+};
+
+export type AtRiskIncidentRow = {
+  incidentId: string;
+  orderId: string;
+  kind: string;
+  status: string;
+  sos: boolean;
+  createdAt?: string;
+};
+
+export type AtRiskDashboardResponse = {
+  exceptionOrders: AtRiskOrderRow[];
+  openIncidents: AtRiskIncidentRow[];
+  delayedOrders: AtRiskOrderRow[];
+  sosOrderIds: string[];
+  summary: {
+    exceptionCount: number;
+    openIncidentCount: number;
+    delayedCount: number;
+    sosCount: number;
+  };
 };

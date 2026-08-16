@@ -71,6 +71,12 @@ export class OrdersController {
   }
 
   @Roles(UserRole.ADMIN)
+  @Get("admin/at-risk")
+  listAtRisk() {
+    return this.orders.listAtRisk();
+  }
+
+  @Roles(UserRole.ADMIN)
   @Get("admin/review")
   listAdminReview() {
     return this.orders.listForAdminReview();
@@ -90,6 +96,15 @@ export class OrdersController {
   async listKitchen(@CurrentUser() user: JwtPayloadUser) {
     const provider = await this.providers.getSelf(user.userId);
     return this.orders.listKitchenForProvider(provider.id);
+  }
+
+  @Roles(UserRole.CUSTOMER)
+  @Post("reorder/:orderId")
+  reorder(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("orderId") orderId: string,
+  ) {
+    return this.orders.buildReorderPreview(user.userId, orderId);
   }
 
   @Roles(UserRole.CUSTOMER)

@@ -5,11 +5,18 @@ import {
   type AuthRequestOptions,
 } from '../../core';
 import type {
+  AcceptInviteRequest,
   AuthResponse,
+  BootstrapAdminRequest,
   ConfirmOtpRequest,
+  CreateInviteRequest,
+  CreateInviteResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
   LoginRequest,
   ProfileResponse,
   RegisterRequest,
+  ResetPasswordRequest,
   SendOtpRequest,
   SendOtpResponse,
   UserRole,
@@ -57,6 +64,48 @@ export const accountClient = {
     options?: ApiRequestOptions,
   ) {
     return apiRequest<AuthResponse>(accountEndpoints.roleLogin(role), {
+      ...options,
+      method: 'POST',
+      body,
+    });
+  },
+
+  bootstrapAdmin(body: BootstrapAdminRequest, options?: ApiRequestOptions) {
+    return apiRequest<AuthResponse>(accountEndpoints.bootstrapAdmin, {
+      ...options,
+      method: 'POST',
+      body,
+    });
+  },
+
+  createInvite(body: CreateInviteRequest, options?: AuthRequestOptions) {
+    return apiRequest<CreateInviteResponse>(
+      accountEndpoints.createInvite,
+      withAuth({ ...options, method: 'POST', body }),
+    );
+  },
+
+  acceptInvite(body: AcceptInviteRequest, options?: ApiRequestOptions) {
+    return apiRequest<AuthResponse>(accountEndpoints.acceptInvite, {
+      ...options,
+      method: 'POST',
+      body,
+    });
+  },
+
+  forgotPassword(body: ForgotPasswordRequest, options?: ApiRequestOptions) {
+    return apiRequest<ForgotPasswordResponse>(accountEndpoints.forgotPassword, {
+      ...options,
+      method: 'POST',
+      body,
+    });
+  },
+
+  resetPassword(
+    body: ResetPasswordRequest,
+    options?: ApiRequestOptions,
+  ) {
+    return apiRequest<{ status: string }>(accountEndpoints.resetPassword, {
       ...options,
       method: 'POST',
       body,
