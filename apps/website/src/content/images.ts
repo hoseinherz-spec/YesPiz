@@ -7,4 +7,13 @@ export const landingImages = {
   pizzaPepperoni: "/images/pizza-pepperoni.png",
   pizzaVeggie: "/images/pizza-veggie.png",
   pizzaMeatFeast: "/images/pizza-meat-feast.png",
+  ingredients: {
+    basil: "/images/ingredients/basil.png",
+    mozzarella: "/images/ingredients/mozzarella.png",
+    mushroom: "/images/ingredients/mushroom.png",
+    olive: "/images/ingredients/olive.png",
+    pepper: "/images/ingredients/pepper.png",
+    pepperoni: "/images/ingredients/pepperoni.png",
+    tomato: "/images/ingredients/tomato.png",
+  },
 } as const;

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -18,6 +19,8 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import {
   CreateProviderDto,
+  EightySixDto,
+  PauseOrdersDto,
   ProviderSelfUpdateDto,
   UpdateProviderDto,
 } from "./dto/provider.dto";
@@ -58,6 +61,47 @@ export class ProvidersController {
     @Body() dto: ProviderSelfUpdateDto,
   ) {
     return this.providers.updateSelf(user.userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROVIDER)
+  @Post("me/eighty-six")
+  async eightySix(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: EightySixDto,
+  ) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.providers.eightySix(provider.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROVIDER)
+  @Delete("me/eighty-six")
+  async clearEightySix(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: EightySixDto,
+  ) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.providers.clearEightySix(provider.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROVIDER)
+  @Post("me/pause")
+  async pause(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: PauseOrdersDto,
+  ) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.providers.pauseOrders(provider.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROVIDER)
+  @Post("me/resume")
+  async resume(@CurrentUser() user: JwtPayloadUser) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.providers.resumeOrders(provider.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   CurrentUser,
@@ -9,6 +9,7 @@ import { UserRole } from "../common/enums";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { ProvidersService } from "../providers/providers.service";
+import { WaveRespondDto } from "./dto/dispatch.dto";
 import { DispatchService } from "./dispatch.service";
 
 @ApiTags("dispatch")
@@ -27,6 +28,12 @@ export class DispatchController {
     return this.dispatch.startDispatch(orderId);
   }
 
+  @Roles(UserRole.ADMIN)
+  @Post("orders/:orderId/resolve-wave")
+  resolveWave(@Param("orderId") orderId: string) {
+    return this.dispatch.resolveWave(orderId);
+  }
+
   @Roles(UserRole.PROVIDER)
   @Get("offers")
   async myOffers(@CurrentUser() user: JwtPayloadUser) {
@@ -34,6 +41,23 @@ export class DispatchController {
     return this.dispatch.listOffersForProvider(provider.id);
   }
 
+  @Roles(UserRole.PROVIDER)
+  @Post("orders/:orderId/respond")
+  async respond(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("orderId") orderId: string,
+    @Body() dto: WaveRespondDto,
+  ) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.dispatch.respondToWave(
+      orderId,
+      provider.id,
+      dto.ready,
+      dto.quotedPrepMinutes,
+    );
+  }
+
+  /** @deprecated Prefer POST .../respond — declares ready with default prep */
   @Roles(UserRole.PROVIDER)
   @Post("orders/:orderId/accept")
   async accept(

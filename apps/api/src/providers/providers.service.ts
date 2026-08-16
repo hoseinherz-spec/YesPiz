@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import {
   CreateProviderDto,
+  EightySixDto,
+  PauseOrdersDto,
   ProviderSelfUpdateDto,
   UpdateProviderDto,
 } from "./dto/provider.dto";
@@ -65,10 +67,21 @@ export class ProvidersService {
   }
 
   async updateSelf(userId: string, dto: ProviderSelfUpdateDto) {
+    const set: Record<string, unknown> = {};
+    if (dto.acceptingOrders != null) set.acceptingOrders = dto.acceptingOrders;
+    if (dto.logoUrl != null) set.logoUrl = dto.logoUrl;
+    if (dto.acceptCap != null) set.acceptCap = dto.acceptCap;
+    if (dto.pauseReason != null) set.pauseReason = dto.pauseReason;
+    if (dto.pausedUntil != null) set.pausedUntil = new Date(dto.pausedUntil);
+    if (dto.acceptingOrders === true) {
+      set.pauseReason = undefined;
+      set.pausedUntil = undefined;
+    }
+
     const doc = await this.providers
       .findOneAndUpdate(
         { userId: new Types.ObjectId(userId) },
-        { $set: dto },
+        { $set: set },
         { new: true },
       )
       .exec();
@@ -76,11 +89,22 @@ export class ProvidersService {
     return doc;
   }
 
-  findNearby(lng: number, lat: number, radiusMeters: number) {
-    return this.providers
+  /**
+   * Nearby kitchens that can take new orders: active, accepting, not suspended,
+   * not paused, under acceptCap, and not 86'd for any of the required items.
+   */
+  async findNearby(
+    lng: number,
+    lat: number,
+    radiusMeters: number,
+    requiredItemIds: string[] = [],
+  ) {
+    const now = new Date();
+    const docs = await this.providers
       .find({
         isActive: true,
         acceptingOrders: true,
+        autoSuspended: { $ne: true },
         location: {
           $near: {
             $geometry: { type: "Point", coordinates: [lng, lat] },
@@ -89,11 +113,143 @@ export class ProvidersService {
         },
       })
       .exec();
+
+    const required = requiredItemIds.map(String);
+    return docs.filter((p) => {
+      if (p.pausedUntil && p.pausedUntil.getTime() > now.getTime()) {
+        return false;
+      }
+      if (p.acceptCap != null && p.openOrders >= p.acceptCap) {
+        return false;
+      }
+      if (required.length && p.eightySixedItemIds?.length) {
+        const eighty = new Set(p.eightySixedItemIds.map(String));
+        if (required.some((id) => eighty.has(id))) return false;
+      }
+      return true;
+    });
   }
 
   async bumpOpenOrders(providerId: string, delta: number) {
-    await this.providers
-      .findByIdAndUpdate(providerId, { $inc: { openOrders: delta } })
+    const update: Record<string, unknown> = { $inc: { openOrders: delta } };
+    if (delta > 0) {
+      update.$inc = {
+        openOrders: delta,
+        recentAcceptCount: delta,
+      };
+    }
+    await this.providers.findByIdAndUpdate(providerId, update).exec();
+    // Floor openOrders at 0
+    if (delta < 0) {
+      await this.providers
+        .updateOne(
+          { _id: new Types.ObjectId(providerId), openOrders: { $lt: 0 } },
+          { $set: { openOrders: 0 } },
+        )
+        .exec();
+    }
+  }
+
+  async applyQualityPenalty(
+    providerId: string,
+    kind: "complaint" | "delay" | "error",
+    threshold: number,
+  ) {
+    const penalties = { complaint: 15, delay: 10, error: 20 } as const;
+    const countField =
+      kind === "complaint"
+        ? "complaintCount"
+        : kind === "delay"
+          ? "delayCount"
+          : "errorCount";
+
+    const doc = await this.providers.findById(providerId).exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+
+    doc.qualityScore = Math.max(0, doc.qualityScore - penalties[kind]);
+    doc[countField] += 1;
+
+    if (doc.qualityScore < threshold && !doc.autoSuspended) {
+      doc.autoSuspended = true;
+      doc.acceptingOrders = false;
+      doc.suspendedAt = new Date();
+      doc.suspendReason = `quality_score_below_${threshold}`;
+    }
+
+    await doc.save();
+    return doc;
+  }
+
+  async unsuspend(providerId: string, reason?: string) {
+    const doc = await this.providers.findById(providerId).exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+    doc.autoSuspended = false;
+    doc.acceptingOrders = true;
+    doc.suspendedAt = undefined;
+    doc.suspendReason = reason ? `unsuspended: ${reason}` : undefined;
+    await doc.save();
+    return doc;
+  }
+
+  async eightySix(providerId: string, dto: EightySixDto) {
+    if (!dto.menuItemIds.length) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    const ids = dto.menuItemIds.map((id) => new Types.ObjectId(id));
+    const doc = await this.providers
+      .findByIdAndUpdate(
+        providerId,
+        { $addToSet: { eightySixedItemIds: { $each: ids } } },
+        { new: true },
+      )
       .exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+    return doc;
+  }
+
+  async clearEightySix(providerId: string, dto: EightySixDto) {
+    const ids = dto.menuItemIds.map((id) => new Types.ObjectId(id));
+    const doc = await this.providers
+      .findByIdAndUpdate(
+        providerId,
+        { $pull: { eightySixedItemIds: { $in: ids } } },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+    return doc;
+  }
+
+  async pauseOrders(providerId: string, dto: PauseOrdersDto) {
+    const doc = await this.providers
+      .findByIdAndUpdate(
+        providerId,
+        {
+          $set: {
+            acceptingOrders: false,
+            pauseReason: dto.reason ?? "paused",
+            pausedUntil: dto.until ? new Date(dto.until) : undefined,
+          },
+        },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+    return doc;
+  }
+
+  async resumeOrders(providerId: string) {
+    const doc = await this.providers
+      .findByIdAndUpdate(
+        providerId,
+        {
+          $set: { acceptingOrders: true },
+          $unset: { pauseReason: 1, pausedUntil: 1 },
+        },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException("errors.notFound");
+    return doc;
   }
 }

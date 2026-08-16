@@ -5,6 +5,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
 import { OfferStatus, OrderStatus } from "../common/enums";
+import { EtaService } from "../eta/eta.service";
 import { Order } from "../orders/schemas/order.schema";
 import { ProvidersService } from "../providers/providers.service";
 import { ProviderDocument } from "../providers/schemas/provider.schema";
@@ -20,12 +21,31 @@ describe("DispatchService", () => {
   let findOrders: jest.Mock;
   let bumpOpenOrders: jest.Mock;
   let findNearby: jest.Mock;
+  let getById: jest.Mock;
+
+  const cfg = {
+    w1Rating: 0.4,
+    w2Proximity: 0.4,
+    w3QueueEmptiness: 0.2,
+    w4Fairness: 0.15,
+    w5Quality: 0.25,
+    dispatchTopN: 5,
+    waveSize: 3,
+    bidWindowSeconds: 15,
+    dispatchInitialRadiusMeters: 3000,
+    dispatchExpandedRadiusMeters: 5000,
+    offerTimeoutSeconds: 90,
+    etaBasePrepMinutes: 18,
+    etaBaseDeliveryMinutes: 22,
+    etaWindowPaddingMinutes: 5,
+  };
 
   beforeEach(async () => {
     findOrderById = jest.fn();
     findOrders = jest.fn();
     bumpOpenOrders = jest.fn().mockResolvedValue(undefined);
     findNearby = jest.fn().mockResolvedValue([]);
+    getById = jest.fn();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -44,19 +64,24 @@ describe("DispatchService", () => {
           useValue: {
             findNearby,
             bumpOpenOrders,
+            getById,
           },
         },
         {
           provide: AppConfigService,
           useValue: {
-            get: jest.fn().mockResolvedValue({
-              w1Rating: 0.4,
-              w2Proximity: 0.4,
-              w3QueueEmptiness: 0.2,
-              dispatchTopN: 5,
-              dispatchInitialRadiusMeters: 3000,
-              dispatchExpandedRadiusMeters: 5000,
-              offerTimeoutSeconds: 90,
+            get: jest.fn().mockResolvedValue(cfg),
+          },
+        },
+        {
+          provide: EtaService,
+          useValue: {
+            computeForOrder: jest.fn().mockImplementation(async (order) => {
+              order.etaPrepMin = 15;
+              order.etaPrepMax = 25;
+              order.etaDeliveryMin = 18;
+              order.etaDeliveryMax = 28;
+              order.etaComputedAt = new Date();
             }),
           },
         },
@@ -107,14 +132,14 @@ describe("DispatchService", () => {
       const ranked = service.rankProviders(providers, lng, lat, 0.4, 0.4, 0.2);
 
       expect(ranked).toHaveLength(2);
-      expect(ranked[0]._score).toBeGreaterThan(ranked[1]._score);
-      expect(ranked[0]._score).toBeCloseTo(1, 5);
-      expect(ranked[0].rating).toBe(5);
+      expect(ranked[0]!._score).toBeGreaterThan(ranked[1]!._score);
+      expect(ranked[0]!._score).toBeCloseTo(1, 5);
+      expect(ranked[0]!.rating).toBe(5);
     });
   });
 
-  describe("acceptOffer first-accept-wins", () => {
-    it("acquires Redis lock; second concurrent accept conflicts", async () => {
+  describe("wave respond + resolve", () => {
+    it("does not assign on first ready bid when others still pending", async () => {
       const orderId = new Types.ObjectId().toHexString();
       const providerA = new Types.ObjectId().toHexString();
       const providerB = new Types.ObjectId().toHexString();
@@ -128,11 +153,13 @@ describe("DispatchService", () => {
           {
             providerId: new Types.ObjectId(providerA),
             status: OfferStatus.PENDING,
+            score: 0.9,
             expiresAt: new Date(Date.now() + 60_000),
           },
           {
             providerId: new Types.ObjectId(providerB),
             status: OfferStatus.PENDING,
+            score: 0.8,
             expiresAt: new Date(Date.now() + 60_000),
           },
         ],
@@ -143,22 +170,79 @@ describe("DispatchService", () => {
         exec: () => Promise.resolve(order),
       });
 
-      const first = await service.acceptOffer(orderId, providerA);
-      expect(first.providerId).toBe(providerA);
-      expect(order.status).toBe(OrderStatus.ACCEPTED_BY_PROVIDER);
-      expect(bumpOpenOrders).toHaveBeenCalledWith(providerA, 1);
+      const first = await service.respondToWave(orderId, providerA, true, 18);
+      expect(first).toMatchObject({
+        orderId,
+        awaitingResponses: 1,
+        ready: true,
+      });
+      expect(order.providerId).toBeUndefined();
+      expect(bumpOpenOrders).not.toHaveBeenCalled();
+    });
 
-      const lockKey = `order:accept:${orderId}`;
+    it("resolves wave when all kitchens have responded — server picks winner", async () => {
+      const orderId = new Types.ObjectId().toHexString();
+      const providerA = new Types.ObjectId().toHexString();
+      const providerB = new Types.ObjectId().toHexString();
+
+      const order = {
+        id: orderId,
+        customerId: new Types.ObjectId(),
+        status: OrderStatus.PENDING_OFFERS,
+        providerId: undefined as Types.ObjectId | undefined,
+        offers: [
+          {
+            providerId: new Types.ObjectId(providerA),
+            status: OfferStatus.PENDING,
+            score: 0.7,
+            expiresAt: new Date(Date.now() + 60_000),
+            ready: true,
+            quotedPrepMinutes: 25,
+            respondedAt: new Date(),
+          },
+          {
+            providerId: new Types.ObjectId(providerB),
+            status: OfferStatus.PENDING,
+            score: 0.6,
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        ],
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+
+      findOrderById.mockReturnValue({
+        exec: () => Promise.resolve(order),
+      });
+      getById.mockImplementation(async (id: string) => ({
+        id,
+        qualityScore: id === providerB ? 95 : 70,
+        recentAcceptCount: id === providerA ? 5 : 0,
+        fairnessWeight: 1,
+        openOrders: 0,
+      }));
+
+      const result = await service.respondToWave(orderId, providerB, true, 12);
+      expect(result).toMatchObject({
+        orderId,
+        status: OrderStatus.ACCEPTED_BY_PROVIDER,
+      });
+      expect(order.providerId).toBeDefined();
+      expect(bumpOpenOrders).toHaveBeenCalled();
+    });
+
+    it("resolveWave lock conflicts when another resolve is in progress", async () => {
+      const orderId = new Types.ObjectId().toHexString();
+      const lockKey = `order:wave:${orderId}`;
       await redis.acquireLock(lockKey, "other-owner", 15_000);
 
-      await expect(
-        service.acceptOffer(orderId, providerB),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.resolveWave(orderId)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
     });
   });
 
   describe("expire → expand → cancel", () => {
-    it("expands radius once when all offers expire", async () => {
+    it("expands wave when bid window ends with no ready bids", async () => {
       const orderId = new Types.ObjectId().toHexString();
       const providerId = new Types.ObjectId();
       const now = new Date();
@@ -169,8 +253,10 @@ describe("DispatchService", () => {
         customerId: new Types.ObjectId(),
         status: OrderStatus.PENDING_OFFERS,
         radiusExpanded: false,
+        waveExpandCount: 0,
         deliveryLongitude: 11.57,
         deliveryLatitude: 48.13,
+        lines: [] as Array<{ menuItemId: Types.ObjectId }>,
         offers: [
           {
             providerId,
@@ -189,7 +275,6 @@ describe("DispatchService", () => {
         exec: () => Promise.resolve(order),
       });
 
-      // Second call inside startDispatch after expand
       const nearbyProvider = {
         _id: new Types.ObjectId(),
         rating: 4,
@@ -200,55 +285,42 @@ describe("DispatchService", () => {
       findNearby.mockResolvedValue([nearbyProvider]);
 
       const results = await service.processExpiredOffers(now);
-      expect(order.radiusExpanded).toBe(true);
+      expect(order.waveExpandCount).toBeGreaterThanOrEqual(1);
       expect(results.length).toBeGreaterThanOrEqual(1);
-      // After expand, startDispatch runs and creates new offers
       expect(order.status).toBe(OrderStatus.PENDING_OFFERS);
-      expect(order.offers.some((o) => o.status === OfferStatus.PENDING)).toBe(
-        true,
-      );
     });
 
-    it("cancels order when offers expire after radius already expanded", async () => {
+    it("cancels order when waves exhausted", async () => {
       const orderId = new Types.ObjectId().toHexString();
-      const now = new Date();
       const order = {
         id: orderId,
-        _id: new Types.ObjectId(orderId),
         customerId: new Types.ObjectId(),
         status: OrderStatus.PENDING_OFFERS,
         radiusExpanded: true,
-        offers: [
-          {
-            providerId: new Types.ObjectId(),
-            status: OfferStatus.PENDING,
-            expiresAt: new Date(now.getTime() - 500),
-          },
-        ],
+        waveExpandCount: 2,
+        offers: [] as Array<{ status: OfferStatus }>,
         save: jest.fn().mockResolvedValue(undefined),
       };
 
-      findOrders.mockReturnValue({ exec: () => Promise.resolve([order]) });
-      findOrderById.mockReturnValue({ exec: () => Promise.resolve(order) });
-
-      const results = await service.processExpiredOffers(now);
-      expect(order.status).toBe(OrderStatus.CANCELLED);
-      expect(results[0]).toMatchObject({
+      const cancelled = await service.afterNoPendingOffers(order as never);
+      expect(cancelled).toEqual({
         orderId,
         status: OrderStatus.CANCELLED,
         reason: "offers_exhausted",
       });
     });
 
-    it("afterNoPendingOffers expands then cancels on second exhaustion", async () => {
+    it("afterNoPendingOffers expands then eventually cancels", async () => {
       const orderId = new Types.ObjectId().toHexString();
       const order = {
         id: orderId,
         customerId: new Types.ObjectId(),
         status: OrderStatus.PENDING_OFFERS,
         radiusExpanded: false,
+        waveExpandCount: 0,
         deliveryLongitude: 11.57,
         deliveryLatitude: 48.13,
+        lines: [] as Array<{ menuItemId: Types.ObjectId }>,
         offers: [] as Array<{ status: OfferStatus }>,
         save: jest.fn().mockResolvedValue(undefined),
       };
@@ -256,12 +328,12 @@ describe("DispatchService", () => {
       findOrderById.mockReturnValue({ exec: () => Promise.resolve(order) });
       findNearby.mockResolvedValue([]);
 
-      const expanded = await service.afterNoPendingOffers(order as never);
-      expect(order.radiusExpanded).toBe(true);
-      expect(expanded).toMatchObject({ orderId, offerCount: 0 });
+      await service.afterNoPendingOffers(order as never);
+      expect(order.waveExpandCount).toBe(1);
 
-      // Simulate second exhaustion after expand
-      order.offers = [];
+      await service.afterNoPendingOffers(order as never);
+      expect(order.waveExpandCount).toBe(2);
+
       const cancelled = await service.afterNoPendingOffers(order as never);
       expect(cancelled).toEqual({
         orderId,

@@ -46,7 +46,10 @@ describe("PaymentsService", () => {
     findUserById = jest.fn();
     startDispatch = jest.fn().mockResolvedValue({ offerCount: 1 });
     configGet = jest.fn();
-    appConfigGet = jest.fn().mockResolvedValue({ cashFailThreshold: 3 });
+    appConfigGet = jest.fn().mockResolvedValue({
+      cashFailThreshold: 3,
+      cashHardCapCents: 50_000,
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -223,6 +226,7 @@ describe("PaymentsService", () => {
       available: false,
       failedCashCount: 2,
       threshold: 3,
+      hardCapCents: 50_000,
     });
   });
 
@@ -243,5 +247,26 @@ describe("PaymentsService", () => {
 
     expect(paymentsCreate).not.toHaveBeenCalled();
     expect(startDispatch).not.toHaveBeenCalled();
+  });
+
+  it("rejects cash initiate when total exceeds hard cap", async () => {
+    const order = makeOrder({
+      paymentMethod: PaymentMethod.CASH,
+      totalCents: 50_001,
+    });
+    findOrderById.mockReturnValue({ exec: () => Promise.resolve(order) });
+    findUserById.mockResolvedValue({
+      cashBanned: false,
+      failedCashCount: 0,
+    });
+
+    await expect(
+      service.initiate(customerId, {
+        orderId,
+        method: PaymentMethod.CASH,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(paymentsCreate).not.toHaveBeenCalled();
   });
 });

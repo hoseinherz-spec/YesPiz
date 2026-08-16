@@ -17,11 +17,13 @@ export type UpdateProviderRequest = {
   isActive?: boolean;
   acceptingOrders?: boolean;
   rating?: number;
+  acceptCap?: number;
 };
 
 export type ProviderSelfUpdateRequest = {
   acceptingOrders?: boolean;
   logoUrl?: string;
+  acceptCap?: number;
 };
 
 export type Provider = {
@@ -34,6 +36,14 @@ export type Provider = {
   latitude: number;
   location: { type: 'Point'; coordinates: [number, number] };
   rating: number;
+  qualityScore?: number;
+  complaintCount?: number;
+  delayCount?: number;
+  errorCount?: number;
+  autoSuspended?: boolean;
+  suspendedAt?: string;
+  suspendReason?: string;
+  acceptCap?: number | null;
   openOrders: number;
   isActive: boolean;
   acceptingOrders: boolean;

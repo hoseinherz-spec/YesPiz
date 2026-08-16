@@ -66,29 +66,36 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 
 ### Known Phase 1 gaps (do not document as done)
 
-- `openOrders` increments on accept and is never decremented.
-- Dispatch uses order count, not prep-weight workload.
-- `markFailedCash` has no HTTP endpoint and ignores `cashFailThreshold`.
-- No admin unban / Cash Trust.
-- No €500 cash cap.
-- `PICKED_UP` → `COMPLETED` are not reachable.
-- Provider panel cannot assign a courier (API exists).
+- Dispatch ranking still uses open-order count more than prep-weight workload.
 - Checkout schedule chips and leave-at-door are not sent to the API.
+
+### Phase 2 progress (partial)
+
+| Work | Status |
+|---|---|
+| Kitchen Quality OS | API shipped: recipe fields on menu items, checklist/seal/ready-photo endpoints, handoff gate before `READY_FOR_PICKUP`, quality score + auto-suspend, admin test orders |
+| Cash hygiene | API shipped: €500 hard cap (`cashHardCapCents`), `POST /orders/:id/failed-cash`, admin cash restore, threshold from app config |
+| Capacity + inventory | **Shipped:** `acceptCap` enforced; 86 items; pause/resume; prep override; `openOrders` decremented on complete/cancel/failed-cash |
+| Wave dispatch | **Shipped:** bid window (`waveSize`/`bidWindowSeconds`); ready + quoted prep; server pick; expand N + radius |
+| Server ETA | **Shipped:** prep + delivery window on order; customer view exposes ranges |
+| Proof chain | **Shipped:** `DeliveryProof`; pickup → en-route → deliver → cash receipt → complete |
+| Safe batch | **Shipped:** proximity/ready-time suggest; safety checks; auto-split; `hasShortExtraStop` |
+| Incident workflows | **Shipped:** typed courier incidents + workflow steps; admin resolve/reassign |
 
 ## Phase 2 — P0 operations (next)
 
-Build in this order. Each row must land in API first; UI follows.
+API for rows 1–8 below is largely done; UI surfaces still follow.
 
-| Order | Work | Done when |
+| # | Work | Done when |
 |---|---|---|
-| 1 | Kitchen Quality OS | Recipe/weight/temp/seal/checklist/photo; internal score; auto-suspend; admin test order |
-| 2 | Capacity + inventory | Kitchen sets cap, prep override, 86 item, pause new orders, mark ready (ready already exists) |
-| 3 | Wave dispatch | Top-3 bid 10–20s; server picks; fairness; expand N + radius. Retire first-accept-wins |
-| 4 | Server ETA window | History + time of day + pizza type + queue; mobile shows a range |
-| 5 | Proof chain | Seal, pickup QR/OTP+geo, door PIN/sign/photo, cash receipt, custody. Wire `PICKED_UP` → `COMPLETED` |
-| 6 | Safe batch engine | Ready-time, route deviation, max bag time, auto-split; customer sees “one short stop” only |
-| 7 | Incident workflows | Crash, no-answer, no-pay, wrong address, damaged, vehicle, SOS — each starts a workflow |
-| 8 | Cash hygiene | €500 hard cap; failed-cash HTTP; admin restore. Full Cash Trust score is P1 |
+| 1 | Kitchen Quality OS | **API done.** UI: provider checklist + admin score still thin |
+| 2 | Capacity + inventory | **API done.** Kitchen UI for 86/pause/cap |
+| 3 | Wave dispatch | **API done.** Use `POST /dispatch/orders/:id/respond` |
+| 4 | Server ETA window | **API done.** Mobile should render range |
+| 5 | Proof chain | **API done.** Courier app screens still needed |
+| 6 | Safe batch engine | **API done.** Provider/courier UI still thin |
+| 7 | Incident workflows | **API done.** Courier/admin UI still needed |
+| 8 | Cash hygiene | **Done (API):** €500 hard cap; failed-cash HTTP; admin restore. Full Cash Trust score is P1 |
 
 ## Phase 3 — P1 trust and repeat
 

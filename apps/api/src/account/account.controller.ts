@@ -4,8 +4,12 @@ import {
   CurrentUser,
   type JwtPayloadUser,
 } from "../common/decorators/current-user.decorator";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "../common/enums";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { AccountService } from "./account.service";
+import { RestoreCashDto } from "./dto/admin-cash.dto";
 import {
   ConfirmOtpDto,
   LoginDto,
@@ -49,5 +53,13 @@ export class AccountController {
   @Get("profile/me")
   me(@CurrentUser() user: JwtPayloadUser) {
     return this.account.getProfile(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post("admin/users/:id/cash-restore")
+  restoreCash(@Param("id") id: string, @Body() dto: RestoreCashDto) {
+    return this.account.restoreCash(id, dto.reason);
   }
 }

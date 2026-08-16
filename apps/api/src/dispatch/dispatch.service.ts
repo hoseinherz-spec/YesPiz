@@ -10,6 +10,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { Model, Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
 import { OfferStatus, OrderStatus } from "../common/enums";
+import { EtaService } from "../eta/eta.service";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
 import { ProvidersService } from "../providers/providers.service";
 import { ProviderDocument } from "../providers/schemas/provider.schema";
@@ -29,6 +30,7 @@ export class DispatchService {
     private readonly redis: RedisService,
     private readonly realtime: RealtimeGateway,
     private readonly push: PushService,
+    private readonly eta: EtaService,
   ) {}
 
   async startDispatch(orderId: string) {
@@ -44,11 +46,19 @@ export class DispatchService {
     const cfg = await this.config.get();
     const lng = order.deliveryLongitude!;
     const lat = order.deliveryLatitude!;
-    const radius = order.radiusExpanded
-      ? cfg.dispatchExpandedRadiusMeters
-      : cfg.dispatchInitialRadiusMeters;
+    const expandCount = order.waveExpandCount ?? 0;
+    const radius =
+      expandCount > 0
+        ? cfg.dispatchExpandedRadiusMeters
+        : cfg.dispatchInitialRadiusMeters;
 
-    const nearby = await this.providers.findNearby(lng, lat, radius);
+    const requiredItems = order.lines.map((l) => String(l.menuItemId));
+    const nearby = await this.providers.findNearby(
+      lng,
+      lat,
+      radius,
+      requiredItems,
+    );
     const ranked = this.rankProviders(
       nearby,
       lng,
@@ -57,10 +67,11 @@ export class DispatchService {
       cfg.w2Proximity,
       cfg.w3QueueEmptiness,
     );
-    const top = ranked.slice(0, cfg.dispatchTopN);
-    const expiresAt = new Date(
-      Date.now() + (cfg.offerTimeoutSeconds ?? 90) * 1000,
-    );
+
+    const waveSize = (cfg.waveSize ?? 3) + expandCount;
+    const top = ranked.slice(0, waveSize);
+    const bidSeconds = cfg.bidWindowSeconds ?? 15;
+    const expiresAt = new Date(Date.now() + bidSeconds * 1000);
 
     order.offers = top.map((p) => ({
       providerId: p._id as Types.ObjectId,
@@ -69,10 +80,11 @@ export class DispatchService {
       expiresAt,
     }));
     order.status = OrderStatus.PENDING_OFFERS;
+    if (expandCount > 0) order.radiusExpanded = true;
     await order.save();
 
     this.logger.log(
-      `Broadcast ${top.length} offers for order ${orderId} (expires ${expiresAt.toISOString()})`,
+      `Wave ${top.length} bids for order ${orderId} (window ${bidSeconds}s)`,
     );
 
     for (const offer of order.offers) {
@@ -82,6 +94,8 @@ export class DispatchService {
         providerId,
         expiresAt: expiresAt.toISOString(),
         score: offer.score,
+        wave: true,
+        bidWindowSeconds: bidSeconds,
       });
       void this.push.notifyProviderOffer(providerId, order.id);
     }
@@ -95,6 +109,8 @@ export class DispatchService {
       orderId: order.id,
       status: order.status,
       offerCount: top.length,
+      waveSize,
+      bidWindowSeconds: bidSeconds,
       expiresAt: expiresAt.toISOString(),
       offers: order.offers.map((o) => ({
         providerId: String(o.providerId),
@@ -132,9 +148,82 @@ export class DispatchService {
       .sort((a, b) => b._score - a._score);
   }
 
+  /**
+   * Kitchen declares readiness + quoted prep within the bid window.
+   * Server picks the winner after the window (or when all have responded).
+   */
+  async respondToWave(
+    orderId: string,
+    providerId: string,
+    ready: boolean,
+    quotedPrepMinutes?: number,
+  ) {
+    const order = await this.orders.findById(orderId).exec();
+    if (!order) throw new NotFoundException("errors.notFound");
+    if (order.status !== OrderStatus.PENDING_OFFERS) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    if (order.providerId) {
+      throw new ConflictException("errors.conflict");
+    }
+
+    const offer = order.offers.find((o) => String(o.providerId) === providerId);
+    if (!offer || offer.status !== OfferStatus.PENDING) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    if (offer.expiresAt && offer.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    if (offer.respondedAt) {
+      throw new ConflictException("errors.conflict");
+    }
+
+    if (ready && (quotedPrepMinutes == null || quotedPrepMinutes < 5)) {
+      throw new BadRequestException("errors.badRequest");
+    }
+
+    offer.respondedAt = new Date();
+    offer.ready = ready;
+    if (ready) {
+      offer.quotedPrepMinutes = quotedPrepMinutes;
+    } else {
+      offer.status = OfferStatus.REJECTED;
+    }
+    await order.save();
+
+    const awaiting = order.offers.filter(
+      (o) => o.status === OfferStatus.PENDING && !o.respondedAt,
+    );
+    if (awaiting.length === 0) {
+      return this.resolveWave(orderId);
+    }
+
+    return {
+      orderId: order.id,
+      status: order.status,
+      ready,
+      awaitingResponses: awaiting.length,
+    };
+  }
+
+  /**
+   * Backward-compatible alias: declare ready with a default prep quote.
+   * Does NOT claim the order — waits for wave resolution.
+   */
   async acceptOffer(orderId: string, providerId: string) {
-    const lockKey = `order:accept:${orderId}`;
-    const owner = providerId;
+    return this.respondToWave(orderId, providerId, true, 20);
+  }
+
+  async rejectOffer(orderId: string, providerId: string) {
+    return this.respondToWave(orderId, providerId, false);
+  }
+
+  /**
+   * Pick the best ready bidder. Providers never select the winner.
+   */
+  async resolveWave(orderId: string) {
+    const lockKey = `order:wave:${orderId}`;
+    const owner = `resolve:${orderId}`;
     const acquired = await this.redis.acquireLock(lockKey, owner, 15_000);
     if (!acquired) {
       throw new ConflictException("errors.conflict");
@@ -143,46 +232,98 @@ export class DispatchService {
     try {
       const order = await this.orders.findById(orderId).exec();
       if (!order) throw new NotFoundException("errors.notFound");
-      if (order.status !== OrderStatus.PENDING_OFFERS) {
-        throw new ConflictException("errors.conflict");
-      }
-      if (order.providerId) {
-        throw new ConflictException("errors.conflict");
+      if (order.status !== OrderStatus.PENDING_OFFERS || order.providerId) {
+        return {
+          orderId,
+          status: order?.status,
+          skipped: true,
+        };
       }
 
-      const offer = order.offers.find(
-        (o) => String(o.providerId) === providerId,
+      const cfg = await this.config.get();
+      const readyBids = order.offers.filter(
+        (o) =>
+          o.status === OfferStatus.PENDING &&
+          o.ready === true &&
+          o.quotedPrepMinutes != null,
       );
-      if (!offer || offer.status !== OfferStatus.PENDING) {
-        throw new BadRequestException("errors.badRequest");
-      }
-      if (offer.expiresAt && offer.expiresAt.getTime() < Date.now()) {
-        throw new BadRequestException("errors.badRequest");
+
+      if (readyBids.length === 0) {
+        // Expire remaining pending
+        for (const o of order.offers) {
+          if (o.status === OfferStatus.PENDING) {
+            o.status = OfferStatus.EXPIRED;
+            o.respondedAt = o.respondedAt ?? new Date();
+          }
+        }
+        await order.save();
+        return this.afterNoPendingOffers(order);
       }
 
-      offer.status = OfferStatus.ACCEPTED;
-      offer.respondedAt = new Date();
+      const providerDocs = await Promise.all(
+        readyBids.map((b) => this.providers.getById(String(b.providerId))),
+      );
+      const byId = new Map(providerDocs.map((p) => [p.id, p]));
+
+      const maxPrep = Math.max(
+        ...readyBids.map((b) => b.quotedPrepMinutes ?? 1),
+        1,
+      );
+      const maxRecent = Math.max(
+        ...providerDocs.map((p) => p.recentAcceptCount ?? 0),
+        1,
+      );
+
+      let best = readyBids[0]!;
+      let bestScore = -Infinity;
+      for (const bid of readyBids) {
+        const p = byId.get(String(bid.providerId))!;
+        const prepScore = 1 - (bid.quotedPrepMinutes ?? maxPrep) / maxPrep;
+        const qualityScore = (p.qualityScore ?? 100) / 100;
+        const fairness =
+          (p.fairnessWeight ?? 1) *
+          (1 - (p.recentAcceptCount ?? 0) / maxRecent);
+        const base = bid.score ?? 0;
+        const score =
+          0.35 * base +
+          0.25 * prepScore +
+          (cfg.w5Quality ?? 0.25) * qualityScore +
+          (cfg.w4Fairness ?? 0.15) * fairness;
+        if (score > bestScore) {
+          bestScore = score;
+          best = bid;
+        }
+      }
+
+      const winnerId = String(best.providerId);
+      best.status = OfferStatus.ACCEPTED;
       for (const other of order.offers) {
         if (
-          String(other.providerId) !== providerId &&
+          String(other.providerId) !== winnerId &&
           other.status === OfferStatus.PENDING
         ) {
           other.status = OfferStatus.EXPIRED;
         }
       }
-      order.providerId = new Types.ObjectId(providerId);
+      order.providerId = new Types.ObjectId(winnerId);
       order.status = OrderStatus.ACCEPTED_BY_PROVIDER;
+      order.quotedPrepMinutes = best.quotedPrepMinutes;
+      await this.eta.computeForOrder(order, {
+        quotedPrepMinutes: best.quotedPrepMinutes,
+        queueDepth: byId.get(winnerId)?.openOrders ?? 0,
+      });
       await order.save();
-      await this.providers.bumpOpenOrders(providerId, 1);
+      await this.providers.bumpOpenOrders(winnerId, 1);
 
       this.realtime.emitOrderStatus(
         order.id,
         String(order.customerId),
         order.status,
       );
-      this.realtime.emitToProvider(providerId, "order.status", {
+      this.realtime.emitToProvider(winnerId, "order.status", {
         orderId: order.id,
         status: order.status,
+        winner: true,
       });
       void this.push.notifyCustomerStatus(
         String(order.customerId),
@@ -193,45 +334,23 @@ export class DispatchService {
       return {
         orderId: order.id,
         status: order.status,
-        providerId,
+        providerId: winnerId,
+        quotedPrepMinutes: best.quotedPrepMinutes,
+        waveScore: bestScore,
+        eta: {
+          prepMin: order.etaPrepMin,
+          prepMax: order.etaPrepMax,
+          deliveryMin: order.etaDeliveryMin,
+          deliveryMax: order.etaDeliveryMax,
+        },
       };
     } finally {
       await this.redis.releaseLock(lockKey, owner);
     }
   }
 
-  async rejectOffer(orderId: string, providerId: string) {
-    const order = await this.orders.findById(orderId).exec();
-    if (!order) throw new NotFoundException("errors.notFound");
-    if (order.status !== OrderStatus.PENDING_OFFERS) {
-      throw new BadRequestException("errors.badRequest");
-    }
-
-    const offer = order.offers.find((o) => String(o.providerId) === providerId);
-    if (!offer || offer.status !== OfferStatus.PENDING) {
-      throw new BadRequestException("errors.badRequest");
-    }
-    offer.status = OfferStatus.REJECTED;
-    offer.respondedAt = new Date();
-    await order.save();
-
-    const pending = order.offers.filter(
-      (o) => o.status === OfferStatus.PENDING,
-    );
-    if (pending.length === 0) {
-      return this.afterNoPendingOffers(order);
-    }
-
-    return {
-      orderId: order.id,
-      status: order.status,
-      remainingOffers: pending.length,
-    };
-  }
-
   /**
-   * Expire timed-out offers, then expand radius once, else cancel.
-   * Safe with first-accept lock: skips orders currently being accepted.
+   * When bid window ends: expire unanswered, then resolve among ready bids.
    */
   async processExpiredOffers(now = new Date()) {
     const candidates = await this.orders
@@ -244,26 +363,26 @@ export class DispatchService {
 
     const results: Array<Record<string, unknown>> = [];
     for (const order of candidates) {
-      const lockKey = `order:accept:${order.id}`;
+      const lockKey = `order:wave:${order.id}`;
       const owner = `expiry:${order.id}`;
       const acquired = await this.redis.acquireLock(lockKey, owner, 10_000);
       if (!acquired) continue;
 
+      let shouldResolve = false;
       try {
-        // Re-read under lock
         const fresh = await this.orders.findById(order.id).exec();
         if (!fresh || fresh.status !== OrderStatus.PENDING_OFFERS) continue;
+        if (fresh.providerId) continue;
 
-        let expiredAny = false;
         for (const offer of fresh.offers) {
           if (
             offer.status === OfferStatus.PENDING &&
+            !offer.respondedAt &&
             offer.expiresAt &&
             offer.expiresAt.getTime() <= now.getTime()
           ) {
             offer.status = OfferStatus.EXPIRED;
             offer.respondedAt = now;
-            expiredAny = true;
             this.realtime.emitToProvider(
               String(offer.providerId),
               "offer.expired",
@@ -274,35 +393,39 @@ export class DispatchService {
             );
           }
         }
-        if (!expiredAny) continue;
         await fresh.save();
-
-        const pending = fresh.offers.filter(
-          (o) => o.status === OfferStatus.PENDING,
+        shouldResolve = true;
+      } catch (err) {
+        this.logger.error(
+          `Wave expiry failed for ${order.id}: ${(err as Error).message}`,
         );
-        if (pending.length === 0) {
-          results.push(await this.afterNoPendingOffers(fresh));
-        } else {
-          results.push({
-            orderId: fresh.id,
-            status: fresh.status,
-            remainingOffers: pending.length,
-            expired: true,
-          });
-        }
       } finally {
         await this.redis.releaseLock(lockKey, owner);
+      }
+
+      if (shouldResolve) {
+        try {
+          results.push(await this.resolveWave(order.id));
+        } catch (err) {
+          this.logger.error(
+            `Wave resolve failed for ${order.id}: ${(err as Error).message}`,
+          );
+        }
       }
     }
     return results;
   }
 
-  /** Public for tests — expand once then cancel. */
+  /** Expand wave N + radius once per exhaustion, then cancel. */
   async afterNoPendingOffers(order: OrderDocument) {
-    if (!order.radiusExpanded) {
+    const maxExpands = 2;
+    if ((order.waveExpandCount ?? 0) < maxExpands) {
+      order.waveExpandCount = (order.waveExpandCount ?? 0) + 1;
       order.radiusExpanded = true;
       await order.save();
-      this.logger.log(`Expanding radius for order ${order.id}`);
+      this.logger.log(
+        `Expanding wave #${order.waveExpandCount} for order ${order.id}`,
+      );
       return this.startDispatch(order.id);
     }
     order.status = OrderStatus.CANCELLED;
@@ -331,10 +454,10 @@ export class DispatchService {
     try {
       const results = await this.processExpiredOffers();
       if (results.length) {
-        this.logger.log(`Processed ${results.length} expired-offer order(s)`);
+        this.logger.log(`Processed ${results.length} wave-expiry order(s)`);
       }
     } catch (err) {
-      this.logger.error(`Offer expiry cron failed: ${(err as Error).message}`);
+      this.logger.error(`Wave expiry cron failed: ${(err as Error).message}`);
     } finally {
       this.expiryRunning = false;
     }
@@ -349,16 +472,22 @@ export class DispatchService {
       })
       .exec();
 
-    return orders.map((o) => ({
-      orderId: o.id,
-      totalCents: o.totalCents,
-      lines: o.lines,
-      score: o.offers.find((x) => String(x.providerId) === providerId)?.score,
-      expiresAt: o.offers.find((x) => String(x.providerId) === providerId)
-        ?.expiresAt,
-      deliveryLatitude: o.deliveryLatitude,
-      deliveryLongitude: o.deliveryLongitude,
-    }));
+    return orders.map((o) => {
+      const offer = o.offers.find((x) => String(x.providerId) === providerId);
+      return {
+        orderId: o.id,
+        totalCents: o.totalCents,
+        lines: o.lines,
+        score: offer?.score,
+        expiresAt: offer?.expiresAt,
+        ready: offer?.ready,
+        quotedPrepMinutes: offer?.quotedPrepMinutes,
+        respondedAt: offer?.respondedAt,
+        wave: true,
+        deliveryLatitude: o.deliveryLatitude,
+        deliveryLongitude: o.deliveryLongitude,
+      };
+    });
   }
 
   private haversineMeters(

@@ -8,4 +8,5 @@ export const ordersEndpoints = {
   byId: (id: string) => `/api/v1/orders/${id}`,
   courierLocation: (id: string) => `/api/v1/orders/${id}/courier-location`,
   kitchenStatus: (id: string) => `/api/v1/orders/${id}/kitchen-status`,
+  failedCash: (id: string) => `/api/v1/orders/${id}/failed-cash`,
 } as const;

@@ -6,7 +6,9 @@ import {
   CourierSession,
   CourierSessionSchema,
 } from "../couriers/schemas/courier.schema";
+import { EtaModule } from "../eta/eta.module";
 import { ProvidersModule } from "../providers/providers.module";
+import { QualityModule } from "../quality/quality.module";
 import { OrdersController } from "./orders.controller";
 import { OrdersService } from "./orders.service";
 import {
@@ -25,6 +27,8 @@ import { Order, OrderSchema } from "./schemas/order.schema";
     AccountModule,
     CatalogModule,
     ProvidersModule,
+    QualityModule,
+    EtaModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

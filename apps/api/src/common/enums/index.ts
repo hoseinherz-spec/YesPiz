@@ -90,4 +90,22 @@ export enum OfferStatus {
   EXPIRED = "expired",
 }
 
+export enum IncidentKind {
+  CRASH = "crash",
+  NO_ANSWER = "no_answer",
+  NO_PAY = "no_pay",
+  WRONG_ADDRESS = "wrong_address",
+  DAMAGED_PACK = "damaged_pack",
+  VEHICLE = "vehicle",
+  SOS = "sos",
+}
+
+export enum IncidentStatus {
+  OPEN = "open",
+  WAITING = "waiting",
+  REASSIGNING = "reassigning",
+  RESOLVED = "resolved",
+  CANCELLED = "cancelled",
+}
+
 export const MAX_BATCH_SIZE = 3;

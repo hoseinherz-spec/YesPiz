@@ -19,6 +19,9 @@ export class Batch {
 
   @Prop({ default: 0 })
   totalPrepWeight!: number;
+
+  @Prop({ default: 8 })
+  maxHoldMinutes!: number;
 }
 
 export const BatchSchema = SchemaFactory.createForClass(Batch);

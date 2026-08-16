@@ -32,7 +32,7 @@ export function ScreenHeader({ title, subtitle, right, backHref }: ScreenHeaderP
           </Typography>
         ) : null}
       </div>
-      {right}
+      <div className="flex size-16 items-center justify-center">{right}</div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { AppFrame } from '@/components/AppFrame';
 import { EmptyState } from '@/components/EmptyState';
+import { MobileActionBar } from '@/components/MobileActionBar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Stepper } from '@/components/Stepper';
 import { formatPrice } from '@/constants/pizzas';
@@ -13,6 +14,7 @@ import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
 import { PriceRow } from '@/features/cart/components/PriceRow';
 import { PartnerBadge } from '@/features/partner/components/PartnerBadge';
+import { ProductImage } from '@/features/catalog/components/ProductImage/ProductImage';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
 
@@ -31,18 +33,10 @@ export default function CartPage() {
     removeItem,
   } = useCart();
 
-  return (
-    <AppFrame>
-      <ScreenHeader
-        title={t('cart.title')}
-        subtitle={
-          count
-            ? `${count} ${count === 1 ? t('common.item') : t('common.items')}`
-            : undefined
-        }
-      />
-
-      {items.length === 0 ? (
+  if (items.length === 0) {
+    return (
+      <AppFrame>
+        <ScreenHeader title={t('cart.title')} backHref="/home/" />
         <EmptyState
           icon={<ShoppingBag size={28} />}
           title={t('cart.empty')}
@@ -50,117 +44,132 @@ export default function CartPage() {
           actionLabel={t('common.browseMenu')}
           actionHref="/menu/"
         />
-      ) : (
-        <>
-          <div className="flex flex-col gap-3">
-            {items.map((item) => (
-              <Card key={item.lineId} className={cn(hx.card, '!p-3')}>
-                <Card.Content className="p-0">
-                  <div className="flex gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+      </AppFrame>
+    );
+  }
+
+  return (
+    <AppFrame padded={false} className="!pb-32">
+      <div className="h-[max(38px,env(safe-area-inset-top))] bg-background" />
+      <div className="min-h-[calc(100dvh-38px)] flex-1 rounded-t-[44px] bg-surface px-[clamp(20px,8vw,38px)] pt-4 pb-10 text-surface-foreground">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-surface-tertiary" />
+        <ScreenHeader
+          title={t('cart.title')}
+          subtitle={`${count} ${count === 1 ? t('common.item') : t('common.items')}`}
+          backHref="/home/"
+        />
+
+        <div className="mt-5 flex flex-col gap-3">
+          {items.map((item) => (
+            <Card
+              key={item.lineId}
+              className="rounded-[28px] border-0 bg-surface-secondary p-3 shadow-none"
+            >
+              <Card.Content className="p-0">
+                <div className="flex gap-3">
+                  <div className="size-[96px] shrink-0 overflow-hidden rounded-[22px] bg-card">
+                    <ProductImage
                       src={item.image}
                       alt={item.name}
-                      className="h-20 w-20 rounded-[16px] object-cover"
+                      className="h-full w-full object-contain p-1"
+                      fallbackClassName="[&>svg]:size-12"
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <Typography type="h6" className={hx.title}>
+                  </div>
+                  <div className="min-w-0 flex-1 py-1">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="min-w-0">
+                        <Typography type="h6" className={cn(hx.title, 'truncate')}>
                           {item.name}
                         </Typography>
-                        <Button
-                          isIconOnly
-                          variant="ghost"
-                          aria-label="Remove"
-                          onPress={() => removeItem(item.lineId)}
-                          className="h-8 w-8 min-w-8 text-danger"
-                        >
-                          <Trash2 size={16} color="var(--danger)" />
-                        </Button>
-                      </div>
-                      <Typography type="body-xs" className={cn(hx.caption, 'mt-0.5')}>
-                        {t(`size.${item.size}`)}
-                        {item.extras.length
-                          ? ` · ${item.extras.map((e) => t(`extra.${e}`)).join(', ')}`
-                          : ''}
-                      </Typography>
-                      <div className="mt-3 flex items-center justify-between">
-                        <Typography type="h6" className={cn(hx.title, 'text-accent')}>
-                          {formatPrice(item.unitPrice * item.quantity)}
+                        <Typography type="body-xs" className={cn(hx.caption, 'mt-1 line-clamp-2')}>
+                          {t(`size.${item.size}`)}
+                          {item.extras.length
+                            ? ` · ${item.extras.map((extra) => t(`extra.${extra}`)).join(', ')}`
+                            : ''}
                         </Typography>
-                        <Stepper
-                          value={item.quantity}
-                          onChange={(next) =>
-                            updateQty(item.lineId, next - item.quantity)
-                          }
-                        />
                       </div>
+                      <Button
+                        isIconOnly
+                        variant="ghost"
+                        aria-label={`Remove ${item.name}`}
+                        onPress={() => removeItem(item.lineId)}
+                        className="size-8 min-w-8 rounded-full text-danger"
+                      >
+                        <Trash2 size={16} color="var(--danger)" />
+                      </Button>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <Typography type="h6" className={hx.title}>
+                        {formatPrice(item.unitPrice * item.quantity)}
+                      </Typography>
+                      <Stepper
+                        value={item.quantity}
+                        onChange={(next) => updateQty(item.lineId, next - item.quantity)}
+                      />
                     </div>
                   </div>
-                </Card.Content>
-              </Card>
-            ))}
-          </div>
+                </div>
+              </Card.Content>
+            </Card>
+          ))}
+        </div>
 
-          <div className="mt-4 flex justify-center">
-            <PartnerBadge />
-          </div>
+        <div className="mt-5 flex justify-center">
+          <PartnerBadge />
+        </div>
 
-          <Button
-            variant="secondary"
-            fullWidth
-            onPress={applyPromo}
-            isDisabled={promoApplied}
-            className={cn(
-              'mt-4 h-auto justify-start rounded-[18px] border border-dashed px-4 py-3.5 text-left',
-              promoApplied
-                ? 'border-success bg-[rgba(46,234,123,0.08)]'
-                : 'border-border bg-card',
-            )}
-          >
-            <div>
-              <Typography
-                type="h6"
-                className={cn(hx.title, promoApplied && 'text-success')}
-              >
-                {promoApplied ? t('cart.promoApplied') : t('cart.promoApply')}
-              </Typography>
-              {promoApplied ? (
-                <Typography type="body-xs" className={cn(hx.caption, 'mt-0.5 text-success')}>
-                  WELCOME30 · {t('cart.discountLabel')}
-                </Typography>
-              ) : null}
-            </div>
-          </Button>
+        <Button
+          variant="secondary"
+          fullWidth
+          onPress={applyPromo}
+          isDisabled={promoApplied}
+          className={cn(
+            'mt-5 h-16 justify-between rounded-full border-0 px-5 text-left shadow-none',
+            promoApplied ? 'bg-[color-mix(in_oklab,var(--success)_12%,var(--surface-secondary))]' : 'bg-surface-secondary',
+          )}
+        >
+          <span>
+            <span className={cn('block text-[14px] font-semibold', promoApplied ? 'text-success' : 'text-muted')}>
+              {promoApplied ? t('cart.promoApplied') : t('cart.promoApply')}
+            </span>
+            {promoApplied ? (
+              <span className="block text-[10px] font-semibold text-success">
+                WELCOME30 · {t('cart.discountLabel')}
+              </span>
+            ) : null}
+          </span>
+          <span className="rounded-full bg-accent px-5 py-2 text-[14px] font-bold text-accent-foreground">
+            {promoApplied ? 'Added' : 'Apply'}
+          </span>
+        </Button>
 
-          <Card className={cn(hx.card, 'mt-4')}>
-            <Card.Content className="p-0">
-              <PriceRow label={t('common.subtotal')} value={formatPrice(subtotal)} />
-              {discount > 0 ? (
-                <PriceRow
-                  label={t('common.discount')}
-                  value={`−${formatPrice(discount)}`}
-                  accent
-                />
-              ) : null}
-              <PriceRow label={t('common.delivery')} value={t('common.free')} success />
-              <Separator className="my-3 bg-border" />
-              <PriceRow label={t('common.total')} value={formatPrice(total)} bold />
-            </Card.Content>
-          </Card>
+        <Card className="mt-5 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
+          <Card.Content className="p-0">
+            <PriceRow label={t('common.subtotal')} value={formatPrice(subtotal)} />
+            {discount > 0 ? (
+              <PriceRow
+                label={t('common.discount')}
+                value={`−${formatPrice(discount)}`}
+                accent
+              />
+            ) : null}
+            <PriceRow label={t('common.delivery')} value={t('common.free')} success />
+            <Separator className="my-4 bg-border" />
+            <PriceRow label={t('common.total')} value={formatPrice(total)} bold />
+          </Card.Content>
+        </Card>
+      </div>
 
-          <div className="mt-5 pb-6">
-            <Button
-              variant="primary"
-              fullWidth
-              className={hx.btnPrimary}
-              onPress={() => router.push('/checkout/')}
-            >
-              {t('cart.checkout')}
-            </Button>
-          </div>
-        </>
-      )}
+      <MobileActionBar
+        onPress={() => router.push('/checkout/')}
+        icon={<ShoppingBag size={20} />}
+        label={
+          <span className="flex items-center justify-center gap-2">
+            <span>{t('cart.checkout')}</span>
+            <span className="text-[13px] font-semibold text-muted">{formatPrice(total)}</span>
+          </span>
+        }
+      />
     </AppFrame>
   );
 }

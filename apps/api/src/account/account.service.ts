@@ -321,7 +321,21 @@ export class AccountService {
         ).updatedAt?.toISOString?.() ?? new Date().toISOString(),
       cashBanned: user.cashBanned,
       failedCashCount: user.failedCashCount,
+      cashRestoredAt: user.cashRestoredAt?.toISOString(),
+      cashRestoreReason: user.cashRestoreReason,
     };
+  }
+
+  async restoreCash(userId: string, reason: string) {
+    const user = await this.users.findById(userId).exec();
+    if (!user) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    user.cashBanned = false;
+    user.cashRestoredAt = new Date();
+    user.cashRestoreReason = reason;
+    await user.save();
+    return this.toProfile(user);
   }
 
   private mapLocation(location?: LocationDto) {

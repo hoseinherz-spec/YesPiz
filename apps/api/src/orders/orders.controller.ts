@@ -24,6 +24,7 @@ import {
   ResolveAdminReviewDto,
   UpdateKitchenStatusDto,
 } from "./dto/order.dto";
+import { PrepOverrideDto } from "../providers/dto/provider.dto";
 import { OrdersService } from "./orders.service";
 
 @ApiTags("orders")
@@ -115,5 +116,22 @@ export class OrdersController {
   ) {
     const provider = await this.providers.getSelf(user.userId);
     return this.orders.updateKitchenStatus(user.userId, id, dto, provider.id);
+  }
+
+  @Roles(UserRole.PROVIDER)
+  @Patch(":id/prep-override")
+  async prepOverride(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+    @Body() dto: PrepOverrideDto,
+  ) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.orders.setPrepOverride(provider.id, id, dto);
+  }
+
+  @Roles(UserRole.COURIER, UserRole.ADMIN)
+  @Post(":id/failed-cash")
+  markFailedCash(@Param("id") id: string) {
+    return this.orders.markFailedCash(id);
   }
 }

@@ -8,14 +8,18 @@ import {
   type CourierProfile,
   type CourierSession,
 } from '@repo/api';
-import { Button, Card, Spinner, Typography } from '@heroui/react';
+import { Button, Spinner, Typography } from '@heroui/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+
+import { AppFrame } from '@/components/AppFrame';
 import {
   clearCourierToken,
   getCourierToken,
   requireCourierToken,
 } from '@/lib/auth';
+import { cn } from '@/lib/cn';
+import { hx } from '@/lib/heroui-classes';
 import { entityId } from '@/lib/ids';
 
 export default function CourierHomePage() {
@@ -60,7 +64,6 @@ export default function CourierHomePage() {
   const postLocation = useCallback(async () => {
     try {
       const token = requireCourierToken();
-      // Demo coords near Munich when geolocation unavailable
       let longitude = 11.5755;
       let latitude = 48.1374;
       if (typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -91,7 +94,6 @@ export default function CourierHomePage() {
 
   useEffect(() => {
     if (!shareLocation || !profile?.onDuty) return;
-    // Defer so the effect only schedules work (location is an external system).
     const immediate = window.setTimeout(() => {
       void postLocation();
     }, 0);
@@ -143,20 +145,22 @@ export default function CourierHomePage() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <Spinner />
-      </main>
+      <AppFrame padded={false}>
+        <div className="flex min-h-dvh items-center justify-center">
+          <Spinner />
+        </div>
+      </AppFrame>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 p-4 pb-8">
-      <header className="flex items-start justify-between gap-3">
+    <AppFrame>
+      <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <Typography type="h1" className="text-2xl font-semibold">
+          <Typography type="h1" className={hx.h2}>
             On the road
           </Typography>
-          <p className="text-muted text-sm">
+          <p className={cn(hx.bodySm, 'mt-1')}>
             {profile?.onDuty ? 'On duty' : 'Off duty'}
             {profile?.vehicleType ? ` · ${profile.vehicleType.split('|')[0]}` : ''}
           </p>
@@ -164,6 +168,7 @@ export default function CourierHomePage() {
         <Button
           size="sm"
           variant="secondary"
+          className="rounded-full border border-border bg-card"
           onPress={() => {
             clearCourierToken();
             router.replace('/login/');
@@ -173,132 +178,139 @@ export default function CourierHomePage() {
         </Button>
       </header>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="mb-4 rounded-[18px] border border-border bg-card px-4 py-3 text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
 
-      <Card className="p-4">
-        <Card.Content className="flex flex-col gap-3 p-0">
-          <Typography type="h3" className="font-medium">
-            Session
-          </Typography>
-          <p className="text-muted text-sm">
-            Scan QR / enter OTP to start. End with the session end code (or
-            000000 in demo).
-          </p>
-          {!profile?.onDuty ? (
-            <>
-              <label className="flex flex-col gap-1 text-sm">
-                Start QR / OTP
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="border-border bg-background rounded-md border px-3 py-2"
-                />
-              </label>
-              <Button
-                variant="primary"
-                fullWidth
-                isDisabled={busy || !code.trim()}
-                onPress={startSession}
-              >
-                Start session
-              </Button>
-            </>
-          ) : (
-            <>
-              {session?.endCode || endCode ? (
-                <p className="text-sm">
-                  End code hint:{' '}
-                  <span className="font-mono">{session?.endCode || endCode}</span>
-                </p>
-              ) : null}
-              <label className="flex flex-col gap-1 text-sm">
-                End OTP
-                <input
-                  value={endCode}
-                  onChange={(e) => setEndCode(e.target.value)}
-                  className="border-border bg-background rounded-md border px-3 py-2"
-                  placeholder="000000"
-                />
-              </label>
-              <Button
-                variant="secondary"
-                fullWidth
-                isDisabled={busy}
-                onPress={endSession}
-              >
-                End session
-              </Button>
-              <Button
-                size="sm"
-                variant={shareLocation ? 'primary' : 'secondary'}
-                fullWidth
-                onPress={() => setShareLocation((v) => !v)}
-              >
-                {shareLocation ? 'Stop sharing location' : 'Share live location'}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                fullWidth
-                onPress={() => void postLocation()}
-              >
-                Post location once
-              </Button>
-              {lastLocation ? (
-                <p className="text-muted text-xs">Last: {lastLocation}</p>
-              ) : null}
-            </>
-          )}
-        </Card.Content>
-      </Card>
+      <section className={cn(hx.card, 'mb-4 flex flex-col gap-3')}>
+        <Typography type="h3" className={hx.title}>
+          Session
+        </Typography>
+        <p className={hx.bodySm}>
+          Scan QR / enter OTP to start. End with the session end code (or 000000
+          in demo).
+        </p>
+        {!profile?.onDuty ? (
+          <>
+            <label className="flex flex-col gap-2 text-sm font-medium text-muted">
+              Start QR / OTP
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className={cn(hx.field, 'h-14 bg-field-background')}
+              />
+            </label>
+            <Button
+              variant="primary"
+              fullWidth
+              isDisabled={busy || !code.trim()}
+              onPress={startSession}
+              className={cn(hx.btnPrimary, 'h-14 text-base')}
+            >
+              Start session
+            </Button>
+          </>
+        ) : (
+          <>
+            {session?.endCode || endCode ? (
+              <p className="text-sm text-foreground">
+                End code hint:{' '}
+                <span className="font-mono">{session?.endCode || endCode}</span>
+              </p>
+            ) : null}
+            <label className="flex flex-col gap-2 text-sm font-medium text-muted">
+              End OTP
+              <input
+                value={endCode}
+                onChange={(e) => setEndCode(e.target.value)}
+                className={cn(hx.field, 'h-14 bg-field-background')}
+                placeholder="000000"
+              />
+            </label>
+            <Button
+              variant="secondary"
+              fullWidth
+              isDisabled={busy}
+              onPress={endSession}
+              className={cn(hx.btnSecondary, 'h-14 text-base')}
+            >
+              End session
+            </Button>
+            <Button
+              size="sm"
+              variant={shareLocation ? 'primary' : 'secondary'}
+              fullWidth
+              className="h-12 rounded-full"
+              onPress={() => setShareLocation((v) => !v)}
+            >
+              {shareLocation ? 'Stop sharing location' : 'Share live location'}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              fullWidth
+              className="h-12 rounded-full border border-border bg-card"
+              onPress={() => void postLocation()}
+            >
+              Post location once
+            </Button>
+            {lastLocation ? (
+              <p className={hx.caption}>Last: {lastLocation}</p>
+            ) : null}
+          </>
+        )}
+      </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-3 pb-8">
         <div className="flex items-center justify-between">
-          <Typography type="h3" className="font-medium">
+          <Typography type="h3" className={hx.title}>
             Assigned batches
           </Typography>
-          <Button size="sm" variant="secondary" onPress={load}>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="rounded-full border border-border bg-card"
+            onPress={load}
+          >
             Refresh
           </Button>
         </div>
 
         {!batches.length ? (
-          <Card className="p-4">
-            <Card.Content className="text-muted p-0 text-sm">
-              No assigned batches. Pickup marking lands when Phase 4 delivery
-              endpoints ship — for now open batch details by id via API.
-            </Card.Content>
-          </Card>
+          <div className={cn(hx.card, hx.bodySm)}>
+            No assigned batches. Pickup marking lands when Phase 4 delivery
+            endpoints ship — for now open batch details by id via API.
+          </div>
         ) : null}
 
         {batches.map((batch) => {
           const id = entityId(batch);
           return (
-            <Card key={id} className="p-4">
-              <Card.Content className="flex flex-col gap-1 p-0">
-                <div className="flex justify-between gap-2">
-                  <Typography type="h3" className="font-medium">
-                    {batch.status}
-                  </Typography>
-                  <span className="text-muted text-xs">
-                    {batch.orderIds?.length ?? 0} orders
-                  </span>
-                </div>
-                <p className="text-muted text-xs">Batch {id}</p>
-                <ul className="mt-1 text-sm">
-                  {(batch.orderIds ?? []).map((oid) => (
-                    <li key={String(oid)}>{String(oid)}</li>
-                  ))}
-                </ul>
-                <p className="text-muted mt-2 text-xs">
-                  Pickup flow: show this batch at the kitchen counter. Status
-                  updates arrive when courier pickup endpoints are enabled.
-                </p>
-              </Card.Content>
-            </Card>
+            <div key={id} className={cn(hx.card, 'flex flex-col gap-1')}>
+              <div className="flex justify-between gap-2">
+                <Typography type="h3" className={hx.title}>
+                  {batch.status}
+                </Typography>
+                <span className={hx.caption}>
+                  {batch.orderIds?.length ?? 0} orders
+                </span>
+              </div>
+              <p className={hx.caption}>Batch {id}</p>
+              <ul className="mt-1 text-sm text-foreground">
+                {(batch.orderIds ?? []).map((oid) => (
+                  <li key={String(oid)}>{String(oid)}</li>
+                ))}
+              </ul>
+              <p className={cn(hx.caption, 'mt-2')}>
+                Pickup flow: show this batch at the kitchen counter. Status
+                updates arrive when courier pickup endpoints are enabled.
+              </p>
+            </div>
           );
         })}
       </section>
-    </main>
+    </AppFrame>
   );
 }

@@ -50,6 +50,7 @@ export class PaymentsService {
       available: !user.cashBanned,
       failedCashCount: user.failedCashCount,
       threshold: cfg.cashFailThreshold,
+      hardCapCents: cfg.cashHardCapCents,
     };
   }
 
@@ -67,6 +68,9 @@ export class PaymentsService {
     if (method === PaymentMethod.CASH) {
       const avail = await this.cashAvailability(userId);
       if (!avail.available) {
+        throw new BadRequestException("errors.badRequest");
+      }
+      if (order.totalCents > avail.hardCapCents) {
         throw new BadRequestException("errors.badRequest");
       }
       order.paymentMethod = PaymentMethod.CASH;

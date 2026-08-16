@@ -38,29 +38,27 @@ stated time**, without the customer choosing a restaurant.
 
 | Module | Responsibility |
 |---|---|
-| `account` | Auth (OTP/SSO/JWT), profile, flat `cashBanned` |
-| `catalog` | Menu versions, categories, items, prep weights |
-| `providers` | Partner kitchens, radius, admin rating, members, `acceptingOrders` |
-| `orders` | Addresses, order creation, kitchen status machine |
+| `account` | Auth (OTP/SSO/JWT), profile, cash ban + admin restore |
+| `catalog` | Menu versions, categories, items, prep weights, Quality OS recipe fields |
+| `providers` | Partner kitchens, radius, admin rating, quality score, auto-suspend, members, `acceptingOrders` |
+| `orders` | Addresses, order creation, kitchen status machine, failed-cash HTTP |
 | `dispatch` | Rank, broadcast offers, first-accept claim, one radius expand |
-| `payments` | Card (Stripe or mock) + cash; cash-availability |
+| `payments` | Card (Stripe or mock) + cash; cash-availability with €500 hard cap |
+| `quality` | Checklist/seal/ready-photo, score penalties, auto-suspend, admin test orders |
 | `couriers` | Profiles, stub QR/OTP sessions, live location |
 | `batches` | Batch ≤3, suggest/create/reduce, assign courier |
 | `redis` | Locks, session TTL (in-memory fallback when no Redis) |
-| `app-config` | Algorithm weights, timeouts, cash fail threshold, max batch |
+| `app-config` | Algorithm weights, wave/bid, ETA, batch hold, proof geo radii, cash/quality/batch knobs |
 | `realtime` | Socket.IO `/realtime` |
 | `push` | Dev/stub FCM |
+| `eta` | Server prep + delivery ETA windows |
+| `proof` | Pickup/drop-off/cash receipt custody; `PICKED_UP`→`COMPLETED` |
+| `incidents` | Typed courier incident workflows |
 
-### Target (P0 / P1 — not shipped)
+### Target (remaining P1)
 
 | Module (planned) | Responsibility |
 |---|---|
-| Quality OS | Recipes, cook/temp standards, numbered seals, pre-handoff checklist, ready photo, internal score, auto-suspend, admin test orders |
-| Capacity | Per-kitchen accept cap, per-order prep override, item 86, pause new orders |
-| ETA | Server prep + delivery window from history, time of day, pizza type, queue |
-| Wave dispatch | Top-3 bid window (10–20s), server pick, fairness weight, expand N + radius |
-| Proof chain | Seal id, pickup QR/OTP + geo, PIN/sign/photo at door, cash receipt, custody log |
-| Incidents | Crash, no-answer, no-pay, wrong address, damaged pack, vehicle, SOS — each a workflow |
 | Cash Trust | Score + ladder (verify → cap → prepay → online-only → ban → admin restore) |
 | Compensate | Auto credit/discount when SLA is missed |
 | Ops | Live map, at-risk alerts, reassign, formula sandbox, fraud |
@@ -75,8 +73,8 @@ ON_THE_WAY → DELIVERED → COMPLETED
 
 Side states: `EXCEPTION_REPORTED`, `ADMIN_REVIEW`, `CANCELLED`, `FAILED_CASH`.
 
-**Shipped transitions** end at `ASSIGNED_TO_COURIER` (plus exception/admin/cancel/failed-cash).
-`PICKED_UP` → `COMPLETED` are defined but not reachable until the proof chain exists.
+**Shipped transitions** include courier proof chain through `COMPLETED` (plus exception/admin/cancel/failed-cash).
+Pickup requires validated code + geo; delivery requires PIN/sign/photo; cash needs a digital receipt before complete.
 
 Customer projection (mobile `ORDER_STEPS`):
 `received → kitchen → preparing → driver → onway → delivered`.
@@ -85,33 +83,20 @@ Exception and admin-review stay on `kitchen` so the customer never sees kitchen-
 
 ## 5. Dispatch
 
-### Phase 1 (shipped): first-accept-wins
+### Phase 1 (legacy): first-accept-wins
 
-```
-score = w1·(rating/5) + w2·(1 − dist/maxDist) + w3·(1 − openOrders/maxQueue)
-```
+Previously broadcast top-N and first Accept claimed the order. Replaced by wave allocation.
 
-Defaults (`app_config`): `w1=0.4`, `w2=0.4`, `w3=0.2`, `dispatchTopN=5`,
-initial radius 3000 m, expanded 6000 m, offer timeout 90s.
+### Shipped (P0): wave allocation
 
-- Broadcast to top-N providers in radius with `acceptingOrders`.
-- First atomic claim (Redis lock + Mongo update) wins.
-- If none accept: expand radius once, then auto-cancel.
-- Workload today is an `openOrders` counter (incremented on accept). Target: real queue + prep-weight + quoted ETA.
+1. Offer the order to `waveSize` kitchens (default 3; expands with `waveExpandCount`).
+2. Each has `bidWindowSeconds` (default 15) to declare ready + quoted prep via `POST /dispatch/orders/:id/respond`.
+3. Server scores respondents (base rank + prep + quality + fairness) and assigns one winner.
+4. If nobody is ready, expand N + radius (up to 2 expands), then cancel.
 
-This model rewards click speed. It is an interim skeleton, not the product.
+Providers never select the winner. Admin can force `POST /dispatch/orders/:id/resolve-wave`.
 
-### Target (P0): wave allocation
-
-1. Offer to the top 3 kitchens (not 5+ racing).
-2. Each has 10–20 seconds to declare readiness and a prep time.
-3. Server scores respondents and assigns one winner.
-4. If nobody responds, expand radius and N.
-
-Target score inputs: distance, quoted prep, queue capacity, delay rate, error
-rate, quality score, recent volume, accept probability, fairness weight.
-
-Providers never select the winner. Admin can simulate weight changes before applying them.
+Legacy `POST .../accept` maps to ready=true with a default 20-minute prep quote and still waits for wave resolution.
 
 ## 6. Infrastructure
 

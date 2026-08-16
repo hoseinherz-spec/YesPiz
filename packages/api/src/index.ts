@@ -9,4 +9,5 @@ export * from './domains/health';
 export * from './domains/orders';
 export * from './domains/payments';
 export * from './domains/providers';
+export * from './domains/quality';
 export * from './domains/realtime';

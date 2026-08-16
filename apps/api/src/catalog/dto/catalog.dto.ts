@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -6,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  ValidateNested,
 } from "class-validator";
 
 export class CreateMenuVersionDto {
@@ -24,6 +26,17 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsNumber()
   sortOrder?: number;
+}
+
+export class RecipeIngredientDto {
+  @ApiProperty()
+  @IsString()
+  name!: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0)
+  weightGrams!: number;
 }
 
 export class CreateMenuItemDto {
@@ -66,6 +79,40 @@ export class CreateMenuItemDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ type: [RecipeIngredientDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecipeIngredientDto)
+  recipeIngredients?: RecipeIngredientDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cookTimeSeconds?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  handoffTempC?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requiresNumberedSeal?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requiresReadyPhoto?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  checklistTemplate?: string[];
 }
 
 export class UpdateMenuItemDto {
@@ -99,4 +146,38 @@ export class UpdateMenuItemDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @ApiPropertyOptional({ type: [RecipeIngredientDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecipeIngredientDto)
+  recipeIngredients?: RecipeIngredientDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cookTimeSeconds?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  handoffTempC?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requiresNumberedSeal?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  requiresReadyPhoto?: boolean;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  checklistTemplate?: string[];
 }

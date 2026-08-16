@@ -1,25 +1,24 @@
 'use client';
 
-import { Button, Card, Chip, Typography } from '@heroui/react';
+import { Button, Typography } from '@heroui/react';
 import {
-  Bell,
-  ChevronDown,
+  Bookmark,
   MapPin,
+  MenuCenter,
   Search,
   ShoppingBag,
-  SlidersHorizontal,
+  User,
 } from '@repo/icons';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { AppFrame } from '@/components/AppFrame';
 import { IconBadgeButton } from '@/components/IconBadgeButton';
-import { ProductCard } from '@/features/catalog/components/ProductCard';
-import { PartnerBadge } from '@/features/partner/components/PartnerBadge';
-import { pizzaTagline } from '@/constants/i18n';
-import { formatPrice, PROMOS } from '@/constants/pizzas';
+import { formatPrice } from '@/constants/pizzas';
 import { useApp } from '@/context/AppContext';
 import { useCart } from '@/context/CartContext';
+import { ProductCard } from '@/features/catalog/components/ProductCard';
+import { ProductImage } from '@/features/catalog/components/ProductImage/ProductImage';
 import { useMenuCatalog, type CatalogPizza } from '@/lib/catalog';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
@@ -70,46 +69,50 @@ function filterByCategory(
 }
 
 export default function HomePage() {
-  const { t, userName, unreadCount, language } = useApp();
-  const { count } = useCart();
+  const { t } = useApp();
+  const { count, items: cartItems, total } = useCart();
   const { items, fromApi, isOffline, isLoading } = useMenuCatalog();
   const [cat, setCat] = useState<(typeof CATEGORIES)[number]>('All');
-
-  const featured = useMemo(() => {
-    if (!items.length) return null;
-    return [...items].sort((a, b) => b.price - a.price)[0] ?? items[0];
-  }, [items]);
 
   const list = useMemo(
     () => filterByCategory(items, cat, fromApi),
     [items, cat, fromApi],
   );
+  const featured = list[0] ?? items[0] ?? null;
 
   return (
-    <AppFrame withTabs>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <button type="button" className="mb-1 flex items-center gap-1 text-left">
-            <MapPin size={14} color="var(--accent)" />
-            <span className="text-[12px] font-medium text-muted">{t('home.deliverTo')}</span>
-            <ChevronDown size={14} color="var(--muted)" />
-          </button>
-          <Typography type="h2" className={hx.h2}>
-            {t('home.greeting', { name: userName })}
-          </Typography>
-        </div>
-        <div className="flex gap-2">
-          <IconBadgeButton href="/notifications/" aria-label="Notifications" badge={unreadCount}>
-            <Bell size={18} />
+    <AppFrame withTabs className={count > 0 ? '!pb-52' : undefined}>
+      <div className="flex items-center justify-between gap-3">
+        <IconBadgeButton href="/menu/" aria-label="Browse menu">
+          <MenuCenter size={20} />
+        </IconBadgeButton>
+        <div className="flex items-center gap-2">
+          <IconBadgeButton href="/saved/" aria-label="Saved pizzas">
+            <Bookmark size={19} />
+          </IconBadgeButton>
+          <IconBadgeButton href="/profile/" aria-label="Profile">
+            <User size={19} />
           </IconBadgeButton>
           <IconBadgeButton href="/cart/" aria-label="Cart" badge={count}>
-            <ShoppingBag size={18} />
+            <ShoppingBag size={19} />
           </IconBadgeButton>
         </div>
       </div>
 
+      <div className="mt-8">
+        <span className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+          <MapPin size={14} color="var(--accent)" />
+          {t('home.deliverTo')}
+        </span>
+        <Typography type="h1" className={cn(hx.display, 'max-w-[360px] text-[clamp(36px,11vw,50px)]')}>
+          Order Your
+          <br />
+          Favorite Pizza
+        </Typography>
+      </div>
+
       {isOffline ? (
-        <div className="mt-3 rounded-[14px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-3 py-2">
+        <div className="mt-4 rounded-[18px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-4 py-3">
           <Typography type="body-xs" className={cn(hx.caption, 'text-warning')}>
             {t('login.offlineBanner')}
           </Typography>
@@ -118,119 +121,16 @@ export default function HomePage() {
 
       <Link
         href="/menu/"
-        className="mt-5 flex items-center gap-3 rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 py-2.5"
+        className="mt-6 flex min-h-16 items-center gap-3 rounded-full bg-field-background px-2.5 py-2"
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(216,255,0,0.12)]">
-          <Search size={16} color="var(--accent)" />
+        <span className="flex size-12 items-center justify-center rounded-full bg-surface-tertiary">
+          <Search size={19} color="var(--foreground)" />
         </span>
-        <span className="flex-1 text-[14px] text-muted">{t('home.search')}</span>
-        <SlidersHorizontal size={16} color="var(--muted)" />
+        <span className="flex-1 text-[14px] font-medium text-muted">{t('home.search')}</span>
+        <span className="pr-3 text-[12px] font-semibold text-foreground">Browse</span>
       </Link>
 
-      <div className="-mx-4 mt-5 flex gap-3 overflow-x-auto px-4 pb-1">
-        {PROMOS.map((promo, i) => {
-          const neon = i === 0;
-          return (
-            <Card
-              key={promo.id}
-              className={cn(
-                neon ? hx.cardElevated : hx.card,
-                'relative min-w-[240px] overflow-hidden',
-                neon && 'border-accent bg-accent',
-              )}
-            >
-              <Card.Content className="p-0">
-                {!neon && items[i + 1] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={items[i + 1].image}
-                    alt=""
-                    className="pointer-events-none absolute -right-4 -bottom-6 h-28 w-28 opacity-30"
-                  />
-                ) : null}
-                <Chip
-                  variant="soft"
-                  className={cn(
-                    'mb-2 rounded-full px-2 py-0.5',
-                    neon
-                      ? 'bg-[rgba(8,17,31,0.15)] text-accent-foreground'
-                      : 'bg-[rgba(216,255,0,0.15)] text-accent',
-                  )}
-                >
-                  <Chip.Label className="text-[10px] font-bold tracking-wide">
-                    {t(`promo.${promo.key}.badge`)}
-                  </Chip.Label>
-                </Chip>
-                <Typography
-                  type="h3"
-                  className={cn(hx.h3, neon && 'text-accent-foreground')}
-                >
-                  {t(`promo.${promo.key}.title`)}
-                </Typography>
-                <Typography
-                  type="body-sm"
-                  className={cn(
-                    hx.bodySm,
-                    'mt-1',
-                    neon ? 'text-[rgba(8,17,31,0.7)]' : 'text-text-secondary',
-                  )}
-                >
-                  {t(`promo.${promo.key}.subtitle`)}
-                </Typography>
-              </Card.Content>
-            </Card>
-          );
-        })}
-      </div>
-
-      {featured ? (
-        <div className="mt-6">
-          <Typography type="h3" className={cn(hx.h3, 'mb-3')}>
-            {t('home.chefsPick')}
-          </Typography>
-          <Link
-            href={`/pizza/?id=${encodeURIComponent(featured.id)}`}
-            className="relative block overflow-hidden rounded-[24px] border border-[color-mix(in_oklab,var(--accent)_18%,transparent)]"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={featured.imageUrl || featured.image}
-              alt={featured.name}
-              className="h-48 w-full object-cover"
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(8,17,31,0.95), rgba(8,17,31,0.2))',
-              }}
-            />
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <PartnerBadge compact />
-              <Typography type="h3" className={cn(hx.h3, 'mt-2 text-white')}>
-                {featured.name}
-              </Typography>
-              <Typography type="body-sm" className="text-[13px] text-[rgba(255,255,255,0.75)]">
-                {pizzaTagline(featured, language)}
-              </Typography>
-              <Chip
-                variant="soft"
-                className="mt-3 rounded-full bg-accent px-3 py-1 text-accent-foreground"
-              >
-                <Chip.Label className="text-[13px] font-extrabold">
-                  {formatPrice(featured.price)}
-                </Chip.Label>
-              </Chip>
-            </div>
-          </Link>
-        </div>
-      ) : isLoading ? (
-        <Typography type="body-sm" className={cn(hx.bodySm, 'mt-6')}>
-          …
-        </Typography>
-      ) : null}
-
-      <div className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1">
+      <div className="-mx-[clamp(20px,8vw,38px)] mt-6 flex gap-2 overflow-x-auto px-[clamp(20px,8vw,38px)] pb-1">
         {CATEGORIES.map((c) => (
           <Button
             key={c}
@@ -243,11 +143,101 @@ export default function HomePage() {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 pb-4">
-        {list.map((pizza) => (
-          <ProductCard key={pizza.id} pizza={pizza} variant="grid" />
-        ))}
-      </div>
+      {featured ? (
+        <Link
+          href={`/pizza/?id=${encodeURIComponent(featured.id)}`}
+          className="relative mt-6 block overflow-hidden rounded-[44px] bg-card transition active:scale-[0.99]"
+        >
+          <div className="absolute top-5 left-5 z-10 rounded-full bg-accent px-4 py-2 text-[12px] font-bold text-accent-foreground">
+            {cat === 'All' ? 'Featured pizza' : cat}
+          </div>
+          <div className="h-[clamp(245px,72vw,330px)]">
+            <ProductImage
+              src={featured.imageUrl || featured.image}
+              alt={featured.name}
+              className="h-full w-full object-contain p-4 pt-10"
+            />
+          </div>
+          <div className="flex items-end justify-between gap-3 px-6 pb-6">
+            <div className="min-w-0">
+              <Typography type="h2" className={cn(hx.h2, 'truncate')}>
+                {featured.name}
+              </Typography>
+              <Typography type="body-sm" className={cn(hx.bodySm, 'mt-1')}>
+                {list.length || items.length} pizzas to explore
+              </Typography>
+            </div>
+            <span className="shrink-0 rounded-full bg-accent px-4 py-2 text-[14px] font-extrabold text-accent-foreground">
+              {formatPrice(featured.price)}
+            </span>
+          </div>
+        </Link>
+      ) : isLoading ? (
+        <div className="mt-6 h-[390px] animate-pulse rounded-[44px] bg-card" aria-label="Loading pizzas" />
+      ) : (
+        <div className="mt-6 rounded-[30px] border border-border p-6 text-center">
+          <Typography type="h3" className={hx.h3}>
+            No pizzas available
+          </Typography>
+          <Link
+            href="/menu/"
+            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 text-[14px] font-bold text-accent-foreground"
+          >
+            Try the menu
+          </Link>
+        </div>
+      )}
+
+      {list.length > 1 ? (
+        <section className="mt-8 pb-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <Typography type="h3" className={hx.h3}>
+              Popular pizzas
+            </Typography>
+            <Link href="/menu/" className="text-[13px] font-semibold text-muted">
+              See all
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-5">
+            {list.slice(1, 5).map((pizza) => (
+              <ProductCard key={pizza.id} pizza={pizza} variant="grid" />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {count > 0 ? (
+        <Link
+          href="/cart/"
+          className="fixed inset-x-3 bottom-[104px] z-50 mx-auto flex max-w-[449px] items-center gap-3 rounded-full bg-accent p-2.5 pr-5 text-accent-foreground shadow-[0_18px_40px_rgba(0,0,0,0.32)]"
+          aria-label={`Open cart with ${count} items`}
+        >
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-accent-foreground text-[17px] font-extrabold text-accent">
+            {count}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[17px] font-extrabold leading-tight">View cart</span>
+            <span className="block text-[12px] opacity-60">
+              {count} {count === 1 ? 'item' : 'items'} · {formatPrice(total)}
+            </span>
+          </span>
+          <span className="flex -space-x-3">
+            {cartItems.slice(0, 3).map((item) => (
+              <span
+                key={item.lineId}
+                className="size-10 overflow-hidden rounded-full border-2 border-accent bg-surface"
+              >
+                <ProductImage
+                  src={item.image}
+                  alt=""
+                  className="h-full w-full object-contain"
+                  fallbackClassName="[&>svg]:size-5"
+                />
+              </span>
+            ))}
+          </span>
+        </Link>
+      ) : null}
     </AppFrame>
   );
 }

@@ -14,22 +14,33 @@ Product: [`docs/PRODUCT.md`](../../docs/PRODUCT.md) · strategy: [`prd/product-s
 - Tell the customer only that there is one short extra stop — never other customers or kitchens.
 - Run incident workflows: crash, no-answer, no-pay, wrong address, damaged pack, vehicle, SOS.
 
-## Shipped
+## Shipped (UI)
 
 | Route | What it does |
 |---|---|
 | `/login` | Courier auth |
 | `/home` | Session start/end (any non-empty start code), location share, assigned batch list (read-only) |
 
-Pickup, transit, delivery, proof, cash collection, and incidents are not implemented. Order statuses after `ASSIGNED_TO_COURIER` are not reachable.
+## Shipped (API — wire into UI next)
 
-## Next (P0)
+Proof chain under `/api/v1/proof/orders/:orderId`:
 
-- Validated pickup QR / OTP + seal + geo
-- `PICKED_UP` → `ON_THE_WAY` → `DELIVERED` → `COMPLETED`
-- Door PIN / sign / photo; cash receipt
-- Safe batch navigation + auto-split when one order slips
-- Incident actions, each with a workflow (replacement courier, wait timer, debt, SOS)
+- `GET` — codes + proof state for assigned courier
+- `POST .../pickup` — QR/OTP + geo (+ optional seal)
+- `POST .../en-route`
+- `POST .../deliver` — PIN / signature / photo + geo
+- `POST .../cash-receipt` — required before complete for cash
+- `POST .../complete` → `COMPLETED`
+
+Incidents: `POST /api/v1/incidents/orders/:orderId` with typed `kind` starts a workflow.
+
+Dev bypasses: pickup code `000000`, door PIN `0000`.
+
+## Next (P0 UI)
+
+- Screens for pickup → transit → deliver → cash → complete
+- Incident action sheet bound to workflows
+- Safe batch navigation + short-stop banner
 
 ## Development
 

@@ -101,4 +101,11 @@ export const ordersClient = {
       withAuth({ ...options, method: 'PATCH', body }),
     );
   },
+
+  markFailedCash(id: string, options?: AuthRequestOptions) {
+    return apiRequest<Order>(
+      ordersEndpoints.failedCash(id),
+      withAuth({ ...options, method: 'POST' }),
+    );
+  },
 };

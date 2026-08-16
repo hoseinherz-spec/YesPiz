@@ -15,6 +15,17 @@ const PROVIDER_LEAK_KEYS = [
   "coords",
   "coordinates",
   "offers",
+  "sealId",
+  "readyPhotoUrl",
+  "checklistAnswers",
+  "checklistCompletedAt",
+  "isTestOrder",
+  "pickupCode",
+  "doorPin",
+  "proofId",
+  "quotedPrepMinutes",
+  "prepOverrideMinutes",
+  "status",
 ] as const;
 
 /**
@@ -46,12 +57,18 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     subtotalCents: plain.subtotalCents,
     deliveryFeeCents: plain.deliveryFeeCents,
     totalCents: plain.totalCents,
-    status,
+    // Blind: never expose raw kitchen/ops status strings — use customerStatus only
     customerStatus: projection,
     paymentMethod: plain.paymentMethod,
     paymentStatus: plain.paymentStatus,
     addressId: String(plain.addressId),
     notes: plain.notes,
+    etaPrepMin: plain.etaPrepMin,
+    etaPrepMax: plain.etaPrepMax,
+    etaDeliveryMin: plain.etaDeliveryMin,
+    etaDeliveryMax: plain.etaDeliveryMax,
+    etaComputedAt: plain.etaComputedAt,
+    hasShortExtraStop: Boolean(plain.hasShortExtraStop),
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
   };

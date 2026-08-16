@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+import { AppFrame } from '@/components/AppFrame';
 import { PizzaDetail } from '@/features/catalog/components/PizzaDetail';
 
 function PizzaPageInner() {
@@ -13,7 +14,13 @@ function PizzaPageInner() {
 
 export default function PizzaPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <AppFrame padded={false}>
+          <div className="h-dvh animate-pulse bg-card" aria-label="Loading pizza details" />
+        </AppFrame>
+      }
+    >
       <PizzaPageInner />
     </Suspense>
   );

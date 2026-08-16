@@ -13,6 +13,7 @@ export type CashAvailabilityResponse = {
   available: boolean;
   failedCashCount: number;
   threshold: number;
+  hardCapCents: number;
 };
 
 export type Payment = {

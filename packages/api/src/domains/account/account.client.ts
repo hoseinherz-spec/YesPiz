@@ -69,4 +69,15 @@ export const accountClient = {
       withAuth({ ...options, method: 'GET' }),
     );
   },
+
+  restoreCash(
+    userId: string,
+    body: { reason: string },
+    options?: AuthRequestOptions,
+  ) {
+    return apiRequest<ProfileResponse>(
+      accountEndpoints.cashRestore(userId),
+      withAuth({ ...options, method: 'POST', body }),
+    );
+  },
 };

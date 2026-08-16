@@ -82,6 +82,16 @@ export class CatalogService {
       imageUrl: dto.imageUrl,
       tags: dto.tags ?? [],
       isActive: dto.isActive ?? true,
+      recipeIngredients: dto.recipeIngredients ?? [],
+      cookTimeSeconds: dto.cookTimeSeconds ?? 0,
+      handoffTempC: dto.handoffTempC ?? 65,
+      requiresNumberedSeal: dto.requiresNumberedSeal ?? true,
+      requiresReadyPhoto: dto.requiresReadyPhoto ?? false,
+      checklistTemplate: dto.checklistTemplate ?? [
+        "Weight check",
+        "Packaging seal",
+        "Temperature",
+      ],
     });
   }
 
@@ -162,6 +172,12 @@ export class CatalogService {
         imageUrl: i.imageUrl,
         tags: i.tags,
         isActive: i.isActive,
+        recipeIngredients: i.recipeIngredients ?? [],
+        cookTimeSeconds: i.cookTimeSeconds ?? 0,
+        handoffTempC: i.handoffTempC ?? 65,
+        requiresNumberedSeal: i.requiresNumberedSeal ?? true,
+        requiresReadyPhoto: i.requiresReadyPhoto ?? false,
+        checklistTemplate: i.checklistTemplate ?? [],
       })),
     };
   }
@@ -183,6 +199,23 @@ export class CatalogService {
         _id: { $in: itemIds.map((id) => new Types.ObjectId(id)) },
         menuVersionId: version._id,
         isActive: true,
+      })
+      .exec();
+    return { version, items };
+  }
+
+  /** Quality handoff uses ordered line items even if later deactivated. */
+  async getItemsByIds(itemIds: string[], menuVersion: number) {
+    const version = await this.versions
+      .findOne({ version: menuVersion })
+      .exec();
+    if (!version) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    const items = await this.items
+      .find({
+        _id: { $in: itemIds.map((id) => new Types.ObjectId(id)) },
+        menuVersionId: version._id,
       })
       .exec();
     return { version, items };

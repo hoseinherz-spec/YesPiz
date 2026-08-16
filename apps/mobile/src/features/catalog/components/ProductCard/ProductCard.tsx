@@ -10,6 +10,7 @@ import { pizzaTagline } from '@/constants/i18n';
 import { formatPrice, resolveProductImage } from '@/constants/pizzas';
 import { useApp } from '@/context/AppContext';
 
+import { ProductImage } from '../ProductImage/ProductImage';
 import { productCard } from './ProductCard.styles';
 import type { ProductCardProps } from './ProductCard.types';
 
@@ -20,7 +21,7 @@ export function ProductCard({
   meta,
 }: ProductCardProps) {
   const router = useRouter();
-  const { t, language, isFavorite, toggleFavorite } = useApp();
+  const { language, isFavorite, toggleFavorite } = useApp();
   const [spinning, setSpinning] = useState(false);
   const image = resolveProductImage(pizza);
   const fav = isFavorite(pizza.id);
@@ -49,12 +50,11 @@ export function ProductCard({
         />
         <Card.Content className={styles.content()}>
           <div className={styles.imageWrap()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image} alt="" className={styles.image()} />
+            <ProductImage src={image} alt={pizza.name} className={styles.image()} />
             <Button
               isIconOnly
               variant="ghost"
-              aria-label="Favorite"
+              aria-label={fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`}
               onPress={() => onFavoritePress()}
               className={styles.favorite()}
             >
@@ -87,7 +87,7 @@ export function ProductCard({
                 <Typography type="body-sm" className={styles.price()}>
                   {formatPrice(pizza.price)}
                 </Typography>
-                <span className={styles.addButton()}>
+                <span className={styles.addButton()} aria-hidden="true">
                   <Plus size={16} />
                 </span>
               </div>
@@ -113,12 +113,11 @@ export function ProductCard({
             'radial-gradient(circle at 50% 60%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%), var(--surface)',
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image} alt="" className={styles.image()} />
+        <ProductImage src={image} alt={pizza.name} className={styles.image()} />
         <Button
           isIconOnly
           variant="ghost"
-          aria-label="Favorite"
+          aria-label={fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`}
           onPress={() => onFavoritePress()}
           className={styles.favorite()}
         >
@@ -139,7 +138,7 @@ export function ProductCard({
             <Typography type="body-sm" className={styles.price()}>
               {formatPrice(pizza.price)}
             </Typography>
-            <span className={styles.addButton()} aria-label={t('pizza.addToCart')}>
+            <span className={styles.addButton()} aria-hidden="true">
               <Plus size={14} />
             </span>
           </div>

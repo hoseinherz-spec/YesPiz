@@ -87,6 +87,7 @@ type AppContextValue = {
   user: AppUser | null;
   userName: string;
   userEmail: string;
+  updateLocalUser: (patch: Partial<Pick<AppUser, 'firstName' | 'lastName' | 'email' | 'phone'>>) => void;
   accessToken: string | null;
   authed: boolean;
   authLoading: boolean;
@@ -132,6 +133,10 @@ type AppContextValue = {
   unreadCount: number;
   pushEnabled: boolean;
   setPushEnabled: (v: boolean) => void;
+  emailNotificationsEnabled: boolean;
+  setEmailNotificationsEnabled: (v: boolean) => void;
+  smsNotificationsEnabled: boolean;
+  setSmsNotificationsEnabled: (v: boolean) => void;
   locationEnabled: boolean;
   setLocationEnabled: (v: boolean) => void;
 };
@@ -274,7 +279,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] =
     useState<AppNotification[]>(SAMPLE_NOTIFICATIONS);
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [smsNotificationsEnabled, setSmsNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
+  const [localProfile, setLocalProfile] = useState<
+    Partial<Pick<AppUser, 'firstName' | 'lastName' | 'email' | 'phone'>>
+  >({});
 
   const persistToken = useCallback((token: string | null) => {
     setAccessToken(token);
@@ -330,6 +340,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async function hydrate() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
+        let storedProfile: Partial<
+          Pick<AppUser, 'firstName' | 'lastName' | 'email' | 'phone'>
+        > = {};
         if (raw) {
           const s = JSON.parse(raw) as Record<string, unknown>;
           if (s.mode === 'dark' || s.mode === 'light') setModeState(s.mode);
@@ -337,6 +350,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (typeof s.onboarded === 'boolean') setOnboarded(s.onboarded);
           if (Array.isArray(s.favorites)) setFavorites(s.favorites as string[]);
           if (typeof s.pushEnabled === 'boolean') setPushEnabled(s.pushEnabled);
+          if (typeof s.emailNotificationsEnabled === 'boolean') {
+            setEmailNotificationsEnabled(s.emailNotificationsEnabled);
+          }
+          if (typeof s.smsNotificationsEnabled === 'boolean') {
+            setSmsNotificationsEnabled(s.smsNotificationsEnabled);
+          }
           if (typeof s.locationEnabled === 'boolean') {
             setLocationEnabled(s.locationEnabled);
           }
@@ -346,6 +365,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (typeof s.activeOrderId === 'string' || s.activeOrderId === null) {
             setActiveOrderId(s.activeOrderId as string | null);
           }
+          if (s.localProfile && typeof s.localProfile === 'object') {
+            storedProfile = s.localProfile as typeof storedProfile;
+            setLocalProfile(storedProfile);
+          }
         }
 
         const token = localStorage.getItem(TOKEN_KEY);
@@ -354,7 +377,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           try {
             const me = await accountClient.getMe({ accessToken: token });
             if (!cancelled) {
-              setUser(mapProfile(me));
+              setUser({ ...mapProfile(me), ...storedProfile });
               const [addrList, orderList] = await Promise.all([
                 ordersClient.listAddresses({ accessToken: token }),
                 ordersClient.list({ accessToken: token }),
@@ -405,9 +428,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           onboarded,
           favorites,
           pushEnabled,
+          emailNotificationsEnabled,
+          smsNotificationsEnabled,
           locationEnabled,
           selectedAddressId,
           activeOrderId,
+          localProfile,
         }),
       );
     } catch {
@@ -420,9 +446,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onboarded,
     favorites,
     pushEnabled,
+    emailNotificationsEnabled,
+    smsNotificationsEnabled,
     locationEnabled,
     selectedAddressId,
     activeOrderId,
+    localProfile,
   ]);
 
   useEffect(() => {
@@ -441,6 +470,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
+
+  const updateLocalUser = useCallback(
+    (patch: Partial<Pick<AppUser, 'firstName' | 'lastName' | 'email' | 'phone'>>) => {
+      setLocalProfile((current) => ({ ...current, ...patch }));
+      setUser((current) => (current ? { ...current, ...patch } : current));
+    },
+    [],
+  );
 
   const sendOtp = useCallback(async (phone: string) => {
     setAuthLoading(true);
@@ -543,6 +580,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setOrders(SAMPLE_ORDERS);
     setActiveOrderId(null);
     setAuthError(null);
+    setLocalProfile({});
   }, [persistToken]);
 
   const completeOnboarding = useCallback(() => setOnboarded(true), []);
@@ -632,6 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     user,
     userName,
     userEmail,
+    updateLocalUser,
     accessToken,
     authed: Boolean(accessToken && user),
     authLoading,
@@ -663,6 +702,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     unreadCount,
     pushEnabled,
     setPushEnabled,
+    emailNotificationsEnabled,
+    setEmailNotificationsEnabled,
+    smsNotificationsEnabled,
+    setSmsNotificationsEnabled,
     locationEnabled,
     setLocationEnabled,
   };

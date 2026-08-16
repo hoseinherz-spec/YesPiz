@@ -1,8 +1,7 @@
-/**
- * YesPiz 3.0 — dark / neon design tokens.
- * Values resolve from HeroUI CSS theme variables (globals.css).
- */
+/** YesPizz customer-mobile tokens resolved from HeroUI semantic variables. */
 export const brand = {
+  cream: 'var(--cream)',
+  charcoal: 'var(--charcoal)',
   neon: 'var(--accent)',
   navy: 'var(--background)',
   lime: 'var(--accent)',
@@ -59,8 +58,8 @@ export type Palette = (typeof palettes)['dark'];
 export const radius = {
   sm: 12,
   md: 18,
-  lg: 24,
-  xl: 30,
+  lg: 26,
+  xl: 42,
   pill: 999,
 };
 
@@ -70,7 +69,7 @@ export const spacing = {
   md: 12,
   lg: 16,
   xl: 24,
-  xxl: 32,
+  xxl: 38,
 };
 
-export const APP_MAX_WIDTH = 430;
+export const APP_MAX_WIDTH = 473;

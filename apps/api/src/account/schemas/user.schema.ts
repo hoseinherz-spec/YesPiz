@@ -93,6 +93,12 @@ export class User {
   cashBanned!: boolean;
 
   @Prop()
+  cashRestoredAt?: Date;
+
+  @Prop()
+  cashRestoreReason?: string;
+
+  @Prop()
   googleSub?: string;
 }
 

@@ -3,7 +3,7 @@ import { Hero } from "./hero";
 import { LandingDownloadSection } from "./landing-download-section";
 import { LandingFaqSection } from "./landing-faq-section";
 import { LandingHeader } from "./landing-header";
-import { LandingPizzaSlider } from "./landing-pizza-slider";
+import { LandingPizzaMenuSection } from "./landing-pizza-menu-section";
 import { LandingTestimonialsSection } from "./landing-testimonials-section";
 import { PizzaAnimation } from "./PizzaAnimation";
 
@@ -17,7 +17,7 @@ export default function Landing01Demo() {
         headline="Craft you can taste."
         description="Watch Neapolitan pizza leave the fire and settle into the box — dough, heat, and Vienna soul in every frame."
       />
-      <LandingPizzaSlider />
+      <LandingPizzaMenuSection />
       <LandingTestimonialsSection />
       <LandingFaqSection />
       <LandingDownloadSection />

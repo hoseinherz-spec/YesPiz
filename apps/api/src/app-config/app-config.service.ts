@@ -20,6 +20,30 @@ export class AppConfigService implements OnModuleInit {
     let doc = await this.model.findOne({ key: "default" }).exec();
     if (!doc) {
       doc = await this.model.create({ key: "default" });
+    } else {
+      let dirty = false;
+      const defaults: Partial<AppConfig> = {
+        cashHardCapCents: 50_000,
+        qualityAutoSuspendThreshold: 40,
+        waveSize: 3,
+        bidWindowSeconds: 15,
+        w4Fairness: 0.15,
+        w5Quality: 0.25,
+        maxBatchHoldMinutes: 8,
+        maxBagMinutes: 8,
+        pickupGeoRadiusMeters: 250,
+        dropoffGeoRadiusMeters: 150,
+        etaBasePrepMinutes: 18,
+        etaBaseDeliveryMinutes: 22,
+        etaWindowPaddingMinutes: 5,
+      };
+      for (const [key, value] of Object.entries(defaults)) {
+        if ((doc as unknown as Record<string, unknown>)[key] == null) {
+          (doc as unknown as Record<string, unknown>)[key] = value;
+          dirty = true;
+        }
+      }
+      if (dirty) await doc.save();
     }
     this.cache = doc;
     return doc;

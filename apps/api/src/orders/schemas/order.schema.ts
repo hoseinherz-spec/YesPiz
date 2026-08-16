@@ -25,6 +25,9 @@ export class OrderLine {
 
   @Prop({ default: 1 })
   prepWeight!: number;
+
+  @Prop({ default: 0 })
+  cookTimeSeconds!: number;
 }
 
 const OrderLineSchema = SchemaFactory.createForClass(OrderLine);
@@ -49,6 +52,14 @@ export class OrderOffer {
 
   @Prop()
   respondedAt?: Date;
+
+  /** Wave bid: kitchen declared ready */
+  @Prop()
+  ready?: boolean;
+
+  /** Wave bid: quoted prep minutes */
+  @Prop()
+  quotedPrepMinutes?: number;
 }
 
 const OrderOfferSchema = SchemaFactory.createForClass(OrderOffer);
@@ -114,8 +125,79 @@ export class Order {
   @Prop({ default: false })
   radiusExpanded!: boolean;
 
+  /** How many times the wave was expanded (N + radius) */
+  @Prop({ default: 0 })
+  waveExpandCount!: number;
+
   @Prop()
   notes?: string;
+
+  /** Kitchen Quality OS — numbered seal on package */
+  @Prop()
+  sealId?: string;
+
+  @Prop()
+  checklistCompletedAt?: Date;
+
+  @Prop({
+    type: [
+      {
+        item: { type: String, required: true },
+        ok: { type: Boolean, required: true },
+      },
+    ],
+    default: [],
+  })
+  checklistAnswers!: Array<{ item: string; ok: boolean }>;
+
+  @Prop()
+  readyPhotoUrl?: string;
+
+  @Prop({ default: false })
+  isTestOrder!: boolean;
+
+  /** Winning kitchen quoted prep (minutes) */
+  @Prop()
+  quotedPrepMinutes?: number;
+
+  /** Kitchen per-order prep override */
+  @Prop()
+  prepOverrideMinutes?: number;
+
+  /** Server ETA window — customer-facing ranges */
+  @Prop()
+  etaPrepMin?: number;
+
+  @Prop()
+  etaPrepMax?: number;
+
+  @Prop()
+  etaDeliveryMin?: number;
+
+  @Prop()
+  etaDeliveryMax?: number;
+
+  @Prop()
+  etaComputedAt?: Date;
+
+  /** Pickup QR / OTP shown to kitchen + courier */
+  @Prop()
+  pickupCode?: string;
+
+  /** Door PIN for customer handoff */
+  @Prop()
+  doorPin?: string;
+
+  /** Customer sees “courier has one short stop” only */
+  @Prop({ default: false })
+  hasShortExtraStop!: boolean;
+
+  /** When order became READY_FOR_PICKUP */
+  @Prop()
+  readyAt?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: "DeliveryProof" })
+  proofId?: Types.ObjectId;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

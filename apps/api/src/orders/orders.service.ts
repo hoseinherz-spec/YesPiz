@@ -7,13 +7,17 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AccountService } from "../account/account.service";
+import { AppConfigService } from "../app-config/app-config.service";
 import { CatalogService } from "../catalog/catalog.service";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "../common/enums";
 import {
   CourierSession,
   CourierSessionDocument,
 } from "../couriers/schemas/courier.schema";
+import { EtaService } from "../eta/eta.service";
+import { ProvidersService } from "../providers/providers.service";
 import { PushService } from "../push/push.service";
+import { QualityService } from "../quality/quality.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import {
   CreateAddressDto,
@@ -21,6 +25,7 @@ import {
   ResolveAdminReviewDto,
   UpdateKitchenStatusDto,
 } from "./dto/order.dto";
+import { PrepOverrideDto } from "../providers/dto/provider.dto";
 import { toCustomerView } from "./orders.sanitizer";
 import { DeliveryAddress, AddressDocument } from "./schemas/address.schema";
 import { Order, OrderDocument } from "./schemas/order.schema";
@@ -54,6 +59,10 @@ export class OrdersService {
     private readonly accounts: AccountService,
     private readonly realtime: RealtimeGateway,
     private readonly push: PushService,
+    private readonly appConfig: AppConfigService,
+    private readonly quality: QualityService,
+    private readonly eta: EtaService,
+    private readonly providersService: ProvidersService,
   ) {}
 
   async createAddress(userId: string, dto: CreateAddressDto) {
@@ -136,17 +145,27 @@ export class OrdersService {
         unitPriceCents,
         quantity: line.quantity,
         prepWeight: item.prepWeight,
+        cookTimeSeconds: item.cookTimeSeconds ?? 0,
       };
     });
 
     const deliveryFeeCents = 299;
+    const totalCents = subtotalCents + deliveryFeeCents;
+
+    if (dto.paymentMethod === PaymentMethod.CASH) {
+      const cfg = await this.appConfig.get();
+      if (totalCents > cfg.cashHardCapCents) {
+        throw new BadRequestException("errors.badRequest");
+      }
+    }
+
     const order = await this.orders.create({
       customerId: new Types.ObjectId(userId),
       menuVersion: dto.menuVersion,
       lines,
       subtotalCents,
       deliveryFeeCents,
-      totalCents: subtotalCents + deliveryFeeCents,
+      totalCents,
       status: OrderStatus.PENDING_PAYMENT,
       paymentMethod: dto.paymentMethod,
       paymentStatus: PaymentStatus.PENDING,
@@ -206,6 +225,10 @@ export class OrdersService {
     order.status = dto.status;
     await order.save();
 
+    if (dto.status === OrderStatus.CANCELLED && order.providerId) {
+      await this.providersService.bumpOpenOrders(String(order.providerId), -1);
+    }
+
     this.realtime.emitOrderStatus(
       order.id,
       String(order.customerId),
@@ -250,8 +273,26 @@ export class OrdersService {
     if (!allowed.includes(dto.status)) {
       throw new BadRequestException("errors.badRequest");
     }
+
+    if (dto.status === OrderStatus.READY_FOR_PICKUP) {
+      await this.quality.assertHandoffReady(order);
+    }
+
     order.status = dto.status;
+    if (dto.status === OrderStatus.READY_FOR_PICKUP) {
+      order.readyAt = new Date();
+    }
     await order.save();
+
+    if (
+      dto.status === OrderStatus.READY_FOR_PICKUP ||
+      dto.status === OrderStatus.PREPARING
+    ) {
+      await this.eta.applyAndSave(order, {
+        quotedPrepMinutes:
+          order.prepOverrideMinutes ?? order.quotedPrepMinutes,
+      });
+    }
 
     this.realtime.emitOrderStatus(
       order.id,
@@ -267,6 +308,22 @@ export class OrdersService {
       order.id,
       order.status,
     );
+    return order;
+  }
+
+  async setPrepOverride(
+    providerId: string,
+    orderId: string,
+    dto: PrepOverrideDto,
+  ) {
+    const order = await this.getRaw(orderId);
+    if (!order.providerId || String(order.providerId) !== providerId) {
+      throw new ForbiddenException("errors.forbidden");
+    }
+    order.prepOverrideMinutes = dto.prepOverrideMinutes;
+    await this.eta.applyAndSave(order, {
+      quotedPrepMinutes: dto.prepOverrideMinutes,
+    });
     return order;
   }
 
@@ -307,19 +364,40 @@ export class OrdersService {
 
   async markFailedCash(orderId: string) {
     const order = await this.getRaw(orderId);
+    if (order.paymentMethod !== PaymentMethod.CASH) {
+      throw new BadRequestException("errors.badRequest");
+    }
+    if (
+      order.status === OrderStatus.FAILED_CASH ||
+      order.status === OrderStatus.COMPLETED ||
+      order.status === OrderStatus.CANCELLED
+    ) {
+      throw new BadRequestException("errors.badRequest");
+    }
+
     order.status = OrderStatus.FAILED_CASH;
     order.paymentStatus = PaymentStatus.FAILED;
     await order.save();
 
+    if (order.providerId) {
+      await this.providersService.bumpOpenOrders(String(order.providerId), -1);
+    }
+
+    const cfg = await this.appConfig.get();
     const user = await this.accounts.findById(String(order.customerId));
     if (user) {
       user.failedCashCount += 1;
-      const threshold = 1;
-      if (user.failedCashCount >= threshold) {
+      if (user.failedCashCount >= cfg.cashFailThreshold) {
         user.cashBanned = true;
       }
       await user.save();
     }
+
+    this.realtime.emitOrderStatus(
+      order.id,
+      String(order.customerId),
+      order.status,
+    );
     return order;
   }
 

@@ -1,15 +1,5 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { getCourierToken } from '@/lib/auth';
+import DriverDispatchApp from '@/components/driver-dispatch-app';
 
 export default function CourierIndex() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace(getCourierToken() ? '/home/' : '/login/');
-  }, [router]);
-
-  return null;
+  return <DriverDispatchApp />;
 }

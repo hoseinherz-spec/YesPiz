@@ -10,10 +10,14 @@ import { BatchesModule } from "./batches/batches.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { CouriersModule } from "./couriers/couriers.module";
 import { DispatchModule } from "./dispatch/dispatch.module";
+import { EtaModule } from "./eta/eta.module";
+import { IncidentsModule } from "./incidents/incidents.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { ProofModule } from "./proof/proof.module";
 import { ProvidersModule } from "./providers/providers.module";
 import { PushModule } from "./push/push.module";
+import { QualityModule } from "./quality/quality.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { RedisModule } from "./redis/redis.module";
 
@@ -38,10 +42,14 @@ import { RedisModule } from "./redis/redis.module";
     CatalogModule,
     ProvidersModule,
     OrdersModule,
+    QualityModule,
+    EtaModule,
     DispatchModule,
     PaymentsModule,
     CouriersModule,
+    ProofModule,
     BatchesModule,
+    IncidentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

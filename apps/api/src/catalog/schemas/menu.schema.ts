@@ -5,6 +5,17 @@ export type MenuVersionDocument = HydratedDocument<MenuVersion>;
 export type CategoryDocument = HydratedDocument<Category>;
 export type MenuItemDocument = HydratedDocument<MenuItem>;
 
+@Schema({ _id: false })
+export class RecipeIngredient {
+  @Prop({ required: true })
+  name!: string;
+
+  @Prop({ required: true, min: 0 })
+  weightGrams!: number;
+}
+
+const RecipeIngredientSchema = SchemaFactory.createForClass(RecipeIngredient);
+
 @Schema({ timestamps: true, collection: "menu_versions" })
 export class MenuVersion {
   @Prop({ required: true, unique: true })
@@ -60,6 +71,26 @@ export class MenuItem {
   /** Prep weight for batch/kitchen scoring */
   @Prop({ default: 1 })
   prepWeight!: number;
+
+  /** Kitchen Quality OS — standard recipe */
+  @Prop({ type: [RecipeIngredientSchema], default: [] })
+  recipeIngredients!: RecipeIngredient[];
+
+  @Prop({ default: 0, min: 0 })
+  cookTimeSeconds!: number;
+
+  @Prop({ default: 65 })
+  handoffTempC!: number;
+
+  @Prop({ default: true })
+  requiresNumberedSeal!: boolean;
+
+  @Prop({ default: false })
+  requiresReadyPhoto!: boolean;
+
+  /** Pre-handoff checklist template labels */
+  @Prop({ type: [String], default: ["Weight check", "Packaging seal", "Temperature"] })
+  checklistTemplate!: string[];
 
   @Prop({ default: true })
   isActive!: boolean;

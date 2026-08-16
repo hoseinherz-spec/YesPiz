@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsArray,
   IsBoolean,
+  IsDateString,
   IsNumber,
   IsOptional,
   IsString,
@@ -84,6 +86,12 @@ export class UpdateProviderDto {
   @Min(0)
   @Max(5)
   rating?: number;
+
+  @ApiPropertyOptional({ description: "Max concurrent open orders" })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  acceptCap?: number;
 }
 
 export class ProviderSelfUpdateDto {
@@ -96,4 +104,47 @@ export class ProviderSelfUpdateDto {
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  acceptCap?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  pauseReason?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  pausedUntil?: string;
+}
+
+export class EightySixDto {
+  @ApiProperty({ type: [String], description: "Menu item ids to mark unavailable" })
+  @IsArray()
+  @IsString({ each: true })
+  menuItemIds!: string[];
+}
+
+export class PauseOrdersDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @ApiPropertyOptional({ description: "ISO date when pause ends" })
+  @IsOptional()
+  @IsDateString()
+  until?: string;
+}
+
+export class PrepOverrideDto {
+  @ApiProperty({ description: "Prep minutes override for this order" })
+  @IsNumber()
+  @Min(1)
+  @Max(120)
+  prepOverrideMinutes!: number;
 }

@@ -3,6 +3,7 @@
 import {
   ApiError,
   ordersClient,
+  qualityClient,
   type KitchenStatusUpdate,
   type Order,
 } from '@repo/api';
@@ -33,10 +34,13 @@ const ACTIONS: Array<{
   },
 ];
 
+const DEFAULT_CHECKLIST = ['Weight check', 'Packaging seal', 'Temperature'];
+
 export default function KitchenPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sealByOrder, setSealByOrder] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError(null);
@@ -62,7 +66,44 @@ export default function KitchenPage() {
     };
   }, [load]);
 
+  async function completeQualityThenReady(orderId: string) {
+    setBusyId(orderId);
+    setError(null);
+    try {
+      const token = requireProviderToken();
+      const sealId = (sealByOrder[orderId] ?? '').trim() || `YP-${orderId.slice(-6)}`;
+
+      await qualityClient.submitChecklist(
+        orderId,
+        {
+          answers: DEFAULT_CHECKLIST.map((item) => ({ item, ok: true })),
+        },
+        { accessToken: token },
+      );
+      await qualityClient.submitSeal(orderId, { sealId }, { accessToken: token });
+      await ordersClient.updateKitchenStatus(
+        orderId,
+        { status: 'READY_FOR_PICKUP' },
+        { accessToken: token },
+      );
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Quality checklist / ready update failed',
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function updateStatus(orderId: string, status: KitchenStatusUpdate) {
+    if (status === 'READY_FOR_PICKUP') {
+      await completeQualityThenReady(orderId);
+      return;
+    }
+
     setBusyId(orderId);
     setError(null);
     try {
@@ -88,7 +129,7 @@ export default function KitchenPage() {
             Active kitchen
           </Typography>
           <p className="text-muted text-sm">
-            Accepted / preparing / ready orders
+            Checklist + numbered seal required before ready for pickup
           </p>
         </div>
         <Button size="sm" variant="secondary" onPress={load}>
@@ -125,6 +166,20 @@ export default function KitchenPage() {
                   </li>
                 ))}
               </ul>
+              {order.status === 'PREPARING' ? (
+                <input
+                  aria-label="Seal ID"
+                  placeholder="Numbered seal ID"
+                  value={sealByOrder[id] ?? ''}
+                  onChange={(e) =>
+                    setSealByOrder((prev) => ({
+                      ...prev,
+                      [id]: e.target.value,
+                    }))
+                  }
+                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
+                />
+              ) : null}
               <div className="flex flex-wrap gap-2 pt-1">
                 {ACTIONS.filter((a) => a.from.includes(order.status)).map(
                   (action) => (

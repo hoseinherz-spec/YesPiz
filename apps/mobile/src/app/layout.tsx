@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#08111F',
+  themeColor: '#000000',
 };
 
 export default async function RootLayout({
@@ -38,7 +38,7 @@ export default async function RootLayout({
       data-theme="dark"
       suppressHydrationWarning
     >
-      <body className="bg-[#08111F] text-white min-h-full flex flex-col font-sans select-none">
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans select-none">
         <NextIntlClientProvider locale={defaultLocale} messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

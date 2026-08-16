@@ -12,7 +12,11 @@ import {
 import { Server, Socket } from "socket.io";
 
 export type RealtimeEvent =
-  "order.status" | "offer.created" | "offer.expired" | "courier.location";
+  | "order.status"
+  | "offer.created"
+  | "offer.expired"
+  | "courier.location"
+  | "incident.created";
 
 @WebSocketGateway({
   cors: { origin: true, credentials: true },

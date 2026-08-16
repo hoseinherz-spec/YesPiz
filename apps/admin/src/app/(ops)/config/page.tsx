@@ -20,6 +20,8 @@ const FIELDS: Array<{ key: keyof UpdateAppConfigRequest; label: string; step?: s
   { key: 'dispatchExpandedRadiusMeters', label: 'Expanded radius (m)', step: '100' },
   { key: 'offerTimeoutSeconds', label: 'Offer timeout (s)', step: '1' },
   { key: 'cashFailThreshold', label: 'Cash fail threshold', step: '1' },
+  { key: 'cashHardCapCents', label: 'Cash hard cap (cents)', step: '100' },
+  { key: 'qualityAutoSuspendThreshold', label: 'Quality auto-suspend score', step: '1' },
   { key: 'maxBatchSize', label: 'Max batch size', step: '1' },
 ];
 
@@ -42,6 +44,8 @@ export default function ConfigPage() {
       dispatchExpandedRadiusMeters: data.dispatchExpandedRadiusMeters,
       offerTimeoutSeconds: data.offerTimeoutSeconds,
       cashFailThreshold: data.cashFailThreshold,
+      cashHardCapCents: data.cashHardCapCents,
+      qualityAutoSuspendThreshold: data.qualityAutoSuspendThreshold,
       maxBatchSize: data.maxBatchSize,
     });
   }, []);

@@ -17,6 +17,12 @@ export type CreateMenuItemRequest = {
   imageUrl?: string;
   tags?: string[];
   isActive?: boolean;
+  recipeIngredients?: Array<{ name: string; weightGrams: number }>;
+  cookTimeSeconds?: number;
+  handoffTempC?: number;
+  requiresNumberedSeal?: boolean;
+  requiresReadyPhoto?: boolean;
+  checklistTemplate?: string[];
 };
 
 export type UpdateMenuItemRequest = {
@@ -26,6 +32,12 @@ export type UpdateMenuItemRequest = {
   prepWeight?: number;
   isActive?: boolean;
   imageUrl?: string;
+  recipeIngredients?: Array<{ name: string; weightGrams: number }>;
+  cookTimeSeconds?: number;
+  handoffTempC?: number;
+  requiresNumberedSeal?: boolean;
+  requiresReadyPhoto?: boolean;
+  checklistTemplate?: string[];
 };
 
 export type MenuVersion = {
@@ -59,6 +71,12 @@ export type MenuItem = {
   isActive?: boolean;
   imageUrl?: string;
   tags: string[];
+  recipeIngredients?: Array<{ name: string; weightGrams: number }>;
+  cookTimeSeconds?: number;
+  handoffTempC?: number;
+  requiresNumberedSeal?: boolean;
+  requiresReadyPhoto?: boolean;
+  checklistTemplate?: string[];
   createdAt?: string;
   updatedAt?: string;
 };

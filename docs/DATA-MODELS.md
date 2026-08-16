@@ -14,14 +14,13 @@ Product context: [`docs/PRODUCT.md`](PRODUCT.md). Status machine: [`ARCHITECTURE
 - Auth: password hash, phone OTP, optional Google subject
 - Profile: display name, email, phone, locale
 - `cashBanned: boolean` + `failedCashCount`
+- Admin cash restore (`cashRestoredAt`, `cashRestoreReason`)
 
 **Target**
 
 - Cash Trust Score and ladder state (verify / cap / prepay / online-only / banned)
 - Open cash debt, no-answer count, cancel count, account age
 - Device / phone / address match signals
-- Admin restore reason + timestamp (the old nested `cashBan` shape)
-
 ## Address
 
 **Shipped**
@@ -43,12 +42,12 @@ Product context: [`docs/PRODUCT.md`](PRODUCT.md). Status machine: [`ARCHITECTURE
 - Admin-owned immutable menu versions; one `published` at a time
 - Items: name, description, `priceCents`, extras/tags, `prepWeight`, image URL, `isActive`
 - Orders snapshot `menuVersion` id at create time
+- Quality OS recipe fields: `recipeIngredients`, `cookTimeSeconds`, `handoffTempC`, `requiresNumberedSeal`, `requiresReadyPhoto`, `checklistTemplate`
 
 **Target (Quality OS)**
 
-- Standard recipe and ingredient weights per item
-- Cook time and handoff temperature
-- Packaging + numbered-seal requirement
+- Packaging standards beyond seal flag
+- Customer-visible temperature SLA (still internal)
 
 ## Provider
 
@@ -58,13 +57,11 @@ Product context: [`docs/PRODUCT.md`](PRODUCT.md). Status machine: [`ARCHITECTURE
 - Location geo, service radius, admin-set internal rating (default 4.5)
 - Members (user ids with provider role)
 - `acceptingOrders`, `isActive`
+- Quality OS: `qualityScore`, complaint/delay/error counts, `autoSuspended`, `acceptCap`
 
 **Target**
 
-- Accept capacity (max open orders)
 - Per-item 86 / unavailable from the kitchen
-- Quality score from complaints, delays, errors (not only admin edit)
-- Auto-suspend when quality drops below threshold
 - Delay rate, error rate, accept probability, recent volume (dispatch inputs)
 - Fairness / anti-monopoly weight
 
@@ -79,13 +76,13 @@ Product context: [`docs/PRODUCT.md`](PRODUCT.md). Status machine: [`ARCHITECTURE
 - Payment method / payment refs
 - Exception / admin review fields
 - `notes`
+- Quality OS: `sealId`, `checklistCompletedAt`, `checklistAnswers`, `readyPhotoUrl`, `isTestOrder`
 
 **Target**
 
 - Server ETA window (prep + delivery), not a client guess
 - Quoted prep time from the winning kitchen
 - SLA deadline + auto-compensation record
-- Seal id, ready photo, pre-handoff checklist result
 - Proof refs (pickup, drop-off, cash receipt)
 - Customer-visible “courier has one short stop” flag (no other-order leak)
 - Scheduled-for timestamp (checkout chips are UI-only today)
@@ -97,13 +94,12 @@ Product context: [`docs/PRODUCT.md`](PRODUCT.md). Status machine: [`ARCHITECTURE
 - Order id, method (`card` | `cash` | `wallet` enum), status
 - `providerRef` — Stripe id or `mock_*` in local mode
 - Cash initiate is blocked when `user.cashBanned`
+- Cash hard cap €500 (`cashHardCapCents`); `POST /orders/:id/failed-cash`; admin cash restore
 
 **Target**
 
-- No cash when order total > €500
-- Cash Trust gate before offer of CASH
+- Cash Trust Score gate before offer of CASH
 - Digital cash-received receipt
-- Working `FAILED_CASH` path from courier / admin (service exists, no HTTP)
 
 ## DispatchOffer
 

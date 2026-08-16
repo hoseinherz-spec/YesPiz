@@ -27,7 +27,7 @@ export function TabBar() {
         <div
           className={styles.pill()}
           style={{
-            backgroundColor: 'rgba(36, 41, 54, 0.62)',
+            backgroundColor: 'color-mix(in oklab, var(--card) 88%, transparent)',
             backdropFilter: 'blur(28px) saturate(1.2)',
             WebkitBackdropFilter: 'blur(28px) saturate(1.2)',
           }}
@@ -41,7 +41,7 @@ export function TabBar() {
 
             return (
               <Link key={tab.href} href={tab.href} className={tabStyles.tab()}>
-                <Icon size={20} color={focused ? 'var(--accent)' : '#8B93A7'} />
+                <Icon size={20} color={focused ? 'var(--foreground)' : 'var(--muted)'} />
                 <Typography type="body-xs" className={tabStyles.label()}>
                   {t(tab.navKey)}
                 </Typography>

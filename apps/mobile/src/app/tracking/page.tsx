@@ -1,77 +1,69 @@
 'use client';
 
-import { Button, Card, Typography, buttonVariants } from '@heroui/react';
+import { Button, Card, Typography } from '@heroui/react';
 import { ordersClient, type CourierLocationView } from '@repo/api';
-import { ArrowRight, Check, Circle, Loader2, Phone, Truck } from '@repo/icons';
-import Link from 'next/link';
+import { ArrowLeft, Check, MapPin, MessageCircle, Phone, Truck } from '@repo/icons';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { AppFrame } from '@/components/AppFrame';
-import { ScreenHeader } from '@/components/ScreenHeader';
 import { mapCustomerOrder, ORDER_STEPS, useApp } from '@/context/AppContext';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
 
 export default function TrackingPage() {
+  const router = useRouter();
   const {
     t,
     orders,
+    addresses,
+    selectedAddressId,
     activeOrderId,
     advanceActiveOrder,
     accessToken,
     addOrder,
   } = useApp();
-
   const [courierLoc, setCourierLoc] = useState<CourierLocationView | null>(null);
 
   const order = useMemo(() => {
-    if (activeOrderId) return orders.find((o) => o.id === activeOrderId);
-    return orders.find((o) => o.status === 'active');
+    if (activeOrderId) return orders.find((item) => item.id === activeOrderId);
+    return orders.find((item) => item.status === 'active');
   }, [orders, activeOrderId]);
-
+  const address = addresses.find((item) => item.id === selectedAddressId);
   const orderId = order?.id;
   const orderStatus = order?.status;
   const orderStep = order?.stepIndex;
+  const isLocalOrder = Boolean(orderId?.startsWith('o-'));
 
-  // API orders: poll customerStatus every ~3s (primary; socket is server-ready)
   useEffect(() => {
-    if (!accessToken || !orderId || orderStatus !== 'active') return;
+    if (!accessToken || !orderId || isLocalOrder || orderStatus !== 'active') return;
     if ((orderStep ?? 0) >= ORDER_STEPS.length - 1) return;
-
     let cancelled = false;
-
     const tick = async () => {
       try {
         const view = await ordersClient.get(orderId, { accessToken });
-        if (cancelled) return;
-        addOrder(mapCustomerOrder(view));
+        if (!cancelled) addOrder(mapCustomerOrder(view));
       } catch {
-        // keep last known state
+        // Keep the last known API state and retry on the next polling interval.
       }
     };
-
     void tick();
     const timer = setInterval(() => void tick(), 3000);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [accessToken, orderId, orderStatus, orderStep, addOrder]);
+  }, [accessToken, orderId, isLocalOrder, orderStatus, orderStep, addOrder]);
 
-  // Blind courier coords when driver step is active
   useEffect(() => {
-    if (!accessToken || !orderId) return;
-    if ((orderStep ?? 0) < 3) return;
-
+    if (!accessToken || !orderId || isLocalOrder || (orderStep ?? 0) < 3) return;
     let cancelled = false;
     const tick = async () => {
       try {
-        const loc = await ordersClient.getCourierLocation(orderId, {
-          accessToken,
-        });
-        if (!cancelled) setCourierLoc(loc);
+        const location = await ordersClient.getCourierLocation(orderId, { accessToken });
+        if (!cancelled) setCourierLoc(location);
       } catch {
-        // ignore
+        // Courier coordinates can arrive after the order status; keep retrying.
       }
     };
     void tick();
@@ -80,171 +72,151 @@ export default function TrackingPage() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [accessToken, orderId, orderStep]);
+  }, [accessToken, orderId, isLocalOrder, orderStep]);
 
-  // Local demo fallback when not authenticated
   useEffect(() => {
-    if (accessToken) return;
-    if (!order || order.status !== 'active') return;
+    if (!isLocalOrder || !order || order.status !== 'active') return;
     if (order.stepIndex >= ORDER_STEPS.length - 1) return;
     const timer = setInterval(() => advanceActiveOrder(), 3500);
     return () => clearInterval(timer);
-  }, [accessToken, order, advanceActiveOrder]);
+  }, [isLocalOrder, order, advanceActiveOrder]);
 
   if (!order) {
     return (
       <AppFrame>
-        <ScreenHeader title={t('tracking.title')} />
         <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
-          <Typography type="h3" className={hx.h3}>
-            {t('tracking.noActive')}
-          </Typography>
-          <div className="mt-6 w-full max-w-xs">
-            <Link
-              href="/orders/"
-              className={cn(buttonVariants({ variant: 'primary', fullWidth: true }), hx.btnPrimary)}
-            >
-              <span>{t('tracking.viewOrders')}</span>
-              <ArrowRight size={18} />
-            </Link>
-          </div>
+          <span className="flex size-24 items-center justify-center rounded-full bg-surface-secondary text-muted">
+            <MapPin size={38} />
+          </span>
+          <Typography type="h2" className={cn(hx.h2, 'mt-6')}>{t('tracking.noActive')}</Typography>
+          <Typography type="body-sm" className={cn(hx.bodySm, 'mt-2 max-w-xs')}>{t('tracking.noActiveBody')}</Typography>
+          <Button variant="primary" onPress={() => router.push('/orders/')} className={cn(hx.btnPrimary, 'mt-8')}>
+            {t('tracking.viewOrders')}
+          </Button>
         </div>
       </AppFrame>
     );
   }
 
-  const delivered = order.stepIndex >= ORDER_STEPS.length - 1;
-  const progress = ((order.stepIndex + 1) / ORDER_STEPS.length) * 100;
-  const showDriver = order.stepIndex >= 3 && !delivered;
+  const safeStep = Math.min(order.stepIndex, ORDER_STEPS.length - 1);
+  const delivered = safeStep >= ORDER_STEPS.length - 1;
+  const progress = ((safeStep + 1) / ORDER_STEPS.length) * 100;
+  const currentStep = ORDER_STEPS[safeStep];
+  const latitude = courierLoc?.latitude;
+  const longitude = courierLoc?.longitude;
+  const coordinateLabel = latitude != null && longitude != null
+    ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+    : null;
+  const osmHref = latitude != null && longitude != null
+    ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
+    : null;
 
   return (
-    <AppFrame>
-      <ScreenHeader title={t('tracking.title')} />
+    <AppFrame padded={false} className="bg-[#202126]">
+      <div className="relative min-h-[58dvh] overflow-hidden bg-[#202126]">
+        <div className="absolute -top-20 -right-20 h-72 w-72 rotate-12 rounded-[40%] bg-[#719647]" />
+        <div className="absolute top-8 -left-20 h-24 w-[130%] -rotate-[24deg] bg-black" />
+        <div className="absolute top-44 -left-14 h-20 w-[120%] rotate-[31deg] bg-black" />
+        <div className="absolute bottom-28 -left-20 h-16 w-[135%] -rotate-[12deg] bg-[#39758c]" />
+        <div className="absolute right-16 top-20 h-44 w-16 rotate-[18deg] rounded-full bg-black" />
+        <div className="absolute left-8 top-36 h-24 w-28 rotate-12 rounded-[18px] bg-[#2d2e34]" />
+        <div className="absolute right-6 bottom-20 h-20 w-28 -rotate-12 rounded-[18px] bg-[#2d2e34]" />
 
-      <Card
-        className={cn(
-          hx.cardElevated,
-          'overflow-hidden border-accent bg-gradient-to-br from-accent to-[#b8d900]',
-        )}
-      >
-        <Typography type="body-xs" className="text-[12px] font-medium text-accent-foreground opacity-70">
-          {delivered ? t('step.delivered.label') : t('tracking.onWayToYou')}
-        </Typography>
-        <Typography type="h1" className={cn(hx.display, 'mt-1 text-accent-foreground')}>
-          {delivered ? (
-            <Check size={40} color="var(--accent-foreground)" />
-          ) : (
-            <>
-              {order.eta}
-              <span className="ml-1 text-[20px] font-bold">
-                {t('tracking.minSuffix')}
-              </span>
-            </>
-          )}
-        </Typography>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--accent-foreground)_20%,transparent)]">
-          <div
-            className="h-full rounded-full bg-accent-foreground transition-all duration-700"
-            style={{ width: `${progress}%` }}
-          />
+        <Button
+          isIconOnly
+          variant="secondary"
+          aria-label={t('common.backToHome')}
+          onPress={() => router.back()}
+          className="absolute top-[max(18px,env(safe-area-inset-top))] left-5 z-20 size-14 min-w-14 rounded-full border-0 bg-[#1b1b22] text-white shadow-none"
+        >
+          <ArrowLeft size={21} />
+        </Button>
+        <div className="absolute top-[max(22px,env(safe-area-inset-top))] inset-x-20 z-10 text-center">
+          <p className="text-[12px] font-semibold text-white/60">{t('tracking.title')}</p>
+          <p className="text-[16px] font-bold text-white">{t(`step.${currentStep.key}.label`)}</p>
         </div>
-      </Card>
 
-      {showDriver ? (
-        <Card className={cn(hx.card, 'mt-4')}>
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] text-accent">
-              <Truck size={20} />
+        <div className="absolute left-[13%] top-[48%] h-1 w-[52%] -rotate-[24deg] bg-white shadow-[0_0_0_2px_#111]">
+          <span className="absolute -left-3 -top-3 size-7 rounded-full border-[7px] border-white bg-[#202126] shadow-[0_0_0_3px_#111]" />
+        </div>
+        <div className="absolute left-[62%] top-[35%] z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg">
+          <Truck size={25} />
+          <span className="absolute -bottom-5 size-4 rounded-full border-4 border-[#1b1b22] bg-white" />
+        </div>
+
+        {osmHref ? (
+          <a
+            href={osmHref}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white"
+          >
+            {t('tracking.openMap')} · {coordinateLabel}
+          </a>
+        ) : (
+          <span className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white/70">
+            {isLocalOrder ? t('tracking.demoMap') : t('tracking.awaitingLocation')}
+          </span>
+        )}
+      </div>
+
+      <div className="-mt-3 relative z-20 rounded-t-[42px] bg-surface px-[clamp(20px,8vw,38px)] pt-5 pb-[max(28px,env(safe-area-inset-bottom))]">
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-tertiary" />
+        <Card className="rounded-[26px] border-0 bg-surface-secondary p-3 shadow-none">
+          <Card.Content className="flex items-center gap-3 p-0">
+            <span className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <Truck size={21} />
             </span>
             <div className="min-w-0 flex-1">
-              <Typography type="h6" className={hx.title}>
-                {t('partner.driver')}
-              </Typography>
-              <Typography type="body-xs" className={hx.caption}>
-                {t(`step.${ORDER_STEPS[order.stepIndex].key}.hint`)}
-              </Typography>
-              {courierLoc?.latitude != null && courierLoc?.longitude != null ? (
-                <Typography type="body-xs" className={cn(hx.caption, 'mt-1')}>
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${courierLoc.latitude}&mlon=${courierLoc.longitude}#map=15/${courierLoc.latitude}/${courierLoc.longitude}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-accent underline"
-                  >
-                    {courierLoc.latitude.toFixed(4)}, {courierLoc.longitude.toFixed(4)}
-                  </a>
-                </Typography>
-              ) : null}
+              <Typography type="body-xs" className={hx.caption}>{t('tracking.courier')}</Typography>
+              <Typography type="h6" className={cn(hx.title, 'truncate')}>{t('tracking.courierName')}</Typography>
             </div>
             <Button
               isIconOnly
-              variant="primary"
-              aria-label="Call"
-              className="h-11 w-11 min-w-11 rounded-full bg-accent text-accent-foreground"
+              variant="secondary"
+              aria-label={t('tracking.callCourier')}
+              onPress={() => router.push('/call/')}
+              className="size-11 min-w-11 rounded-full border-0 bg-accent text-accent-foreground shadow-none"
             >
               <Phone size={18} />
             </Button>
-          </div>
+            <Button
+              isIconOnly
+              variant="secondary"
+              aria-label={t('tracking.chatCourier')}
+              onPress={() => router.push('/chat/')}
+              className="size-11 min-w-11 rounded-full border border-border bg-card text-foreground shadow-none"
+            >
+              <MessageCircle size={18} />
+            </Button>
+          </Card.Content>
         </Card>
-      ) : null}
 
-      <div className="mt-6 flex flex-col gap-0">
-        {ORDER_STEPS.map((step, i) => {
-          const done = i < order.stepIndex;
-          const current = i === order.stepIndex;
-          const upcoming = i > order.stepIndex;
-          return (
-            <div key={step.key} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <span
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full',
-                    done || current
-                      ? 'bg-accent text-accent-foreground'
-                      : 'border border-border bg-card text-muted',
-                  )}
-                >
-                  {done ? (
-                    <Check size={16} />
-                  ) : current && !delivered ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Circle size={12} />
-                  )}
-                </span>
-                {i < ORDER_STEPS.length - 1 ? (
-                  <div
-                    className={cn(
-                      'my-1 min-h-6 w-0.5 flex-1',
-                      done ? 'bg-accent' : 'bg-border',
-                    )}
-                  />
-                ) : null}
-              </div>
-              <div className="pb-5 pt-1">
-                <Typography
-                  type="h6"
-                  className={cn(hx.title, upcoming && 'text-muted')}
-                >
-                  {t(`step.${step.key}.label`)}
-                </Typography>
-                <Typography type="body-xs" className={hx.caption}>
-                  {t(`step.${step.key}.hint`)}
-                </Typography>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+        <div className="mt-6 rounded-[30px] bg-[var(--canvas-inverse)] p-5 text-[var(--canvas-inverse-foreground)]">
+          <Typography type="body-sm" className="text-[13px] font-medium opacity-60">{t('tracking.deliveryAddress')}</Typography>
+          <div className="mt-2 flex items-start gap-3">
+            <MapPin size={21} className="mt-0.5 shrink-0" />
+            <p className="text-[17px] font-bold">{address?.detail ?? t('tracking.savedAddress')}</p>
+          </div>
+          <Typography type="body-sm" className="mt-6 text-[13px] font-medium opacity-60">{delivered ? t('step.delivered.label') : t('tracking.estimate')}</Typography>
+          <p className="mt-1 text-[25px] font-bold">
+            {delivered ? t('tracking.arrived') : t('tracking.minutes', { n: order.eta })}
+          </p>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-current/20">
+            <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="mt-3 text-[12px] font-semibold opacity-70">{t(`step.${currentStep.key}.hint`)}</p>
+        </div>
 
-      <div className="mt-2 pb-6">
-        <Link
-          href={delivered ? '/home/' : '/orders/'}
-          className={cn(buttonVariants({ variant: 'primary', fullWidth: true }), hx.btnPrimary)}
+        <Button
+          variant="secondary"
+          fullWidth
+          onPress={() => router.push(delivered ? '/home/' : '/orders/')}
+          className={cn(hx.btnSecondary, 'mt-5')}
         >
-          <span>{delivered ? t('common.backToHome') : t('tracking.viewOrders')}</span>
-          <ArrowRight size={18} />
-        </Link>
+          {delivered ? <Check size={19} /> : null}
+          {delivered ? t('common.backToHome') : t('tracking.viewOrders')}
+        </Button>
       </div>
     </AppFrame>
   );

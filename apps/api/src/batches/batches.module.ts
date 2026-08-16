@@ -1,6 +1,7 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Order, OrderSchema } from "../orders/schemas/order.schema";
+import { ProofModule } from "../proof/proof.module";
 import { ProvidersModule } from "../providers/providers.module";
 import { BatchesController } from "./batches.controller";
 import { BatchesService } from "./batches.service";
@@ -13,6 +14,7 @@ import { Batch, BatchSchema } from "./schemas/batch.schema";
       { name: Order.name, schema: OrderSchema },
     ]),
     ProvidersModule,
+    forwardRef(() => ProofModule),
   ],
   controllers: [BatchesController],
   providers: [BatchesService],

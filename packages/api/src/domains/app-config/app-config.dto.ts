@@ -9,6 +9,8 @@ export type AppConfig = {
   dispatchExpandedRadiusMeters: number;
   offerTimeoutSeconds: number;
   cashFailThreshold: number;
+  cashHardCapCents: number;
+  qualityAutoSuspendThreshold: number;
   maxBatchSize: number;
 };
 

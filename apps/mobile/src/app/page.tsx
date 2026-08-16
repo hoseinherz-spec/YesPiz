@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/cn';
-import { hx } from '@/lib/heroui-classes';
-
 export default function SplashPage() {
   const router = useRouter();
   const { hydrated, authed, onboarded, t } = useApp();
@@ -23,29 +20,32 @@ export default function SplashPage() {
   }, [hydrated, authed, onboarded, router]);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-6">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/images/yespizz-wordmark.png"
-        alt="YesPizz"
-        className="mb-7 h-[60px] w-[180px] object-contain"
-        style={{
-          filter:
-            'brightness(0) saturate(100%) invert(94%) sepia(58%) saturate(749%) hue-rotate(18deg) brightness(104%) contrast(106%)',
-        }}
-      />
-      <Typography type="h1" className={cn(hx.display, 'uppercase text-foreground')}>
-        HOT
-      </Typography>
-      <Typography
-        type="h2"
-        className="mt-1 text-[24px] font-extrabold tracking-[4px] text-accent"
-      >
-        YESPIZZ
-      </Typography>
-      <Typography type="body-xs" className="mt-2.5 tracking-[2px] text-muted">
-        {t('splash.tagline')}
-      </Typography>
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-background px-6">
+      <div className="absolute top-[-12vh] right-[-35vw] size-[78vw] max-h-[370px] max-w-[370px] rounded-full bg-accent/10 blur-3xl" />
+      <div className="relative flex flex-col items-center">
+        <div className="mb-5 flex size-24 items-center justify-center rounded-full border border-border bg-card">
+          <span className="text-[48px]" aria-hidden="true">
+            🍕
+          </span>
+        </div>
+        <Typography
+          type="h1"
+          className="text-[44px] leading-none font-extrabold tracking-[-0.045em] text-foreground"
+        >
+          YesPizz
+        </Typography>
+        <Typography
+          type="body-sm"
+          className="mt-3 text-center font-semibold tracking-[0.2em] text-muted uppercase"
+        >
+          {t('splash.tagline')}
+        </Typography>
+      </div>
+      <div className="absolute bottom-[max(36px,env(safe-area-inset-bottom))] flex gap-2" aria-hidden="true">
+        <span className="size-2 rounded-full bg-accent" />
+        <span className="size-2 rounded-full bg-border" />
+        <span className="size-2 rounded-full bg-border" />
+      </div>
     </div>
   );
 }
