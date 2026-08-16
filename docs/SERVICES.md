@@ -2,6 +2,8 @@
 
 Product: [`docs/PRODUCT.md`](PRODUCT.md) · strategy: [`prd/product-strategy.md`](../prd/product-strategy.md).
 
+Execution-ready tasks and acceptance criteria: [`IMPLEMENTATION-BACKLOG.md`](IMPLEMENTATION-BACKLOG.md).
+
 P0 is quality, wave dispatch, ETA, proof chain, safe batching, and incident workflows.
 P1 is Cash Trust, ops dashboards, auto compensation, and retention.
 Loyalty, ads, and predictive ML beyond history-based ETA are after MVP.

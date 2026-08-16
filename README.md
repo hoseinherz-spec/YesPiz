@@ -22,6 +22,7 @@ The menu is not the advantage. The promise is a **standard, reliable order at a 
 - [System architecture](docs/ARCHITECTURE.md)
 - [Data models](docs/DATA-MODELS.md)
 - [Services & rollout](docs/SERVICES.md)
+- [Implementation backlog for Cursor](docs/IMPLEMENTATION-BACKLOG.md)
 
 API Swagger UI: http://localhost:8058/api/docs
 

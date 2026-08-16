@@ -1,0 +1,31 @@
+---
+description: Execute the Yespizz implementation backlog safely and in dependency order
+alwaysApply: true
+---
+
+# Yespizz implementation workflow
+
+The canonical engineering task queue is `docs/IMPLEMENTATION-BACKLOG.md`.
+
+When asked to continue, complete, or implement the app:
+
+1. Read `docs/PRODUCT.md`, `prd/product-strategy.md`, and
+   `docs/IMPLEMENTATION-BACKLOG.md` before editing.
+2. Select the first unchecked task whose dependencies are complete unless the user
+   names a specific task ID.
+3. Implement only one task per coherent change/PR.
+4. Treat Release blocker and P0 acceptance criteria as mandatory.
+5. Preserve the backend invariants: blind provider identity, server-owned pricing and
+   dispatch, batch size at most three, and proof-required delivery transitions.
+6. Update backend DTOs and `packages/api` DTOs/clients together.
+7. Add negative authorization and invalid-transition tests for every privileged or
+   state-changing endpoint.
+8. Never ship demo coordinates, fake success paths, mock OTPs, raw card collection,
+   or local-only chat/call behavior as production functionality.
+9. Run the checks required by the task and the global Definition of Done.
+10. Mark the task complete only after showing test evidence; record any follow-up as a
+    new backlog item instead of silently expanding scope.
+
+If docs and code disagree, inspect tests and implementation, then update the stale
+documentation in the same change.
+
