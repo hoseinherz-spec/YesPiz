@@ -52,7 +52,10 @@ export class I18nExceptionFilter implements ExceptionFilter {
     response.status(status).json({
       statusCode: status,
       errorKey,
-      message: translate(locale, errorKey),
+      message:
+        typeof details === "string" && status < 500
+          ? details
+          : translate(locale, errorKey),
       details,
       timestamp: new Date().toISOString(),
       path: request.url,

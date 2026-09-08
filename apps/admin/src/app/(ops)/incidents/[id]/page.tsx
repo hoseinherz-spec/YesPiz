@@ -1,21 +1,22 @@
-'use client';
+"use client";
+import { MediaPreview } from "@repo/api/components/media-preview";
 
 import {
   ApiError,
   incidentsClient,
   type Incident,
   type IncidentKind,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { entityId } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useCallback, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { entityId } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 function kindLabel(kind: IncidentKind): string {
-  return kind.replace(/_/g, ' ');
+  return kind.replace(/_/g, " ");
 }
 
 export default function IncidentDetailPage() {
@@ -28,8 +29,8 @@ export default function IncidentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const [resolveNotes, setResolveNotes] = useState('');
-  const [replacementCourierId, setReplacementCourierId] = useState('');
+  const [resolveNotes, setResolveNotes] = useState("");
+  const [replacementCourierId, setReplacementCourierId] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,7 +40,9 @@ export default function IncidentDetailPage() {
       const doc = await incidentsClient.get(incidentId, { accessToken: token });
       setIncident(doc);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load incident');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load incident",
+      );
     } finally {
       setLoading(false);
     }
@@ -49,7 +52,7 @@ export default function IncidentDetailPage() {
     void load();
   });
 
-  async function resolve(status: 'resolved' | 'cancelled') {
+  async function resolve(status: "resolved" | "cancelled") {
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -66,10 +69,10 @@ export default function IncidentDetailPage() {
       );
       setIncident(updated);
       setMessage(
-        status === 'resolved' ? 'Incident resolved.' : 'Incident cancelled.',
+        status === "resolved" ? "Incident resolved." : "Incident cancelled.",
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Resolve failed');
+      setError(err instanceof ApiError ? err.message : "Resolve failed");
     } finally {
       setBusy(false);
     }
@@ -82,7 +85,7 @@ export default function IncidentDetailPage() {
   if (!incident) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-red-500">{error ?? 'Incident not found'}</p>
+        <p className="text-sm text-danger">{error ?? "Incident not found"}</p>
         <Link href="/incidents" className="text-sm underline">
           Back to queue
         </Link>
@@ -99,7 +102,7 @@ export default function IncidentDetailPage() {
     sos?: boolean;
   };
   const isClosed =
-    incident.status === 'resolved' || incident.status === 'cancelled';
+    incident.status === "resolved" || incident.status === "cancelled";
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -107,7 +110,10 @@ export default function IncidentDetailPage() {
         <Link href="/incidents" className="text-muted text-sm hover:underline">
           ← Incident queue
         </Link>
-        <Typography type="h1" className="mt-2 text-2xl font-semibold capitalize">
+        <Typography
+          type="h1"
+          className="mt-2 text-2xl font-semibold capitalize"
+        >
           {kindLabel(incident.kind)}
         </Typography>
         <p className="text-muted text-sm">
@@ -115,8 +121,8 @@ export default function IncidentDetailPage() {
         </p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
-      {message ? <p className="text-sm text-green-600">{message}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {message ? <p className="text-sm text-success">{message}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-2 p-0">
@@ -148,7 +154,8 @@ export default function IncidentDetailPage() {
               <div className="sm:col-span-2">
                 <dt className="text-muted">Location</dt>
                 <dd>
-                  {incident.latitude.toFixed(5)}, {incident.longitude.toFixed(5)}
+                  {incident.latitude.toFixed(5)},{" "}
+                  {incident.longitude.toFixed(5)}
                 </dd>
               </div>
             ) : null}
@@ -157,6 +164,13 @@ export default function IncidentDetailPage() {
             <div className="mt-2">
               <p className="text-muted text-xs">Courier notes</p>
               <p className="text-sm">{incident.notes}</p>
+              {incident.notes.match(/media:[a-f0-9]{24}/g)?.map((reference) => (
+                <MediaPreview
+                  key={reference}
+                  reference={reference}
+                  accessToken={requireAdminToken()}
+                />
+              ))}
             </div>
           ) : null}
         </Card.Content>
@@ -178,7 +192,9 @@ export default function IncidentDetailPage() {
             </p>
           ) : null}
           {workflow.debtCents != null ? (
-            <p className="text-sm">Recorded debt: €{(workflow.debtCents / 100).toFixed(2)}</p>
+            <p className="text-sm">
+              Recorded debt: €{(workflow.debtCents / 100).toFixed(2)}
+            </p>
           ) : null}
           {workflow.steps?.length ? (
             <ol className="mt-1 list-decimal pl-5 text-sm">
@@ -186,10 +202,10 @@ export default function IncidentDetailPage() {
                 <li
                   key={step}
                   className={
-                    step === workflow.currentStep ? 'font-medium' : 'text-muted'
+                    step === workflow.currentStep ? "font-medium" : "text-muted"
                   }
                 >
-                  {step.replace(/_/g, ' ')}
+                  {step.replace(/_/g, " ")}
                 </li>
               ))}
             </ol>
@@ -207,7 +223,8 @@ export default function IncidentDetailPage() {
             </Typography>
             {incident.resolvedAt ? (
               <p className="text-sm">
-                {incident.status} at {new Date(incident.resolvedAt).toLocaleString()}
+                {incident.status} at{" "}
+                {new Date(incident.resolvedAt).toLocaleString()}
               </p>
             ) : null}
             {incident.resolveNotes ? (
@@ -252,7 +269,7 @@ export default function IncidentDetailPage() {
                 variant="primary"
                 size="sm"
                 isDisabled={busy}
-                onPress={() => resolve('resolved')}
+                onPress={() => resolve("resolved")}
               >
                 Mark resolved
               </Button>
@@ -260,7 +277,7 @@ export default function IncidentDetailPage() {
                 variant="secondary"
                 size="sm"
                 isDisabled={busy}
-                onPress={() => resolve('cancelled')}
+                onPress={() => resolve("cancelled")}
               >
                 Cancel incident
               </Button>

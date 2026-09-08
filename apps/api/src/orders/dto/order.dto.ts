@@ -2,6 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   ArrayMinSize,
+  ArrayMaxSize,
+  ArrayUnique,
+  IsIn,
+  IsInt,
+  IsMongoId,
+  Max,
+  MaxLength,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -40,14 +47,19 @@ export class CreateAddressDto {
 
   @ApiProperty()
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   longitude!: number;
 
   @ApiProperty()
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   latitude!: number;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
   isDefault?: boolean;
 
   @ApiPropertyOptional()
@@ -78,22 +90,45 @@ export class CreateAddressDto {
 
 export class OrderLineDto {
   @ApiProperty()
-  @IsString()
+  @IsMongoId()
   menuItemId!: string;
 
   @ApiProperty()
-  @IsNumber()
+  @IsInt()
   @Min(1)
+  @Max(99)
   quantity!: number;
+
+  @ApiPropertyOptional({ enum: ["small", "medium", "large"] })
+  @IsOptional()
+  @IsIn(["small", "medium", "large"])
+  size?: "small" | "medium" | "large";
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(4)
+  @IsIn(["extra-cheese", "jalapenos", "olives", "garlic-dip"], { each: true })
+  extras?: string[];
 }
 
 export class CreateOrderDto {
+  @ApiPropertyOptional({
+    description: "Reuse for retries of the same checkout",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  idempotencyKey?: string;
+
   @ApiProperty()
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   menuVersion!: number;
 
   @ApiProperty()
-  @IsString()
+  @IsMongoId()
   addressId!: string;
 
   @ApiProperty({ enum: PaymentMethod })
@@ -103,6 +138,7 @@ export class CreateOrderDto {
   @ApiProperty({ type: [OrderLineDto] })
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => OrderLineDto)
   lines!: OrderLineDto[];

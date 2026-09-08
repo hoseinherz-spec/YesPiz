@@ -2,6 +2,7 @@ import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
 export type JwtPayloadUser = {
   userId: string;
+  tokenExpiresAt?: number;
   email?: string;
   phone?: string;
   roles: string[];

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   ApiError,
@@ -6,26 +6,31 @@ import {
   type Category,
   type MenuItem,
   type MenuVersion,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useEffect, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { entityId } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useEffect, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { entityId } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 export default function MenuPage() {
   const [versions, setVersions] = useState<MenuVersion[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [notes, setNotes] = useState('');
-  const [categoryName, setCategoryName] = useState('');
+  const [notes, setNotes] = useState("");
+  const [categoryName, setCategoryName] = useState("");
   const [itemForm, setItemForm] = useState({
-    categoryId: '',
-    name: '',
-    description: '',
-    priceEuros: '9.99',
+    categoryId: "",
+    name: "",
+    description: "",
+    priceEuros: "9.99",
   });
+  const [editing, setEditing] = useState<{
+    id: string;
+    name: string;
+    price: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,13 +52,15 @@ export default function MenuPage() {
       ...f,
       categoryId:
         f.categoryId ||
-        (detail.categories[0] ? entityId(detail.categories[0]) : ''),
+        (detail.categories[0] ? entityId(detail.categories[0]) : ""),
     }));
   }, []);
 
   useLoadOnMount(() =>
     loadVersions().catch((err) =>
-      setError(err instanceof ApiError ? err.message : 'Failed to load versions'),
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load versions",
+      ),
     ),
   );
 
@@ -61,7 +68,7 @@ export default function MenuPage() {
     if (!selectedId) return;
     const timer = window.setTimeout(() => {
       loadDetail(selectedId).catch((err) =>
-        setError(err instanceof ApiError ? err.message : 'Failed to load menu'),
+        setError(err instanceof ApiError ? err.message : "Failed to load menu"),
       );
     }, 0);
     return () => window.clearTimeout(timer);
@@ -76,11 +83,11 @@ export default function MenuPage() {
         { notes: notes || undefined },
         { accessToken: token },
       );
-      setNotes('');
+      setNotes("");
       setSelectedId(entityId(created));
       await loadVersions();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Create failed');
+      setError(err instanceof ApiError ? err.message : "Create failed");
     } finally {
       setBusy(false);
     }
@@ -96,7 +103,7 @@ export default function MenuPage() {
       await loadVersions();
       await loadDetail(selectedId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Publish failed');
+      setError(err instanceof ApiError ? err.message : "Publish failed");
     } finally {
       setBusy(false);
     }
@@ -113,10 +120,10 @@ export default function MenuPage() {
         { name: categoryName.trim() },
         { accessToken: token },
       );
-      setCategoryName('');
+      setCategoryName("");
       await loadDetail(selectedId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Add category failed');
+      setError(err instanceof ApiError ? err.message : "Add category failed");
     } finally {
       setBusy(false);
     }
@@ -139,10 +146,30 @@ export default function MenuPage() {
         },
         { accessToken: token },
       );
-      setItemForm((f) => ({ ...f, name: '', description: '' }));
+      setItemForm((f) => ({ ...f, name: "", description: "" }));
       await loadDetail(selectedId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Add item failed');
+      setError(err instanceof ApiError ? err.message : "Add item failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateItem(
+    itemId: string,
+    changes: { name?: string; priceCents?: number; isActive?: boolean },
+  ) {
+    if (!selectedId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await catalogClient.updateItem(itemId, changes, {
+        accessToken: requireAdminToken(),
+      });
+      await loadDetail(selectedId);
+      setEditing(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
     } finally {
       setBusy(false);
     }
@@ -161,7 +188,7 @@ export default function MenuPage() {
         </p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p role="alert" className="rounded-2xl bg-danger-soft p-3 text-sm text-danger">{error}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-3 p-0">
@@ -175,11 +202,11 @@ export default function MenuPage() {
                 <Button
                   key={id}
                   size="sm"
-                  variant={id === selectedId ? 'primary' : 'secondary'}
+                  variant={id === selectedId ? "primary" : "secondary"}
                   onPress={() => setSelectedId(id)}
                 >
                   v{v.version}
-                  {v.published ? ' · published' : ''}
+                  {v.published ? " · published" : ""}
                 </Button>
               );
             })}
@@ -194,7 +221,11 @@ export default function MenuPage() {
                 placeholder="Optional version notes"
               />
             </label>
-            <Button variant="secondary" isDisabled={busy} onPress={createVersion}>
+            <Button
+              variant="secondary"
+              isDisabled={busy}
+              onPress={createVersion}
+            >
               Create version
             </Button>
             <Button
@@ -218,7 +249,7 @@ export default function MenuPage() {
               <ul className="space-y-1 text-sm">
                 {categories.map((c) => (
                   <li key={entityId(c)}>
-                    {c.name}{' '}
+                    {c.name}{" "}
                     <span className="text-muted">(sort {c.sortOrder})</span>
                   </li>
                 ))}
@@ -228,14 +259,18 @@ export default function MenuPage() {
               </ul>
               <div className="flex flex-wrap items-end gap-2">
                 <label className="flex flex-1 flex-col gap-1 text-sm">
-                  Name
+                  Category name
                   <input
                     value={categoryName}
                     onChange={(e) => setCategoryName(e.target.value)}
                     className="border-border bg-background rounded-md border px-3 py-2"
                   />
                 </label>
-                <Button variant="secondary" isDisabled={busy} onPress={addCategory}>
+                <Button
+                  variant="secondary"
+                  isDisabled={busy}
+                  onPress={addCategory}
+                >
                   Add category
                 </Button>
               </div>
@@ -249,12 +284,116 @@ export default function MenuPage() {
               </Typography>
               <ul className="space-y-2 text-sm">
                 {items.map((item) => (
-                  <li key={entityId(item)} className="border-border rounded-md border p-2">
-                    <div className="font-medium">{item.name}</div>
-                    <div className="text-muted">
-                      €{(item.priceCents / 100).toFixed(2)} · category{' '}
-                      {item.categoryId}
-                    </div>
+                  <li
+                    key={entityId(item)}
+                    className="border-border rounded-md border p-2"
+                  >
+                    {editing?.id === entityId(item) ? (
+                      <form
+                        className="grid gap-3"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const price = Number(editing.price);
+                          if (
+                            !editing.name.trim() ||
+                            !Number.isFinite(price) ||
+                            price < 0
+                          )
+                            return;
+                          void updateItem(editing.id, {
+                            name: editing.name.trim(),
+                            priceCents: Math.round(price * 100),
+                          });
+                        }}
+                      >
+                        <label className="grid gap-1">
+                          Item name
+                          <input
+                            required
+                            value={editing.name}
+                            onChange={(event) =>
+                              setEditing({
+                                ...editing,
+                                name: event.target.value,
+                              })
+                            }
+                            className="border border-border px-3 py-2"
+                          />
+                        </label>
+                        <label className="grid gap-1">
+                          Price (€)
+                          <input
+                            required
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editing.price}
+                            onChange={(event) =>
+                              setEditing({
+                                ...editing,
+                                price: event.target.value,
+                              })
+                            }
+                            className="border border-border px-3 py-2"
+                          />
+                        </label>
+                        <div className="flex gap-2">
+                          <Button type="submit" isDisabled={busy}>
+                            Save item
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            isDisabled={busy}
+                            onPress={() => setEditing(null)}
+                          >
+                            Cancel edit
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="font-semibold">{item.name}</div>
+                          <p className="text-muted">
+                            €{(item.priceCents / 100).toFixed(2)} ·{" "}
+                            {categories.find(
+                              (c) => entityId(c) === item.categoryId,
+                            )?.name ?? "Category unavailable"}{" "}
+                            · {item.isActive === false ? "Hidden" : "Active"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            isDisabled={busy}
+                            onPress={() =>
+                              setEditing({
+                                id: entityId(item),
+                                name: item.name,
+                                price: (item.priceCents / 100).toFixed(2),
+                              })
+                            }
+                          >
+                            Edit item
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            isDisabled={busy}
+                            onPress={() =>
+                              void updateItem(entityId(item), {
+                                isActive: item.isActive === false,
+                              })
+                            }
+                          >
+                            {item.isActive === false
+                              ? "Show item"
+                              : "Hide item"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 ))}
                 {!items.length ? (
@@ -294,7 +433,10 @@ export default function MenuPage() {
                   <input
                     value={itemForm.description}
                     onChange={(e) =>
-                      setItemForm((f) => ({ ...f, description: e.target.value }))
+                      setItemForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
                     }
                     className="border-border bg-background rounded-md border px-3 py-2"
                   />

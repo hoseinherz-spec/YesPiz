@@ -2,7 +2,7 @@ import type {
   OrderStatus,
   PaymentMethod,
   PaymentStatus,
-} from '../orders/orders.dto';
+} from "../orders/orders.dto";
 
 export type InitiatePaymentRequest = {
   orderId: string;
@@ -39,14 +39,14 @@ export type DispatchBroadcastResult = {
   offers: Array<{
     providerId: string;
     score: number;
-    status: 'pending' | 'accepted' | 'rejected' | 'expired';
+    status: "pending" | "accepted" | "rejected" | "expired";
   }>;
 };
 
 export type InitiatePaymentResponse = {
   payment: Payment;
   orderStatus: OrderStatus;
-  dispatch: DispatchBroadcastResult | null;
+  dispatch: { offerCount: number } | null;
   mock?: boolean;
   /** Present when Stripe PaymentIntent was created (capture via webhook). */
   clientSecret?: string | null;

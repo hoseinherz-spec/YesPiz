@@ -104,7 +104,7 @@ export default function ProvidersPage() {
         <p className="text-muted text-sm">List, create, and update kitchens</p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-3 p-0">

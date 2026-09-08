@@ -22,15 +22,22 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "seed:api": "npm run seed --workspace=api"
+    "seed:api": "npm run seed --workspace=api",
+    "test:e2e": "playwright test",
+    "test:e2e:admin": "playwright test --config=playwright.admin.config.ts",
+    "postinstall": "node scripts/native-compat.cjs",
+    "test:stripe-sandbox": "npm run build --workspace=@repo/i18n && npm run test:stripe-sandbox --workspace=api",
+    "test:stripe-browser": "playwright test --config=playwright.stripe.config.ts",
+    "stripe:listen": "node scripts/stripe-webhook.cjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "prettier": "^3.7.4",
     "turbo": "^2.10.9",
     "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "packageManager": "npm@10.2.3",
   "workspaces": [

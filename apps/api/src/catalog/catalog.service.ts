@@ -48,6 +48,13 @@ export class CatalogService {
   async publish(versionId: string) {
     const doc = await this.versions.findById(versionId).exec();
     if (!doc) throw new NotFoundException("errors.notFound");
+    if (
+      !(await this.items.exists({ menuVersionId: doc._id, isActive: true }))
+    ) {
+      throw new BadRequestException(
+        "Add an active menu item before publishing.",
+      );
+    }
     await this.versions
       .updateMany({ published: true }, { published: false })
       .exec();

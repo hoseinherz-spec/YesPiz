@@ -1,3 +1,5 @@
+import { getConnectionToken } from "@nestjs/mongoose";
+import { RedisService } from "../src/redis/redis.service";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import request from "supertest";
@@ -11,7 +13,17 @@ describe("AppController (e2e)", () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: getConnectionToken(),
+          useValue: {
+            readyState: 1,
+            db: { admin: () => ({ ping: async () => ({ ok: 1 }) }) },
+          },
+        },
+        { provide: RedisService, useValue: { ready: async () => true } },
+      ],
     }).compile();
 
     app = moduleFixture.createNestApplication();

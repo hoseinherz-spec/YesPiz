@@ -1,11 +1,16 @@
+import { PushService } from "../push/push.service";
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { RedisService } from "../redis/redis.service";
+import { randomUUID } from "crypto";
+import { CouriersService } from "../couriers/couriers.service";
 import { Model, Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
 import { MAX_BATCH_SIZE, OrderStatus, PaymentMethod } from "../common/enums";
@@ -27,12 +32,32 @@ export class BatchesService {
   constructor(
     @InjectModel(Batch.name) private readonly batches: Model<BatchDocument>,
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
+    private readonly redis: RedisService,
+    private readonly couriers: CouriersService,
     private readonly appConfig: AppConfigService,
     private readonly proof: ProofService,
     private readonly realtime: RealtimeGateway,
+    private readonly push: PushService,
   ) {}
 
+  private async locked<T>(key: string, action: () => Promise<T>): Promise<T> {
+    const owner = randomUUID();
+    if (!(await this.redis.acquireLock(key, owner, 30_000)))
+      throw new ConflictException("Please wait for the current batch action.");
+    try {
+      return await action();
+    } finally {
+      await this.redis.releaseLock(key, owner);
+    }
+  }
+
   async create(dto: CreateBatchDto) {
+    return this.locked(`batch:create:${dto.providerId}`, () =>
+      this.createOnce(dto),
+    );
+  }
+
+  private async createOnce(dto: CreateBatchDto) {
     const cfg = await this.appConfig.get();
     const max = cfg.maxBatchSize || MAX_BATCH_SIZE;
     if (dto.orderIds.length > max) {
@@ -43,6 +68,7 @@ export class BatchesService {
       .find({
         _id: { $in: dto.orderIds.map((id) => new Types.ObjectId(id)) },
         providerId: new Types.ObjectId(dto.providerId),
+        batchId: { $exists: false },
         status: {
           $in: [OrderStatus.READY_FOR_PICKUP, OrderStatus.PREPARING],
         },
@@ -117,7 +143,8 @@ export class BatchesService {
     const candidates = ready.filter((o) => {
       const readyAt =
         (o.readyAt as Date | undefined)?.getTime?.() ??
-        ((o as unknown as { createdAt?: Date }).createdAt?.getTime?.() ?? now);
+        (o as unknown as { createdAt?: Date }).createdAt?.getTime?.() ??
+        now;
       if (now - readyAt > maxHoldMs) return false;
       return true;
     });
@@ -158,6 +185,8 @@ export class BatchesService {
     if (!batch || String(batch.providerId) !== providerId) {
       throw new NotFoundException("errors.notFound");
     }
+    if (batch.status !== "open")
+      throw new BadRequestException("Batch has already been assigned.");
     const cfg = await this.appConfig.get();
     const max = cfg.maxBatchSize || MAX_BATCH_SIZE;
     if (dto.keepOrderIds.length > max) {
@@ -202,19 +231,46 @@ export class BatchesService {
   }
 
   async assignCourier(batchId: string, dto: AssignCourierDto) {
+    return this.locked(`batch:${batchId}`, () => this.assignOnce(batchId, dto));
+  }
+
+  private async assignOnce(batchId: string, dto: AssignCourierDto) {
     const batch = await this.batches.findById(batchId).exec();
     if (!batch) throw new NotFoundException("errors.notFound");
     if (batch.orderIds.length > MAX_BATCH_SIZE) {
       throw new BadRequestException("errors.badRequest");
     }
 
+    const retry =
+      batch.status === "assigned" && String(batch.courierId) === dto.courierId;
+    if (!retry && (batch.status !== "open" || batch.courierId))
+      throw new BadRequestException("Batch is already assigned.");
+    await this.couriers.assertAvailable(dto.courierId);
+    const members = await this.orders
+      .find({ _id: { $in: batch.orderIds }, batchId: batch._id })
+      .exec();
+    if (
+      members.length !== batch.orderIds.length ||
+      members.some(
+        (order) =>
+          order.status !== OrderStatus.READY_FOR_PICKUP &&
+          !(retry && String(order.courierId) === dto.courierId),
+      )
+    )
+      throw new BadRequestException(
+        "Every pizza must pass quality checks and be ready before assigning a courier.",
+      );
     batch.courierId = new Types.ObjectId(dto.courierId);
     batch.status = "assigned";
     await batch.save();
 
     await this.orders
       .updateMany(
-        { _id: { $in: batch.orderIds } },
+        {
+          _id: { $in: batch.orderIds },
+          batchId: batch._id,
+          status: OrderStatus.READY_FOR_PICKUP,
+        },
         {
           courierId: batch.courierId,
           status: OrderStatus.ASSIGNED_TO_COURIER,
@@ -235,6 +291,12 @@ export class BatchesService {
       );
     }
 
+    await this.push.notify({
+      userId: dto.courierId,
+      title: "Delivery assigned",
+      body: "Open the courier app to collect your delivery.",
+      data: { type: "batch.assigned", batchId: batch.id },
+    });
     return batch;
   }
 
@@ -262,9 +324,10 @@ export class BatchesService {
           (o as unknown as { createdAt?: Date }).createdAt?.getTime?.() ??
           now;
         return (
-          o.status === OrderStatus.READY_FOR_PICKUP ||
-          o.status === OrderStatus.ASSIGNED_TO_COURIER
-        ) && now - readyAt > maxHoldMs;
+          (o.status === OrderStatus.READY_FOR_PICKUP ||
+            o.status === OrderStatus.ASSIGNED_TO_COURIER) &&
+          now - readyAt > maxHoldMs
+        );
       });
       if (!stale.length) continue;
 

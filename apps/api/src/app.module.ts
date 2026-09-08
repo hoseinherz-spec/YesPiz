@@ -1,3 +1,6 @@
+import { CommunicationsModule } from "./communications/communications.module";
+import { DeliveryModule } from "./delivery/delivery.module";
+import { MediaModule } from "./media/media.module";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
@@ -44,6 +47,9 @@ import { SlaModule } from "./sla/sla.module";
           "mongodb://127.0.0.1:27017/yespizz",
       }),
     }),
+    MediaModule,
+    CommunicationsModule,
+    DeliveryModule,
     RedisModule,
     RealtimeModule,
     PushModule,

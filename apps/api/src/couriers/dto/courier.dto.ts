@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  IsIn,
+  IsMongoId,
+  MaxLength,
+  MinLength,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 
 export class UpdateCourierProfileDto {
   @ApiPropertyOptional()
@@ -11,6 +21,8 @@ export class UpdateCourierProfileDto {
 export class SessionCodeDto {
   @ApiProperty({ description: "QR payload or OTP code" })
   @IsString()
+  @MinLength(1)
+  @MaxLength(128)
   code!: string;
 }
 
@@ -26,4 +38,9 @@ export class UpdateCourierLocationDto {
   @Min(-90)
   @Max(90)
   latitude!: number;
+}
+
+export class IssueSessionCodeDto {
+  @IsMongoId() courierId!: string;
+  @IsIn(["start", "end"]) action!: "start" | "end";
 }

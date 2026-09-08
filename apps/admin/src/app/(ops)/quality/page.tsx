@@ -67,7 +67,7 @@ export default function QualityListPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {!loading && !rows.length ? (
@@ -90,7 +90,7 @@ export default function QualityListPage() {
                     <Typography type="h3" className="font-medium">
                       {row.name}
                       {q.autoSuspended ? (
-                        <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-600">
+                        <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-danger">
                           Suspended
                         </span>
                       ) : null}
@@ -101,7 +101,7 @@ export default function QualityListPage() {
                       · delays {q.delayCount} · errors {q.errorCount}
                     </p>
                     {q.suspendReason ? (
-                      <p className="text-xs text-red-600">{q.suspendReason}</p>
+                      <p className="text-xs text-danger">{q.suspendReason}</p>
                     ) : null}
                   </div>
                   <Link

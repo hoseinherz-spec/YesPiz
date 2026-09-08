@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -6,7 +7,12 @@ export type CourierSessionDocument = HydratedDocument<CourierSession>;
 
 @Schema({ timestamps: true, collection: "courier_profiles" })
 export class CourierProfile {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, unique: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    unique: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ default: true })
@@ -24,11 +30,22 @@ export const CourierProfileSchema =
 
 @Schema({ timestamps: true, collection: "courier_sessions" })
 export class CourierSession {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    index: true,
+  })
   courierId!: Types.ObjectId;
 
-  @Prop({ required: true })
-  startCode!: string;
+  @Prop()
+  startCode?: string;
+
+  @Prop()
+  codeExpiresAt?: Date;
+
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User" })
+  issuedBy?: Types.ObjectId;
 
   @Prop()
   endCode?: string;
@@ -54,3 +71,12 @@ export class CourierSession {
 
 export const CourierSessionSchema =
   SchemaFactory.createForClass(CourierSession);
+
+CourierSessionSchema.index(
+  { courierId: 1, status: 1 },
+  {
+    unique: true,
+    name: "unique_open_shift",
+    partialFilterExpression: { status: { $in: ["active", "pending"] } },
+  },
+);

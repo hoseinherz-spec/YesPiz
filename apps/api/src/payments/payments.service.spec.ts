@@ -8,6 +8,7 @@ import { OrderStatus, PaymentMethod, PaymentStatus } from "../common/enums";
 import { DispatchService } from "../dispatch/dispatch.service";
 import { Order } from "../orders/schemas/order.schema";
 import { PaymentsService } from "./payments.service";
+import { RedisService } from "../redis/redis.service";
 import { Payment } from "./schemas/payment.schema";
 
 describe("PaymentsService", () => {
@@ -41,7 +42,7 @@ describe("PaymentsService", () => {
 
   beforeEach(async () => {
     paymentsCreate = jest.fn();
-    paymentsFindOne = jest.fn();
+    paymentsFindOne = jest.fn().mockReturnValue({ exec: async () => null });
     findOrderById = jest.fn();
     findUserById = jest.fn();
     startDispatch = jest.fn().mockResolvedValue({ offerCount: 1 });
@@ -54,6 +55,13 @@ describe("PaymentsService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PaymentsService,
+        {
+          provide: RedisService,
+          useValue: {
+            acquireLock: jest.fn().mockResolvedValue(true),
+            releaseLock: jest.fn(),
+          },
+        },
         {
           provide: getModelToken(Payment.name),
           useValue: { create: paymentsCreate, findOne: paymentsFindOne },
@@ -151,10 +159,11 @@ describe("PaymentsService", () => {
         currency: "eur",
         metadata: { orderId, customerId },
       }),
+      { idempotencyKey: `order:${orderId}` },
     );
     expect(paymentsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: PaymentStatus.AUTHORIZED,
+        status: PaymentStatus.PENDING,
         mock: false,
         providerRef: "pi_test_123",
       }),
@@ -288,4 +297,158 @@ describe("PaymentsService", () => {
 
     expect(paymentsCreate).not.toHaveBeenCalled();
   });
+  it("does not expose kitchen ranking in payment responses", async () => {
+    const order = makeOrder();
+    findOrderById.mockReturnValue({ exec: async () => order });
+    paymentsCreate.mockResolvedValue({ status: PaymentStatus.CAPTURED });
+    startDispatch.mockResolvedValue({
+      offerCount: 1,
+      offers: [{ providerId: "private-kitchen" }],
+    });
+    const result = await service.initiate(customerId, { orderId });
+    expect(result.dispatch).toEqual({ offerCount: 1 });
+    expect(JSON.stringify(result)).not.toContain("private-kitchen");
+  });
+
+  it("reuses a captured payment after a dispatch failure", async () => {
+    const order = makeOrder();
+    findOrderById.mockReturnValue({ exec: async () => order });
+    const payment = {
+      method: PaymentMethod.CARD,
+      mock: true,
+      status: PaymentStatus.CAPTURED,
+    };
+    paymentsFindOne.mockReturnValue({ exec: async () => payment });
+    await service.initiate(customerId, { orderId });
+    expect(paymentsCreate).not.toHaveBeenCalled();
+    expect(startDispatch).toHaveBeenCalledTimes(1);
+    expect(order.paymentStatus).toBe(PaymentStatus.CAPTURED);
+  });
+
+  it("never mock-captures a production card payment", async () => {
+    findOrderById.mockReturnValue({ exec: async () => makeOrder() });
+    configGet.mockImplementation((key: string) =>
+      key === "NODE_ENV" ? "production" : undefined,
+    );
+    await expect(service.initiate(customerId, { orderId })).rejects.toThrow(
+      "Card payments are unavailable",
+    );
+    expect(paymentsCreate).not.toHaveBeenCalled();
+    expect(startDispatch).not.toHaveBeenCalled();
+  });
+
+  it("rejects switching an order from card to cash", async () => {
+    findOrderById.mockReturnValue({ exec: async () => makeOrder() });
+    await expect(
+      service.initiate(customerId, { orderId, method: PaymentMethod.CASH }),
+    ).rejects.toThrow();
+    expect(paymentsCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsigned production webhooks", async () => {
+    configGet.mockImplementation((key: string) =>
+      key === "NODE_ENV" ? "production" : undefined,
+    );
+    await expect(
+      service.handleStripeWebhook(Buffer.from("{}"), undefined, {
+        type: "payment_intent.succeeded",
+      }),
+    ).rejects.toThrow();
+  });
+  it.each([
+    { amount_received: 1 },
+    { currency: "usd" },
+    { metadata: { orderId: "another-order", customerId } },
+    { metadata: { orderId, customerId: "another-customer" } },
+    { status: "requires_action" },
+    { livemode: true },
+  ])(
+    "rejects mismatched Stripe capture before dispatch: %j",
+    async (override) => {
+      const order = makeOrder();
+      const payment = {
+        orderId,
+        amountCents: 1500,
+        status: PaymentStatus.PENDING,
+        mock: false,
+        save: jest.fn(),
+      };
+      paymentsFindOne.mockReturnValue({ exec: async () => payment });
+      findOrderById.mockReturnValue({ exec: async () => order });
+      configGet.mockImplementation((name: string) =>
+        name === "STRIPE_MODE" ? "sandbox" : undefined,
+      );
+      service.setStripeClient({
+        paymentIntents: {
+          retrieve: async () => ({
+            id: "pi_checked",
+            status: "succeeded",
+            amount_received: 1500,
+            currency: "eur",
+            metadata: { orderId, customerId },
+            livemode: false,
+            ...override,
+          }),
+        },
+      } as never);
+      await expect(
+        service.captureFromStripeIntent("pi_checked"),
+      ).rejects.toThrow("Payment does not match");
+      expect(payment.save).not.toHaveBeenCalled();
+      expect(startDispatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("captures a matching sandbox intent", async () => {
+    const order = makeOrder();
+    const payment = {
+      orderId,
+      amountCents: 1500,
+      mock: false,
+      status: PaymentStatus.PENDING,
+      save: jest.fn(),
+    };
+    paymentsFindOne.mockReturnValue({ exec: async () => payment });
+    findOrderById.mockReturnValue({ exec: async () => order });
+    service.setStripeClient({
+      paymentIntents: {
+        retrieve: async () => ({
+          id: "pi_valid",
+          status: "succeeded",
+          amount_received: 1500,
+          currency: "eur",
+          metadata: { orderId, customerId },
+          livemode: false,
+        }),
+      },
+    } as never);
+    await service.captureFromStripeIntent("pi_valid");
+    expect(payment.status).toBe(PaymentStatus.CAPTURED);
+    expect(startDispatch).toHaveBeenCalledWith(orderId);
+  });
+
+  it.each([undefined, "sk_live_example", "rk_live_example", "not-a-key"])(
+    "refuses sandbox startup with %s",
+    (key) => {
+      expect(
+        () =>
+          new PaymentsService(
+            {} as never,
+            {} as never,
+            {} as never,
+            {} as never,
+            {
+              get: (name: string) =>
+                name === "STRIPE_MODE"
+                  ? "sandbox"
+                  : name === "STRIPE_SECRET_KEY"
+                    ? key
+                    : undefined,
+            } as never,
+            {} as never,
+            {} as never,
+          ),
+      ).toThrow("sandbox test secret key");
+    },
+  );
 });

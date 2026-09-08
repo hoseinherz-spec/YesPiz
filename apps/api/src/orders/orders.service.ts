@@ -1,15 +1,23 @@
+import { ConfigService } from "@nestjs/config";
+import { linePrice, pricingOptions } from "./pricing";
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
+  OnModuleInit,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import { createHash } from "crypto";
 import { AccountService } from "../account/account.service";
 import { AppConfigService } from "../app-config/app-config.service";
 import { CatalogService } from "../catalog/catalog.service";
-import { Incident, IncidentDocument } from "../incidents/schemas/incident.schema";
+import {
+  Incident,
+  IncidentDocument,
+} from "../incidents/schemas/incident.schema";
 import {
   IncidentStatus,
   OrderStatus,
@@ -54,7 +62,7 @@ const ADMIN_RESOLVE_STATUSES = new Set<OrderStatus>([
 ]);
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
   constructor(
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     @InjectModel(DeliveryAddress.name)
@@ -71,7 +79,12 @@ export class OrdersService {
     private readonly quality: QualityService,
     private readonly eta: EtaService,
     private readonly providersService: ProvidersService,
+    private readonly environment: ConfigService,
   ) {}
+
+  async onModuleInit() {
+    await this.orders.init();
+  }
 
   async createAddress(userId: string, dto: CreateAddressDto) {
     if (dto.isDefault) {
@@ -122,6 +135,52 @@ export class OrdersService {
   }
 
   async createOrder(userId: string, dto: CreateOrderDto) {
+    const { idempotencyKey, ...request } = dto;
+    const fingerprint = createHash("sha256")
+      .update(JSON.stringify(request))
+      .digest("hex");
+    const existingOrder = async () => {
+      const existing = await this.orders
+        .findOne({ customerId: new Types.ObjectId(userId), idempotencyKey })
+        .exec();
+      if (!existing || existing.checkoutFingerprint !== fingerprint) {
+        throw new ConflictException("Checkout changed. Start a new order.");
+      }
+      return toCustomerView(existing);
+    };
+    if (idempotencyKey) {
+      const exists = await this.orders.exists({
+        customerId: new Types.ObjectId(userId),
+        idempotencyKey,
+      });
+      if (exists) return existingOrder();
+    }
+    const data = await this.prepareOrder(userId, dto);
+    try {
+      const order = await this.orders.create({
+        ...data,
+        idempotencyKey,
+        checkoutFingerprint: fingerprint,
+      });
+      return toCustomerView(order);
+    } catch (error) {
+      if (idempotencyKey && (error as { code?: number }).code === 11000)
+        return existingOrder();
+      throw error;
+    }
+  }
+
+  async quote(userId: string, dto: CreateOrderDto) {
+    const order = await this.prepareOrder(userId, dto);
+    return {
+      lines: order.lines,
+      subtotalCents: order.subtotalCents,
+      deliveryFeeCents: order.deliveryFeeCents,
+      totalCents: order.totalCents,
+    };
+  }
+
+  private async prepareOrder(userId: string, dto: CreateOrderDto) {
     const user = await this.accounts.findById(userId);
     if (!user) throw new ForbiddenException("errors.forbidden");
 
@@ -137,6 +196,25 @@ export class OrdersService {
       .exec();
     if (!address) throw new NotFoundException("errors.notFound");
 
+    const radius = Number(
+      this.environment.get("SERVICE_AREA_RADIUS_METERS") || 0,
+    );
+    if (radius > 0) {
+      const centerLat = Number(this.environment.get("SERVICE_AREA_LATITUDE"));
+      const centerLng = Number(this.environment.get("SERVICE_AREA_LONGITUDE"));
+      const rad = Math.PI / 180;
+      const a =
+        Math.sin(((address.latitude - centerLat) * rad) / 2) ** 2 +
+        Math.cos(centerLat * rad) *
+          Math.cos(address.latitude * rad) *
+          Math.sin(((address.longitude - centerLng) * rad) / 2) ** 2;
+      const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (!Number.isFinite(distance) || distance > radius)
+        throw new BadRequestException(
+          "This address is outside our delivery area.",
+        );
+    }
+
     const itemIds = dto.lines.map((l) => l.menuItemId);
     const { items } = await this.catalog.getActiveItemsByIds(
       itemIds,
@@ -146,23 +224,33 @@ export class OrdersService {
       throw new BadRequestException("errors.badRequest");
     }
 
+    const pricingConfig = await this.appConfig.get();
     const byId = new Map(items.map((i) => [i.id, i]));
     let subtotalCents = 0;
     const lines = dto.lines.map((line) => {
       const item = byId.get(line.menuItemId)!;
-      const unitPriceCents = item.priceCents;
+      const size = line.size ?? "medium";
+      const extras = line.extras ?? [];
+      const unitPriceCents = linePrice(
+        item.priceCents,
+        size,
+        extras,
+        pricingConfig,
+      );
       subtotalCents += unitPriceCents * line.quantity;
       return {
         menuItemId: item._id,
         name: item.name,
         unitPriceCents,
+        size,
+        extras,
         quantity: line.quantity,
         prepWeight: item.prepWeight,
         cookTimeSeconds: item.cookTimeSeconds ?? 0,
       };
     });
 
-    const deliveryFeeCents = 299;
+    const deliveryFeeCents = pricingOptions(pricingConfig).deliveryFeeCents;
     const totalCents = subtotalCents + deliveryFeeCents;
 
     if (dto.paymentMethod === PaymentMethod.CASH) {
@@ -172,15 +260,13 @@ export class OrdersService {
       }
     }
 
-    let scheduledAt: Date | undefined;
     if (dto.scheduledAt) {
-      scheduledAt = new Date(dto.scheduledAt);
-      if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() < Date.now()) {
-        throw new BadRequestException("errors.badRequest");
-      }
+      throw new BadRequestException(
+        "Scheduled delivery is not available yet. Please choose ASAP.",
+      );
     }
 
-    const order = await this.orders.create({
+    return {
       customerId: new Types.ObjectId(userId),
       menuVersion: dto.menuVersion,
       lines,
@@ -191,19 +277,19 @@ export class OrdersService {
       paymentMethod: dto.paymentMethod,
       paymentStatus: PaymentStatus.PENDING,
       addressId: address._id,
+      deliveryStreet: address.street,
+      deliveryCity: address.city,
+      deliveryZipcode: address.zipcode,
       deliveryLongitude: address.longitude,
       deliveryLatitude: address.latitude,
       notes: dto.notes,
       leaveAtDoor: dto.leaveAtDoor ?? false,
-      scheduledAt,
       deliveryEntrance: dto.deliveryEntrance ?? address.entrance,
       deliveryFloor: dto.deliveryFloor ?? address.floor,
       deliveryUnit: dto.deliveryUnit ?? address.unit,
       deliveryDoorCode: dto.deliveryDoorCode ?? address.doorCode,
       deliveryInstructions: dto.deliveryInstructions ?? address.instructions,
-    });
-
-    return toCustomerView(order);
+    };
   }
 
   async listForCustomer(userId: string) {
@@ -288,7 +374,9 @@ export class OrdersService {
     ]);
 
     const delayedOrders = activeOrders.filter((order) => {
-      const base = order.etaComputedAt ?? (order as OrderDocument & { createdAt?: Date }).createdAt;
+      const base =
+        order.etaComputedAt ??
+        (order as OrderDocument & { createdAt?: Date }).createdAt;
       if (!base || order.etaDeliveryMax == null) return false;
       const deadline = base.getTime() + order.etaDeliveryMax * 60_000;
       return now > deadline;
@@ -341,6 +429,7 @@ export class OrdersService {
       throw new BadRequestException("errors.badRequest");
     }
 
+    const pricingConfig = await this.appConfig.get();
     const publishedById = new Map(
       (
         await this.catalog.getActiveItemsByIds(
@@ -361,6 +450,8 @@ export class OrdersService {
       quantity: number;
       unitPriceCents: number;
       previousUnitPriceCents: number;
+      size: "small" | "medium" | "large";
+      extras: string[];
     }> = [];
     const changed: Array<{
       menuItemId: string;
@@ -368,6 +459,8 @@ export class OrdersService {
       quantity: number;
       unitPriceCents: number;
       previousUnitPriceCents: number;
+      size: "small" | "medium" | "large";
+      extras: string[];
       change: "price";
     }> = [];
     const unavailable: Array<{
@@ -380,9 +473,7 @@ export class OrdersService {
     for (const line of order.lines) {
       const byId = publishedById.get(String(line.menuItemId));
       const match =
-        byId ??
-        publishedByName.get(line.name.toLowerCase()) ??
-        null;
+        byId ?? publishedByName.get(line.name.toLowerCase()) ?? null;
 
       if (!match) {
         unavailable.push({
@@ -394,7 +485,14 @@ export class OrdersService {
         continue;
       }
 
-      const currentPrice = match.priceCents;
+      const size = line.size ?? "medium";
+      const extras = line.extras ?? [];
+      const currentPrice = linePrice(
+        match.priceCents,
+        size,
+        extras,
+        pricingConfig,
+      );
       if (currentPrice !== line.unitPriceCents) {
         changed.push({
           menuItemId: match.id,
@@ -402,6 +500,8 @@ export class OrdersService {
           quantity: line.quantity,
           unitPriceCents: currentPrice,
           previousUnitPriceCents: line.unitPriceCents,
+          size,
+          extras,
           change: "price",
         });
       } else {
@@ -411,6 +511,8 @@ export class OrdersService {
           quantity: line.quantity,
           unitPriceCents: currentPrice,
           previousUnitPriceCents: line.unitPriceCents,
+          size,
+          extras,
         });
       }
     }
@@ -420,6 +522,8 @@ export class OrdersService {
       name: l.name,
       quantity: l.quantity,
       unitPriceCents: l.unitPriceCents,
+      size: l.size,
+      extras: l.extras,
     }));
     const subtotalCents = cartLines.reduce(
       (sum, l) => sum + l.unitPriceCents * l.quantity,
@@ -434,8 +538,9 @@ export class OrdersService {
       unavailable,
       cartLines,
       subtotalCents,
-      deliveryFeeCents: order.deliveryFeeCents,
-      estimatedTotalCents: subtotalCents + order.deliveryFeeCents,
+      deliveryFeeCents: pricingOptions(pricingConfig).deliveryFeeCents,
+      estimatedTotalCents:
+        subtotalCents + pricingOptions(pricingConfig).deliveryFeeCents,
     };
   }
 
@@ -470,8 +575,8 @@ export class OrdersService {
     return order;
   }
 
-  listKitchenForProvider(providerId: string) {
-    return this.orders
+  async listKitchenForProvider(providerId: string) {
+    const orders = await this.orders
       .find({
         providerId: new Types.ObjectId(providerId),
         status: {
@@ -479,12 +584,29 @@ export class OrdersService {
             OrderStatus.ACCEPTED_BY_PROVIDER,
             OrderStatus.PREPARING,
             OrderStatus.READY_FOR_PICKUP,
+            OrderStatus.ASSIGNED_TO_COURIER,
             OrderStatus.EXCEPTION_REPORTED,
           ],
         },
       })
       .sort({ updatedAt: -1 })
       .exec();
+    return Promise.all(
+      orders.map(async (order) => {
+        const { items } = await this.catalog.getItemsByIds(
+          order.lines.map((line) => String(line.menuItemId)),
+          order.menuVersion,
+        );
+        const view = order.toObject({ virtuals: true });
+        delete view.doorPin;
+        return {
+          ...view,
+          requiredChecklist: [
+            ...new Set(items.flatMap((item) => item.checklistTemplate ?? [])),
+          ],
+        };
+      }),
+    );
   }
 
   async updateKitchenStatus(
@@ -517,8 +639,7 @@ export class OrdersService {
       dto.status === OrderStatus.PREPARING
     ) {
       await this.eta.applyAndSave(order, {
-        quotedPrepMinutes:
-          order.prepOverrideMinutes ?? order.quotedPrepMinutes,
+        quotedPrepMinutes: order.prepOverrideMinutes ?? order.quotedPrepMinutes,
       });
     }
 
@@ -536,7 +657,9 @@ export class OrdersService {
       order.id,
       order.status,
     );
-    return order;
+    const view = order.toObject({ virtuals: true });
+    delete view.doorPin;
+    return view;
   }
 
   async setPrepOverride(
@@ -552,7 +675,9 @@ export class OrdersService {
     await this.eta.applyAndSave(order, {
       quotedPrepMinutes: dto.prepOverrideMinutes,
     });
-    return order;
+    const view = order.toObject({ virtuals: true });
+    delete view.doorPin;
+    return view;
   }
 
   /**
@@ -563,7 +688,10 @@ export class OrdersService {
     if (!order || String(order.customerId) !== userId) {
       throw new NotFoundException("errors.notFound");
     }
-    if (!order.courierId) {
+    if (
+      !order.courierId ||
+      ![OrderStatus.PICKED_UP, OrderStatus.ON_THE_WAY].includes(order.status)
+    ) {
       return { longitude: null, latitude: null, updatedAt: null };
     }
 
@@ -578,7 +706,9 @@ export class OrdersService {
     if (
       !session ||
       session.lastLongitude == null ||
-      session.lastLatitude == null
+      session.lastLatitude == null ||
+      !session.locationUpdatedAt ||
+      Date.now() - session.locationUpdatedAt.getTime() > 90_000
     ) {
       return { longitude: null, latitude: null, updatedAt: null };
     }
@@ -590,8 +720,18 @@ export class OrdersService {
     };
   }
 
-  async markFailedCash(orderId: string) {
+  async markFailedCash(orderId: string, courierId?: string) {
     const order = await this.getRaw(orderId);
+    if (
+      courierId &&
+      (String(order.courierId) !== courierId ||
+        ![
+          OrderStatus.PICKED_UP,
+          OrderStatus.ON_THE_WAY,
+          OrderStatus.DELIVERED,
+        ].includes(order.status))
+    )
+      throw new ForbiddenException("errors.forbidden");
     if (order.paymentMethod !== PaymentMethod.CASH) {
       throw new BadRequestException("errors.badRequest");
     }

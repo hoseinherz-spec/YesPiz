@@ -144,7 +144,7 @@ export default function OperationsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {profile ? (
         <Card className="p-4">

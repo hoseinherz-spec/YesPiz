@@ -79,7 +79,10 @@ export class DispatchService {
       score: p._score,
       expiresAt,
     }));
-    order.status = OrderStatus.PENDING_OFFERS;
+    // An empty wave has no expiry event. Surface it to operations instead of stranding a paid order.
+    order.status = top.length
+      ? OrderStatus.PENDING_OFFERS
+      : OrderStatus.ADMIN_REVIEW;
     if (expandCount > 0) order.radiusExpanded = true;
     await order.save();
 

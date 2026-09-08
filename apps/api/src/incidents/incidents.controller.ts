@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   CurrentUser,
@@ -42,8 +50,11 @@ export class IncidentsController {
 
   @Roles(UserRole.ADMIN, UserRole.COURIER)
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.incidents.get(id);
+  get(@CurrentUser() user: JwtPayloadUser, @Param("id") id: string) {
+    return this.incidents.get(
+      id,
+      user.roles.includes(UserRole.ADMIN) ? undefined : user.userId,
+    );
   }
 
   @Roles(UserRole.ADMIN)

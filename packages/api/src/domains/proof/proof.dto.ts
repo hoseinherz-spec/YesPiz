@@ -1,18 +1,36 @@
+export type CourierOrderProofView = {
+  orderId: string;
+  status: import("../orders/orders.dto").OrderStatus;
+  paymentMethod: import("../orders/orders.dto").PaymentMethod;
+  totalCents: number;
+  sealId?: string;
+  hasDoorPin?: boolean;
+  deliveryStreet?: string;
+  deliveryCity?: string;
+  deliveryZipcode?: string;
+  deliveryLongitude?: number;
+  deliveryLatitude?: number;
+  deliveryEntrance?: string;
+  deliveryFloor?: string;
+  deliveryUnit?: string;
+  deliveryDoorCode?: string;
+  deliveryInstructions?: string;
+  leaveAtDoor?: boolean;
+  pickup?: { address: string; longitude: number; latitude: number };
+  proof?: DeliveryProof | null;
+};
+
 export type IncidentKind =
-  | 'crash'
-  | 'no_answer'
-  | 'no_pay'
-  | 'wrong_address'
-  | 'damaged_pack'
-  | 'vehicle'
-  | 'sos';
+  | "crash"
+  | "no_answer"
+  | "no_pay"
+  | "wrong_address"
+  | "damaged_pack"
+  | "vehicle"
+  | "sos";
 
 export type IncidentStatus =
-  | 'open'
-  | 'waiting'
-  | 'reassigning'
-  | 'resolved'
-  | 'cancelled';
+  "open" | "waiting" | "reassigning" | "resolved" | "cancelled";
 
 export type CustodyEvent = {
   at: string;
@@ -88,7 +106,7 @@ export type CreateIncidentRequest = {
 };
 
 export type ResolveIncidentRequest = {
-  status: 'resolved' | 'cancelled';
+  status: "resolved" | "cancelled";
   notes?: string;
   replacementCourierId?: string;
 };

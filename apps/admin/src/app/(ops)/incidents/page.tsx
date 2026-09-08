@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
 import {
   ApiError,
   incidentsClient,
   type Incident,
   type IncidentKind,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import Link from 'next/link';
-import { useCallback, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { entityId } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { entityId } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 function kindLabel(kind: IncidentKind): string {
-  return kind.replace(/_/g, ' ');
+  return kind.replace(/_/g, " ");
 }
 
 function ageMinutes(createdAt?: string): number | null {
@@ -23,10 +23,15 @@ function ageMinutes(createdAt?: string): number | null {
 }
 
 function isCritical(kind: IncidentKind): boolean {
-  return kind === 'sos' || kind === 'crash';
+  return kind === "sos" || kind === "crash";
 }
 
 export default function IncidentsPage() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,9 @@ export default function IncidentsPage() {
       const list = await incidentsClient.listOpen({ accessToken: token });
       setIncidents(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load incidents');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load incidents",
+      );
     } finally {
       setLoading(false);
     }
@@ -59,10 +66,8 @@ export default function IncidentsPage() {
       currentStep?: string;
       waitUntil?: string;
     };
-    const waitUntil = workflow.waitUntil
-      ? new Date(workflow.waitUntil)
-      : null;
-    const waiting = waitUntil && waitUntil.getTime() > Date.now();
+    const waitUntil = workflow.waitUntil ? new Date(workflow.waitUntil) : null;
+    const waiting = waitUntil && waitUntil.getTime() > now;
 
     return (
       <Card key={id} className="p-4">
@@ -72,14 +77,14 @@ export default function IncidentsPage() {
               <Typography type="h3" className="font-medium capitalize">
                 {kindLabel(incident.kind)}
                 {isCritical(incident.kind) ? (
-                  <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-600">
+                  <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-danger">
                     Critical
                   </span>
                 ) : null}
               </Typography>
               <p className="text-muted text-sm">
                 {incident.status}
-                {age != null ? ` · ${age}m open` : ''}
+                {age != null ? ` · ${age}m open` : ""}
               </p>
               <p className="text-muted text-xs">
                 Order {incident.orderId} · Courier {incident.courierId}
@@ -124,7 +129,7 @@ export default function IncidentsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {!loading && !incidents.length ? (
@@ -137,7 +142,7 @@ export default function IncidentsPage() {
 
       {critical.length ? (
         <section className="flex flex-col gap-3">
-          <Typography type="h3" className="font-medium text-red-600">
+          <Typography type="h3" className="font-medium text-danger">
             Critical ({critical.length})
           </Typography>
           {critical.map(renderCard)}

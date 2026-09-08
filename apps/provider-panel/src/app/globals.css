@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 @import "@repo/theme/styles.css";
+@source "../../../../packages/api/src/components";
+@import "@repo/theme/panel.css";
 
 body {
   background: var(--background);

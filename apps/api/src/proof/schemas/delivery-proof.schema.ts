@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -11,7 +12,7 @@ export class CustodyEvent {
   @Prop({ required: true })
   event!: string;
 
-  @Prop({ type: Types.ObjectId, ref: "User" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User" })
   courierId?: Types.ObjectId;
 
   @Prop()
@@ -28,10 +29,15 @@ const CustodyEventSchema = SchemaFactory.createForClass(CustodyEvent);
 
 @Schema({ timestamps: true, collection: "delivery_proofs" })
 export class DeliveryProof {
-  @Prop({ type: Types.ObjectId, ref: "Order", required: true, unique: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "Order",
+    required: true,
+    unique: true,
+  })
   orderId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User", required: true })
   courierId!: Types.ObjectId;
 
   @Prop()

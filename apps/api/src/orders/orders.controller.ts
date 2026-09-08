@@ -59,6 +59,12 @@ export class OrdersController {
   }
 
   @Roles(UserRole.CUSTOMER)
+  @Post("quote")
+  quote(@CurrentUser() user: JwtPayloadUser, @Body() dto: CreateOrderDto) {
+    return this.orders.quote(user.userId, dto);
+  }
+
+  @Roles(UserRole.CUSTOMER)
   @Post()
   create(@CurrentUser() user: JwtPayloadUser, @Body() dto: CreateOrderDto) {
     return this.orders.createOrder(user.userId, dto);
@@ -146,7 +152,10 @@ export class OrdersController {
 
   @Roles(UserRole.COURIER, UserRole.ADMIN)
   @Post(":id/failed-cash")
-  markFailedCash(@Param("id") id: string) {
-    return this.orders.markFailedCash(id);
+  markFailedCash(@CurrentUser() user: JwtPayloadUser, @Param("id") id: string) {
+    return this.orders.markFailedCash(
+      id,
+      user.roles.includes(UserRole.ADMIN) ? undefined : user.userId,
+    );
   }
 }

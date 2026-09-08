@@ -7,6 +7,7 @@ import { AppConfig, AppConfigDocument } from "./schemas/app-config.schema";
 export class AppConfigService implements OnModuleInit {
   private cache: AppConfigDocument | null = null;
 
+  private cacheAt = 0;
   constructor(
     @InjectModel(AppConfig.name)
     private readonly model: Model<AppConfigDocument>,
@@ -45,12 +46,13 @@ export class AppConfigService implements OnModuleInit {
       }
       if (dirty) await doc.save();
     }
+    this.cacheAt = Date.now();
     this.cache = doc;
     return doc;
   }
 
   async get(): Promise<AppConfigDocument> {
-    if (this.cache) {
+    if (this.cache && Date.now() - this.cacheAt < 5000) {
       return this.cache;
     }
     return this.ensureDefaults();
@@ -64,6 +66,7 @@ export class AppConfigService implements OnModuleInit {
         { new: true, upsert: true },
       )
       .exec();
+    this.cacheAt = Date.now();
     this.cache = doc;
     return doc!;
   }

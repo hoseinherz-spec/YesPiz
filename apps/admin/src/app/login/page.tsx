@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
                 className="border-border bg-background rounded-md border px-3 py-2"
               />
             </label>
-            {error ? <p className="text-sm text-red-500">{error}</p> : null}
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
             <Button type="submit" variant="primary" isDisabled={loading}>
               {loading ? 'Signing in…' : 'Sign in'}
             </Button>

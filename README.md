@@ -19,6 +19,9 @@ The menu is not the advantage. The promise is a **standard, reliable order at a 
 
 - [Product brief](docs/PRODUCT.md)
 - [Product strategy (PRD)](prd/product-strategy.md)
+- [Order flow and role connections](docs/ORDER-FLOW.md)
+- [Release readiness and external service setup](docs/RELEASE-READINESS.md)
+- [Stripe sandbox acceptance](docs/STRIPE-SANDBOX.md)
 - [System architecture](docs/ARCHITECTURE.md)
 - [Data models](docs/DATA-MODELS.md)
 - [Services & rollout](docs/SERVICES.md)

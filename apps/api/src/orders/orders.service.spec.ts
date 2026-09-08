@@ -1,3 +1,4 @@
+import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { NotFoundException } from "@nestjs/common";
@@ -28,6 +29,7 @@ describe("OrdersService reorder", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
+        { provide: ConfigService, useValue: { get: jest.fn() } },
         {
           provide: getModelToken(Order.name),
           useValue: { findById: findOrderById, find: jest.fn() },
@@ -57,7 +59,10 @@ describe("OrdersService reorder", () => {
         { provide: AccountService, useValue: {} },
         { provide: RealtimeGateway, useValue: {} },
         { provide: PushService, useValue: {} },
-        { provide: AppConfigService, useValue: { get: jest.fn() } },
+        {
+          provide: AppConfigService,
+          useValue: { get: jest.fn().mockResolvedValue({}) },
+        },
         { provide: QualityService, useValue: {} },
         { provide: EtaService, useValue: {} },
         { provide: ProvidersService, useValue: {} },

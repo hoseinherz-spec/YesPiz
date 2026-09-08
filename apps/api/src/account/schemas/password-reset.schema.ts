@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -5,7 +6,12 @@ export type PasswordResetDocument = HydratedDocument<PasswordReset>;
 
 @Schema({ timestamps: true, collection: "password_resets" })
 export class PasswordReset {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, unique: true })

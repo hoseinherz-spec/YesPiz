@@ -169,7 +169,7 @@ export default function QualityDetailPage() {
   if (!quality) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-red-500">{error ?? 'Provider not found'}</p>
+        <p className="text-sm text-danger">{error ?? 'Provider not found'}</p>
         <Link href="/quality" className="text-sm underline">
           Back to quality list
         </Link>
@@ -189,8 +189,8 @@ export default function QualityDetailPage() {
         <p className="text-muted text-sm">ID {providerId}</p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
-      {message ? <p className="text-sm text-green-600">{message}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {message ? <p className="text-sm text-success">{message}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-2 p-0">

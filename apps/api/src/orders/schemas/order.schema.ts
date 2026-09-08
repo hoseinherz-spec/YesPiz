@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 import {
@@ -11,7 +12,7 @@ export type OrderDocument = HydratedDocument<Order>;
 
 @Schema({ _id: false })
 export class OrderLine {
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongoSchema.Types.ObjectId, required: true })
   menuItemId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -22,6 +23,12 @@ export class OrderLine {
 
   @Prop({ required: true, min: 1 })
   quantity!: number;
+
+  @Prop({ type: String, enum: ["small", "medium", "large"], default: "medium" })
+  size!: "small" | "medium" | "large";
+
+  @Prop({ type: [String], default: [] })
+  extras!: string[];
 
   @Prop({ default: 1 })
   prepWeight!: number;
@@ -34,7 +41,7 @@ const OrderLineSchema = SchemaFactory.createForClass(OrderLine);
 
 @Schema({ _id: false })
 export class OrderOffer {
-  @Prop({ type: Types.ObjectId, ref: "Provider", required: true })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "Provider", required: true })
   providerId!: Types.ObjectId;
 
   @Prop({
@@ -66,7 +73,31 @@ const OrderOfferSchema = SchemaFactory.createForClass(OrderOffer);
 
 @Schema({ timestamps: true, collection: "orders" })
 export class Order {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+  @Prop() cancellationReason?: string;
+  @Prop() cancelledBy?: string;
+  @Prop() refundStatus?: string;
+
+  @Prop()
+  idempotencyKey?: string;
+
+  @Prop()
+  checkoutFingerprint?: string;
+
+  @Prop()
+  deliveryStreet?: string;
+
+  @Prop()
+  deliveryCity?: string;
+
+  @Prop()
+  deliveryZipcode?: string;
+
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    index: true,
+  })
   customerId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -101,7 +132,11 @@ export class Order {
   })
   paymentStatus!: PaymentStatus;
 
-  @Prop({ type: Types.ObjectId, ref: "DeliveryAddress", required: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "DeliveryAddress",
+    required: true,
+  })
   addressId!: Types.ObjectId;
 
   @Prop()
@@ -110,13 +145,13 @@ export class Order {
   @Prop()
   deliveryLatitude?: number;
 
-  @Prop({ type: Types.ObjectId, ref: "Provider" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "Provider" })
   providerId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "User" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User" })
   courierId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "Batch" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "Batch" })
   batchId?: Types.ObjectId;
 
   @Prop({ type: [OrderOfferSchema], default: [] })
@@ -196,7 +231,7 @@ export class Order {
   @Prop()
   readyAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: "DeliveryProof" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "DeliveryProof" })
   proofId?: Types.ObjectId;
 
   @Prop({ default: false })
@@ -233,4 +268,11 @@ export class Order {
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
 OrderSchema.index({ customerId: 1, createdAt: -1 });
+OrderSchema.index(
+  { customerId: 1, idempotencyKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKey: { $type: "string" } },
+  },
+);
 OrderSchema.index({ providerId: 1, status: 1 });

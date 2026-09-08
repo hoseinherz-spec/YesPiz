@@ -1,6 +1,8 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { MongoMemoryServer } from "mongodb-memory-server";
+import { getConnectionToken } from "@nestjs/mongoose";
+import { Connection, Types } from "mongoose";
 import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { I18nExceptionFilter } from "../src/common/filters/i18n-exception.filter";
@@ -31,11 +33,15 @@ describe("Full lifecycle all roles (e2e)", () => {
   const customerLat = 48.14;
 
   beforeAll(async () => {
-    mongo = await MongoMemoryServer.create();
+    mongo = await MongoMemoryServer.create({
+      binary: { version: process.env.MONGOMS_VERSION || "7.0.24" },
+    });
     process.env.MONGODB_URI = mongo.getUri();
+    process.env.MEDIA_LOCAL_DIR = "/tmp/yespiz-test-media";
     process.env.JWT_SECRET = "qa-full-lifecycle-secret";
     process.env.OTP_DEV_BYPASS = "true";
     delete process.env.STRIPE_SECRET_KEY;
+    process.env.STRIPE_MODE = "";
     delete process.env.REDIS_URL;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -334,6 +340,12 @@ describe("Full lifecycle all roles (e2e)", () => {
       .send({ status: "READY_FOR_PICKUP" })
       .expect(400);
 
+    await request(server)
+      .post(`/api/v1/quality/orders/${orderId}/checklist`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .send({ answers: [{ item: "Unrelated check", ok: true }] })
+      .expect(400);
+
     await completeQualityHandoff(orderId);
 
     await request(server)
@@ -356,16 +368,46 @@ describe("Full lifecycle all roles (e2e)", () => {
       .expect(201);
     const batchId = String(batchRes.body.id ?? batchRes.body._id);
 
+    const shiftCode = await request(server)
+      .post("/api/v1/couriers/sessions/code")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ courierId: courierUserId, action: "start" })
+      .expect(201);
     await request(server)
       .post("/api/v1/couriers/sessions/start")
       .set("Authorization", `Bearer ${courierToken}`)
-      .send({ code: "QA-START-001" })
+      .send({ code: shiftCode.body.code })
       .expect(201);
+    const profileCheck = await request(server)
+      .get("/api/v1/couriers/me")
+      .set("Authorization", `Bearer ${courierToken}`);
+    expect(profileCheck.body.onDuty).toBe(true);
+    const currentCheck = await request(server)
+      .get("/api/v1/couriers/sessions/current")
+      .set("Authorization", `Bearer ${courierToken}`);
+    expect(currentCheck.body.status).toBe("active");
+    const availableCheck = await request(server)
+      .get("/api/v1/couriers/available")
+      .set("Authorization", `Bearer ${providerToken}`);
+    expect(availableCheck.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ userId: courierUserId }),
+      ]),
+    );
+
+    await request(server)
+      .post(`/api/v1/batches/${batchId}/assign-courier`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .send({ courierId: providerUserId })
+      .expect(400);
 
     await request(server)
       .post(`/api/v1/batches/${batchId}/assign-courier`)
       .set("Authorization", `Bearer ${providerToken}`)
       .send({ courierId: courierUserId })
+      .expect((res) => {
+        if (res.status !== 201) throw new Error(JSON.stringify(res.body));
+      })
       .expect(201);
 
     const assigned = await request(server)
@@ -374,8 +416,7 @@ describe("Full lifecycle all roles (e2e)", () => {
       .expect(200);
     expect(
       assigned.body.some(
-        (b: { _id?: string; id?: string }) =>
-          String(b.id ?? b._id) === batchId,
+        (b: { _id?: string; id?: string }) => String(b.id ?? b._id) === batchId,
       ),
     ).toBe(true);
 
@@ -399,8 +440,36 @@ describe("Full lifecycle all roles (e2e)", () => {
       .get(`/api/v1/orders/${orderId}/courier-location`)
       .set("Authorization", `Bearer ${customerToken}`)
       .expect(200);
-    expect(loc.body.longitude).toBeCloseTo(kitchenLng, 3);
-    expect(loc.body.latitude).toBeCloseTo(kitchenLat, 3);
+    expect(loc.body.longitude).toBeNull();
+    expect(loc.body.latitude).toBeNull();
+
+    const message = {
+      text: "Please ring once",
+      clientId: "b2f63193-1654-4e60-8a23-dc534301e597",
+    };
+    await request(server)
+      .post(`/api/v1/communications/orders/${orderId}/messages`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send(message)
+      .expect(201);
+    await request(server)
+      .post(`/api/v1/communications/orders/${orderId}/messages`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send(message)
+      .expect(201);
+    const messages = await request(server)
+      .get(`/api/v1/communications/orders/${orderId}/messages`)
+      .set("Authorization", `Bearer ${courierToken}`)
+      .expect(200);
+    expect(messages.body).toHaveLength(1);
+    expect(messages.body[0]).toEqual(
+      expect.objectContaining({ text: message.text, mine: false }),
+    );
+    expect(messages.body[0].senderId).toBeUndefined();
+    await request(server)
+      .get(`/api/v1/communications/orders/${orderId}/messages`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .expect(404);
 
     // Provider can read pickup codes; customer cannot
     const codes = await request(server)
@@ -408,7 +477,8 @@ describe("Full lifecycle all roles (e2e)", () => {
       .set("Authorization", `Bearer ${providerToken}`)
       .expect(200);
     expect(codes.body.pickupCode).toMatch(/^\d{6}$/);
-    expect(codes.body.doorPin).toMatch(/^\d{4}$/);
+    expect(codes.body.doorPin).toBeUndefined();
+    expect(tracked.body.deliveryPin).toMatch(/^\d{4}$/);
 
     await request(server)
       .get(`/api/v1/proof/orders/${orderId}/codes`)
@@ -419,7 +489,27 @@ describe("Full lifecycle all roles (e2e)", () => {
       .get(`/api/v1/proof/orders/${orderId}`)
       .set("Authorization", `Bearer ${courierToken}`)
       .expect(200);
-    expect(courierProof.body.pickupCode).toBe(codes.body.pickupCode);
+    expect(courierProof.body.pickupCode).toBeUndefined();
+
+    await request(server)
+      .post(`/api/v1/proof/orders/${orderId}/pickup`)
+      .set("Authorization", `Bearer ${courierToken}`)
+      .send({
+        code: "000000",
+        sealId: codes.body.sealId,
+        longitude: kitchenLng,
+        latitude: kitchenLat,
+      })
+      .expect(400);
+    await request(server)
+      .post(`/api/v1/proof/orders/${orderId}/pickup`)
+      .set("Authorization", `Bearer ${courierToken}`)
+      .send({
+        code: codes.body.pickupCode,
+        longitude: kitchenLng,
+        latitude: kitchenLat,
+      })
+      .expect(400);
 
     // Pickup with wrong geo should fail
     await request(server)
@@ -449,6 +539,17 @@ describe("Full lifecycle all roles (e2e)", () => {
       .set("Authorization", `Bearer ${customerToken}`)
       .expect(200);
     expect(tracked.body.customerStatus).toBe("onway");
+    // A lost assignment response must never rewind an already collected order.
+    await request(server)
+      .post(`/api/v1/batches/${batchId}/assign-courier`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .send({ courierId: courierUserId })
+      .expect(201);
+    const afterRetry = await request(server)
+      .get(`/api/v1/orders/${orderId}`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .expect(200);
+    expect(afterRetry.body.customerStatus).toBe("onway");
 
     await request(server)
       .post(`/api/v1/proof/orders/${orderId}/en-route`)
@@ -459,8 +560,14 @@ describe("Full lifecycle all roles (e2e)", () => {
     await request(server)
       .post(`/api/v1/proof/orders/${orderId}/deliver`)
       .set("Authorization", `Bearer ${courierToken}`)
+      .send({ pin: "0000", longitude: customerLng, latitude: customerLat })
+      .expect(400);
+
+    await request(server)
+      .post(`/api/v1/proof/orders/${orderId}/deliver`)
+      .set("Authorization", `Bearer ${courierToken}`)
       .send({
-        pin: codes.body.doorPin,
+        pin: tracked.body.deliveryPin,
         longitude: customerLng,
         latitude: customerLat,
       })
@@ -721,6 +828,9 @@ describe("Full lifecycle all roles (e2e)", () => {
       .post(`/api/v1/batches/${batchId}/assign-courier`)
       .set("Authorization", `Bearer ${providerToken}`)
       .send({ courierId: courierUserId })
+      .expect((res) => {
+        if (res.status !== 201) throw new Error(JSON.stringify(res.body));
+      })
       .expect(201);
 
     const incident = await request(server)
@@ -744,12 +854,15 @@ describe("Full lifecycle all roles (e2e)", () => {
     expect(
       open.body.some(
         (i: { _id?: string; id?: string }) =>
-          String(i.id ?? i._id) === String(incident.body.id ?? incident.body._id),
+          String(i.id ?? i._id) ===
+          String(incident.body.id ?? incident.body._id),
       ),
     ).toBe(true);
 
     await request(server)
-      .patch(`/api/v1/incidents/${incident.body.id ?? incident.body._id}/resolve`)
+      .patch(
+        `/api/v1/incidents/${incident.body.id ?? incident.body._id}/resolve`,
+      )
       .set("Authorization", `Bearer ${adminToken}`)
       .send({ status: "resolved", notes: "customer opened" })
       .expect(200);
@@ -805,6 +918,9 @@ describe("Full lifecycle all roles (e2e)", () => {
       .post(`/api/v1/batches/${batchId}/assign-courier`)
       .set("Authorization", `Bearer ${providerToken}`)
       .send({ courierId: courierUserId })
+      .expect((res) => {
+        if (res.status !== 201) throw new Error(JSON.stringify(res.body));
+      })
       .expect(201);
 
     const codes = await request(server)
@@ -816,7 +932,8 @@ describe("Full lifecycle all roles (e2e)", () => {
       .post(`/api/v1/proof/orders/${orderId}/pickup`)
       .set("Authorization", `Bearer ${courierToken}`)
       .send({
-        code: "000000",
+        code: codes.body.pickupCode,
+        sealId: codes.body.sealId,
         longitude: kitchenLng,
         latitude: kitchenLat,
       })
@@ -828,12 +945,39 @@ describe("Full lifecycle all roles (e2e)", () => {
       .send({})
       .expect(201);
 
+    const media = await request(server)
+      .post("/api/v1/media")
+      .set("Authorization", `Bearer ${courierToken}`)
+      .send({
+        orderId,
+        purpose: "dropoff",
+        contentType: "image/png",
+        base64:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      })
+      .expect(201);
     await request(server)
       .post(`/api/v1/proof/orders/${orderId}/deliver`)
       .set("Authorization", `Bearer ${courierToken}`)
       .send({
-        pin: "0000",
-        photoUrl: "https://cdn.yespizz.local/dropoff.jpg",
+        photoUrl: "https://example.com/untrusted-proof.jpg",
+        longitude: customerLng,
+        latitude: customerLat,
+      })
+      .expect(400);
+    await request(server)
+      .get(`/api/v1/media/${media.body.id}`)
+      .set("Authorization", `Bearer ${providerToken}`)
+      .expect(404);
+    await request(server)
+      .get(`/api/v1/media/${media.body.id}`)
+      .set("Authorization", `Bearer ${courierToken}`)
+      .expect(200);
+    await request(server)
+      .post(`/api/v1/proof/orders/${orderId}/deliver`)
+      .set("Authorization", `Bearer ${courierToken}`)
+      .send({
+        photoUrl: media.body.reference,
         longitude: customerLng,
         latitude: customerLat,
       })
@@ -859,6 +1003,314 @@ describe("Full lifecycle all roles (e2e)", () => {
     // unused but keeps lint quiet if codes needed later
     expect(codes.body.pickupCode).toBeDefined();
   }, 180_000);
+
+  it("quotes options, preserves delivery details and makes checkout retries idempotent", async () => {
+    const server = app.getHttpServer();
+    const body = {
+      menuVersion,
+      addressId,
+      paymentMethod: "card",
+      idempotencyKey: "checkout-retry-001",
+      lines: [
+        {
+          menuItemId,
+          quantity: 2,
+          size: "large",
+          extras: ["extra-cheese", "olives"],
+        },
+      ],
+      deliveryEntrance: "B",
+      deliveryFloor: "3",
+      deliveryUnit: "12",
+      deliveryDoorCode: "4567",
+      deliveryInstructions: "Ring once",
+    };
+    const quote = await request(server)
+      .post("/api/v1/orders/quote")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send(body)
+      .expect(201);
+    expect(quote.body.totalCents).toBe((999 + 300 + 150 + 100) * 2 + 299);
+    const responses = await Promise.all(
+      [1, 2].map(() =>
+        request(server)
+          .post("/api/v1/orders")
+          .set("Authorization", `Bearer ${customerToken}`)
+          .send(body)
+          .expect(201),
+      ),
+    );
+    expect(responses[0].body.id).toBe(responses[1].body.id);
+    const order = responses[0].body;
+    expect(order.orderState).toBe("awaiting_payment");
+    expect(order.totalCents).toBe(quote.body.totalCents);
+    expect(order.lines[0]).toMatchObject({
+      size: "large",
+      extras: ["extra-cheese", "olives"],
+      quantity: 2,
+    });
+    expect(order.deliveryFloor).toBe("3");
+    await request(server)
+      .post("/api/v1/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ ...body, lines: [{ menuItemId, quantity: 1 }] })
+      .expect(409);
+    const pay = await request(server)
+      .post("/api/v1/payments/initiate")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: order.id, method: "card" })
+      .expect(201);
+    expect(pay.body.dispatch.offers).toBeUndefined();
+    await request(server)
+      .post("/api/v1/payments/initiate")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: order.id, method: "card" })
+      .expect(201);
+    const tracked = await request(server)
+      .get(`/api/v1/orders/${order.id}`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .expect(200);
+    expect(tracked.body.orderState).toBe("active");
+    for (const line of [
+      { menuItemId, quantity: 1.5 },
+      { menuItemId, quantity: 1, extras: ["unknown"] },
+      { menuItemId, quantity: 1, extras: ["olives", "olives"] },
+    ]) {
+      await request(server)
+        .post("/api/v1/orders")
+        .set("Authorization", `Bearer ${customerToken}`)
+        .send({ ...body, idempotencyKey: undefined, lines: [line] })
+        .expect(400);
+    }
+    await request(server)
+      .post("/api/v1/orders/addresses")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ label: "Wrong", street: "Test", longitude: 181, latitude: 48 })
+      .expect(400);
+    await request(server)
+      .post("/api/v1/orders/quote")
+      .set("Authorization", `Bearer ${providerToken}`)
+      .send(body)
+      .expect(403);
+  });
+
+  it("isolates provider batches and handoff codes from other kitchens", async () => {
+    const server = app.getHttpServer();
+    const other = await inviteAndRegister(
+      adminToken,
+      "provider",
+      "other.kitchen@test.local",
+      "Other123!",
+    );
+    await request(server)
+      .post("/api/v1/providers")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        userId: other.userId,
+        name: "Other Kitchen",
+        address: "Other road",
+        longitude: kitchenLng,
+        latitude: kitchenLat,
+      })
+      .expect(201);
+    const batches = await request(server)
+      .get("/api/v1/batches/provider")
+      .set("Authorization", `Bearer ${providerToken}`)
+      .expect(200);
+    const batch = batches.body[0];
+    const batchId = String(batch.id ?? batch._id);
+    const orderId = String(batch.orderIds[0]);
+    await request(server)
+      .get(`/api/v1/batches/${batchId}`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .expect(403);
+    await request(server)
+      .post("/api/v1/batches/suggest")
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ providerId: providerEntityId })
+      .expect(403);
+    await request(server)
+      .post("/api/v1/batches")
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ providerId: providerEntityId, orderIds: [orderId] })
+      .expect(403);
+    await request(server)
+      .post(`/api/v1/batches/${batchId}/assign-courier`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .send({ courierId: courierUserId })
+      .expect(403);
+    await request(server)
+      .get(`/api/v1/proof/orders/${orderId}/codes`)
+      .set("Authorization", `Bearer ${other.token}`)
+      .expect(403);
+    await request(server)
+      .get("/api/v1/couriers/available")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .expect(403);
+  });
+
+  it("cancels a paid order, refunds once, and preserves reorder options", async () => {
+    const server = app.getHttpServer();
+    const created = await request(server)
+      .post("/api/v1/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({
+        menuVersion,
+        addressId,
+        paymentMethod: "card",
+        lines: [{ menuItemId, quantity: 1, size: "large", extras: ["olives"] }],
+      })
+      .expect(201);
+    const id = created.body.id;
+    await request(server)
+      .post("/api/v1/payments/initiate")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: id })
+      .expect(201);
+    const cancel = await request(server)
+      .post("/api/v1/payments/cancel-order")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: id, reason: "Changed delivery plans" })
+      .expect(201);
+    expect(cancel.body.orderState).toBe("cancelled");
+    expect(cancel.body.paymentStatus).toBe("refunded");
+    expect(cancel.body.refundStatus).toBe("succeeded");
+    const repeated = await request(server)
+      .post("/api/v1/payments/cancel-order")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: id, reason: "Retry after disconnect" })
+      .expect(201);
+    expect(repeated.body.paymentStatus).toBe("refunded");
+    await request(server)
+      .post("/api/v1/payments/initiate")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ orderId: id })
+      .expect(400);
+    const preview = await request(server)
+      .post(`/api/v1/orders/reorder/${id}`)
+      .set("Authorization", `Bearer ${customerToken}`)
+      .expect(201);
+    expect(preview.body.cartLines[0]).toEqual(
+      expect.objectContaining({
+        size: "large",
+        extras: ["olives"],
+        unitPriceCents: created.body.lines[0].unitPriceCents,
+      }),
+    );
+    const refunds = await request(server)
+      .get("/api/v1/payments/refunds")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .expect(200);
+    expect(
+      refunds.body.filter((row: { orderId: string }) => row.orderId === id),
+    ).toHaveLength(1);
+    await request(server)
+      .get("/api/v1/payments/refunds")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .expect(403);
+  });
+
+  it("uses dispatch-issued, expiring, single-use shift codes", async () => {
+    const server = app.getHttpServer();
+    const worker = await inviteAndRegister(
+      adminToken,
+      "courier",
+      "secure.shift@test.local",
+      "Courier123!",
+    );
+    await request(server)
+      .post("/api/v1/couriers/sessions/start")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: "000000" })
+      .expect(400);
+    await request(server)
+      .post("/api/v1/couriers/sessions/code")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ courierId: worker.userId, action: "start" })
+      .expect(403);
+    const expired = await request(server)
+      .post("/api/v1/couriers/sessions/code")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ courierId: worker.userId, action: "start" })
+      .expect(201);
+    const connection = app.get<Connection>(getConnectionToken());
+    await connection
+      .collection("courier_sessions")
+      .updateOne(
+        { courierId: new Types.ObjectId(worker.userId), status: "pending" },
+        { $set: { codeExpiresAt: new Date(Date.now() - 1_000) } },
+      );
+    await request(server)
+      .post("/api/v1/couriers/sessions/start")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: expired.body.code })
+      .expect(400);
+    const issued = await request(server)
+      .post("/api/v1/couriers/sessions/code")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ courierId: worker.userId, action: "start" })
+      .expect(201);
+    const started = await request(server)
+      .post("/api/v1/couriers/sessions/start")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: issued.body.code })
+      .expect(201);
+    expect(started.body.startCode).toBeUndefined();
+    expect(started.body.endCode).toBeUndefined();
+    await request(server)
+      .post("/api/v1/couriers/sessions/start")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: issued.body.code })
+      .expect(400);
+    const current = await request(server)
+      .get("/api/v1/couriers/sessions/current")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .expect(200);
+    expect(current.body.status).toBe("active");
+    await request(server)
+      .post("/api/v1/couriers/sessions/end")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: "000000" })
+      .expect(400);
+    const end = await request(server)
+      .post("/api/v1/couriers/sessions/code")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ courierId: worker.userId, action: "end" })
+      .expect(201);
+    await request(server)
+      .post("/api/v1/couriers/sessions/end")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: end.body.code })
+      .expect(201);
+    await request(server)
+      .post("/api/v1/couriers/sessions/end")
+      .set("Authorization", `Bearer ${worker.token}`)
+      .send({ code: end.body.code })
+      .expect(400);
+  });
+
+  it("registers notification devices without accepting malformed or anonymous tokens", async () => {
+    const server = app.getHttpServer();
+    await request(server)
+      .post("/api/v1/push/devices")
+      .send({ token: "device-token-for-test-123", platform: "web" })
+      .expect(401);
+    await request(server)
+      .post("/api/v1/push/devices")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ token: "short", platform: "web" })
+      .expect(400);
+    await request(server)
+      .post("/api/v1/push/devices")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ token: "device-token-for-test-123", platform: "web" })
+      .expect(201);
+    await request(server)
+      .delete("/api/v1/push/devices")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ token: "device-token-for-test-123" })
+      .expect(200);
+  });
 
   it("rejects wrong-role password login as unauthenticated", async () => {
     const server = app.getHttpServer();

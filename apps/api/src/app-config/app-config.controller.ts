@@ -32,6 +32,15 @@ export class AppConfigController {
     return {
       id: doc.id ?? String(doc._id),
       key: doc.key,
+      deliveryFeeCents: doc.deliveryFeeCents,
+      smallSizeDeltaCents: doc.smallSizeDeltaCents,
+      mediumSizeDeltaCents: doc.mediumSizeDeltaCents,
+      largeSizeDeltaCents: doc.largeSizeDeltaCents,
+      extraCheeseCents: doc.extraCheeseCents,
+      jalapenosCents: doc.jalapenosCents,
+      olivesCents: doc.olivesCents,
+      garlicDipCents: doc.garlicDipCents,
+
       w1Rating: doc.w1Rating,
       w2Proximity: doc.w2Proximity,
       w3QueueEmptiness: doc.w3QueueEmptiness,

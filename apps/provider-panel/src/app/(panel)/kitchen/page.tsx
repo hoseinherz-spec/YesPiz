@@ -1,23 +1,26 @@
-'use client';
+"use client";
+import { QrCode } from "@repo/api/components/qr-code";
+import { ProofUpload } from "@repo/api/components/proof-upload";
 
 import {
   ApiError,
   ordersClient,
   qualityClient,
+  proofClient,
   type KitchenStatusUpdate,
   type Order,
   type ProviderQualityView,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { requireProviderToken } from '@/lib/auth';
-import { entityId, formatCents } from '@/lib/ids';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { requireProviderToken } from "@/lib/auth";
+import { entityId, formatCents } from "@/lib/ids";
 
 const BASE_CHECKS = [
-  'Weight check',
-  'Packaging seal',
-  'Temperature',
-  'Allergen review',
+  "Weight check",
+  "Packaging seal",
+  "Temperature",
+  "Allergen review",
 ];
 
 const ACTIONS: Array<{
@@ -26,19 +29,19 @@ const ACTIONS: Array<{
   from: string[];
 }> = [
   {
-    status: 'PREPARING',
-    label: 'Start preparing',
-    from: ['ACCEPTED_BY_PROVIDER'],
+    status: "PREPARING",
+    label: "Start preparing",
+    from: ["ACCEPTED_BY_PROVIDER"],
   },
   {
-    status: 'READY_FOR_PICKUP',
-    label: 'Mark ready',
-    from: ['PREPARING'],
+    status: "READY_FOR_PICKUP",
+    label: "Mark ready",
+    from: ["PREPARING"],
   },
   {
-    status: 'EXCEPTION_REPORTED',
-    label: 'Report exception',
-    from: ['ACCEPTED_BY_PROVIDER', 'PREPARING'],
+    status: "EXCEPTION_REPORTED",
+    label: "Report exception",
+    from: ["ACCEPTED_BY_PROVIDER", "PREPARING"],
   },
 ];
 
@@ -46,10 +49,13 @@ function checklistItemsForOrder(order: Order): string[] {
   const lineChecks = (order.lines ?? []).map(
     (line) => `${line.name} — recipe verified`,
   );
-  return [...lineChecks, ...BASE_CHECKS];
+  return [
+    ...new Set([...lineChecks, ...(order.requiredChecklist ?? BASE_CHECKS)]),
+  ];
 }
 
 export default function KitchenPage() {
+  const [pickupCodes, setPickupCodes] = useState<Record<string, string>>({});
   const [orders, setOrders] = useState<Order[]>([]);
   const [quality, setQuality] = useState<ProviderQualityView | null>(null);
   const [checkedByOrder, setCheckedByOrder] = useState<
@@ -58,7 +64,10 @@ export default function KitchenPage() {
   const [sealByOrder, setSealByOrder] = useState<Record<string, string>>({});
   const [photoByOrder, setPhotoByOrder] = useState<Record<string, string>>({});
   const [qualityByOrder, setQualityByOrder] = useState<
-    Record<string, { checklistDone: boolean; sealDone: boolean; photoDone: boolean }>
+    Record<
+      string,
+      { checklistDone: boolean; sealDone: boolean; photoDone: boolean }
+    >
   >({});
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -89,7 +98,9 @@ export default function KitchenPage() {
         return next;
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load kitchen');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load kitchen",
+      );
     }
   }, []);
 
@@ -133,7 +144,7 @@ export default function KitchenPage() {
   async function submitChecklist(orderId: string) {
     const items = checklistByOrderId[orderId] ?? [];
     if (!allChecked(orderId)) {
-      setError('Confirm every checklist item before submitting');
+      setError("Confirm every checklist item before submitting");
       return;
     }
 
@@ -154,16 +165,18 @@ export default function KitchenPage() {
       }));
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Checklist submit failed');
+      setError(
+        err instanceof ApiError ? err.message : "Checklist submit failed",
+      );
     } finally {
       setBusyId(null);
     }
   }
 
   async function submitSeal(orderId: string) {
-    const sealId = (sealByOrder[orderId] ?? '').trim();
+    const sealId = (sealByOrder[orderId] ?? "").trim();
     if (!sealId) {
-      setError('Enter a numbered seal ID');
+      setError("Enter a numbered seal ID");
       return;
     }
 
@@ -171,23 +184,27 @@ export default function KitchenPage() {
     setError(null);
     try {
       const token = requireProviderToken();
-      await qualityClient.submitSeal(orderId, { sealId }, { accessToken: token });
+      await qualityClient.submitSeal(
+        orderId,
+        { sealId },
+        { accessToken: token },
+      );
       setQualityByOrder((prev) => ({
         ...prev,
         [orderId]: { ...prev[orderId], sealDone: true },
       }));
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Seal submit failed');
+      setError(err instanceof ApiError ? err.message : "Seal submit failed");
     } finally {
       setBusyId(null);
     }
   }
 
   async function submitPhoto(orderId: string) {
-    const photoUrl = (photoByOrder[orderId] ?? '').trim();
+    const photoUrl = (photoByOrder[orderId] ?? "").trim();
     if (!photoUrl) {
-      setError('Enter a ready photo URL');
+      setError("Upload a ready photo first");
       return;
     }
 
@@ -206,7 +223,7 @@ export default function KitchenPage() {
       }));
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Photo submit failed');
+      setError(err instanceof ApiError ? err.message : "Photo submit failed");
     } finally {
       setBusyId(null);
     }
@@ -215,11 +232,11 @@ export default function KitchenPage() {
   async function markReady(orderId: string) {
     const q = qualityByOrder[orderId];
     if (!q?.checklistDone) {
-      setError('Complete and submit the quality checklist first');
+      setError("Complete and submit the quality checklist first");
       return;
     }
     if (!q?.sealDone) {
-      setError('Submit the numbered seal first');
+      setError("Submit the numbered seal first");
       return;
     }
 
@@ -229,7 +246,7 @@ export default function KitchenPage() {
       const token = requireProviderToken();
       await ordersClient.updateKitchenStatus(
         orderId,
-        { status: 'READY_FOR_PICKUP' },
+        { status: "READY_FOR_PICKUP" },
         { accessToken: token },
       );
       await load();
@@ -237,7 +254,7 @@ export default function KitchenPage() {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Ready update failed — complete all required quality gates',
+          : "Ready update failed — complete all required quality gates",
       );
     } finally {
       setBusyId(null);
@@ -245,7 +262,7 @@ export default function KitchenPage() {
   }
 
   async function updateStatus(orderId: string, status: KitchenStatusUpdate) {
-    if (status === 'READY_FOR_PICKUP') {
+    if (status === "READY_FOR_PICKUP") {
       await markReady(orderId);
       return;
     }
@@ -261,7 +278,7 @@ export default function KitchenPage() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Update failed');
+      setError(err instanceof ApiError ? err.message : "Update failed");
     } finally {
       setBusyId(null);
     }
@@ -290,19 +307,20 @@ export default function KitchenPage() {
               Quality score
             </Typography>
             <p>
-              Score {quality.qualityScore} · complaints {quality.complaintCount}{' '}
+              Score {quality.qualityScore} · complaints {quality.complaintCount}{" "}
               · delays {quality.delayCount} · errors {quality.errorCount}
             </p>
             {quality.autoSuspended ? (
-              <p className="text-red-500">
-                Suspended{quality.suspendReason ? `: ${quality.suspendReason}` : ''}
+              <p className="text-danger">
+                Suspended
+                {quality.suspendReason ? `: ${quality.suspendReason}` : ""}
               </p>
             ) : null}
           </Card.Content>
         </Card>
       ) : null}
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {!orders.length ? (
         <Card className="p-4">
@@ -316,7 +334,7 @@ export default function KitchenPage() {
         const id = entityId(order);
         const items = checklistByOrderId[id] ?? [];
         const q = qualityByOrder[id];
-        const preparing = order.status === 'PREPARING';
+        const preparing = order.status === "PREPARING";
 
         return (
           <Card key={id} className="p-4">
@@ -331,11 +349,48 @@ export default function KitchenPage() {
               <ul className="text-sm">
                 {(order.lines ?? []).map((line, idx) => (
                   <li key={`${id}-${idx}`}>
-                    {line.quantity}× {line.name}
+                    {line.quantity}× {line.name} · {line.size ?? "medium"}
+                    {line.extras?.length ? ` · ${line.extras.join(", ")}` : ""}
                   </li>
                 ))}
               </ul>
 
+              {order.status === "ASSIGNED_TO_COURIER" ? (
+                <div className="rounded-md border border-border p-3">
+                  <p>
+                    Read this pickup code to the assigned courier after checking
+                    the seal.
+                  </p>
+                  {pickupCodes[id] ? (
+                    <strong className="text-2xl tracking-widest">
+                      <QrCode value={pickupCodes[id]} />
+                      {pickupCodes[id]}
+                    </strong>
+                  ) : (
+                    <Button
+                      onPress={async () => {
+                        try {
+                          const codes = await proofClient.getPickupCodes(id, {
+                            accessToken: requireProviderToken(),
+                          });
+                          setPickupCodes((prev) => ({
+                            ...prev,
+                            [id]: codes.pickupCode,
+                          }));
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Unable to load pickup code",
+                          );
+                        }
+                      }}
+                    >
+                      Show pickup code
+                    </Button>
+                  )}
+                </div>
+              ) : null}
               {preparing ? (
                 <div className="border-border flex flex-col gap-3 rounded-md border p-3">
                   <Typography type="h3" className="text-sm font-medium">
@@ -376,14 +431,14 @@ export default function KitchenPage() {
                     </Typography>
                     {q?.sealDone ? (
                       <p className="text-muted text-sm">
-                        Seal recorded{order.sealId ? `: ${order.sealId}` : ''}
+                        Seal recorded{order.sealId ? `: ${order.sealId}` : ""}
                       </p>
                     ) : (
                       <>
                         <input
                           aria-label="Seal ID"
                           placeholder="Seal ID on package"
-                          value={sealByOrder[id] ?? ''}
+                          value={sealByOrder[id] ?? ""}
                           onChange={(e) =>
                             setSealByOrder((prev) => ({
                               ...prev,
@@ -409,20 +464,19 @@ export default function KitchenPage() {
                       Ready photo (when required)
                     </Typography>
                     {q?.photoDone ? (
-                      <p className="text-muted text-sm">Photo URL saved</p>
+                      <p className="text-muted text-sm">Photo saved</p>
                     ) : (
                       <>
-                        <input
-                          aria-label="Ready photo URL"
-                          placeholder="https://…"
-                          value={photoByOrder[id] ?? ''}
-                          onChange={(e) =>
+                        <ProofUpload
+                          orderId={id}
+                          accessToken={requireProviderToken()}
+                          purpose="ready"
+                          onUploaded={(reference) =>
                             setPhotoByOrder((prev) => ({
                               ...prev,
-                              [id]: e.target.value,
+                              [id]: reference,
                             }))
                           }
-                          className="border-border bg-background rounded-md border px-3 py-2 text-sm"
                         />
                         <Button
                           size="sm"
@@ -445,13 +499,13 @@ export default function KitchenPage() {
                       key={action.status}
                       size="sm"
                       variant={
-                        action.status === 'EXCEPTION_REPORTED'
-                          ? 'secondary'
-                          : 'primary'
+                        action.status === "EXCEPTION_REPORTED"
+                          ? "secondary"
+                          : "primary"
                       }
                       isDisabled={
                         busyId === id ||
-                        (action.status === 'READY_FOR_PICKUP' &&
+                        (action.status === "READY_FOR_PICKUP" &&
                           (!q?.checklistDone || !q?.sealDone))
                       }
                       onPress={() => updateStatus(id, action.status)}

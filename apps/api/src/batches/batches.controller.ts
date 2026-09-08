@@ -1,5 +1,7 @@
 import {
   Body,
+  ForbiddenException,
+  NotFoundException,
   Controller,
   Get,
   Param,
@@ -37,13 +39,21 @@ export class BatchesController {
 
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
   @Post()
-  create(@Body() dto: CreateBatchDto) {
+  async create(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: CreateBatchDto,
+  ) {
+    await this.assertProvider(user, dto.providerId);
     return this.batches.create(dto);
   }
 
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
   @Post("suggest")
-  suggest(@Body() dto: SuggestBatchDto) {
+  async suggest(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: SuggestBatchDto,
+  ) {
+    await this.assertProvider(user, dto.providerId);
     return this.batches.suggest(dto.providerId);
   }
 
@@ -73,13 +83,35 @@ export class BatchesController {
 
   @Roles(UserRole.ADMIN, UserRole.PROVIDER)
   @Post(":id/assign-courier")
-  assign(@Param("id") id: string, @Body() dto: AssignCourierDto) {
+  async assign(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+    @Body() dto: AssignCourierDto,
+  ) {
+    const batch = await this.batches.get(id);
+    if (!batch) throw new NotFoundException("errors.notFound");
+    await this.assertProvider(user, String(batch.providerId));
     return this.batches.assignCourier(id, dto);
   }
 
   @Roles(UserRole.ADMIN, UserRole.PROVIDER, UserRole.COURIER)
   @Get(":id")
-  get(@Param("id") id: string) {
-    return this.batches.get(id);
+  async get(@CurrentUser() user: JwtPayloadUser, @Param("id") id: string) {
+    const batch = await this.batches.get(id);
+    if (!batch) throw new NotFoundException("errors.notFound");
+    if (user.activeRole === UserRole.COURIER) {
+      if (String(batch.courierId) !== user.userId)
+        throw new ForbiddenException("errors.forbidden");
+    } else {
+      await this.assertProvider(user, String(batch.providerId));
+    }
+    return batch;
+  }
+
+  private async assertProvider(user: JwtPayloadUser, providerId: string) {
+    if (user.activeRole === UserRole.ADMIN) return;
+    const provider = await this.providers.getSelf(user.userId);
+    if (provider.id !== providerId)
+      throw new ForbiddenException("errors.forbidden");
   }
 }

@@ -1,28 +1,65 @@
-'use client';
+"use client";
 
 import {
   ApiError,
   appConfigClient,
   type AppConfig,
   type UpdateAppConfigRequest,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
-const FIELDS: Array<{ key: keyof UpdateAppConfigRequest; label: string; step?: string }> = [
-  { key: 'w1Rating', label: 'Weight: rating', step: '0.05' },
-  { key: 'w2Proximity', label: 'Weight: proximity', step: '0.05' },
-  { key: 'w3QueueEmptiness', label: 'Weight: queue emptiness', step: '0.05' },
-  { key: 'dispatchTopN', label: 'Dispatch top N', step: '1' },
-  { key: 'dispatchInitialRadiusMeters', label: 'Initial radius (m)', step: '100' },
-  { key: 'dispatchExpandedRadiusMeters', label: 'Expanded radius (m)', step: '100' },
-  { key: 'offerTimeoutSeconds', label: 'Offer timeout (s)', step: '1' },
-  { key: 'cashFailThreshold', label: 'Cash fail threshold', step: '1' },
-  { key: 'cashHardCapCents', label: 'Cash hard cap (cents)', step: '100' },
-  { key: 'qualityAutoSuspendThreshold', label: 'Quality auto-suspend score', step: '1' },
-  { key: 'maxBatchSize', label: 'Max batch size', step: '1' },
+const FIELDS: Array<{
+  key: keyof UpdateAppConfigRequest;
+  label: string;
+  step?: string;
+}> = [
+  { key: "deliveryFeeCents", label: "deliveryFeeCents (cents)", step: "1" },
+  {
+    key: "smallSizeDeltaCents",
+    label: "smallSizeDeltaCents (cents)",
+    step: "1",
+  },
+  {
+    key: "mediumSizeDeltaCents",
+    label: "mediumSizeDeltaCents (cents)",
+    step: "1",
+  },
+  {
+    key: "largeSizeDeltaCents",
+    label: "largeSizeDeltaCents (cents)",
+    step: "1",
+  },
+  { key: "extraCheeseCents", label: "extraCheeseCents (cents)", step: "1" },
+  { key: "jalapenosCents", label: "jalapenosCents (cents)", step: "1" },
+  { key: "olivesCents", label: "olivesCents (cents)", step: "1" },
+  { key: "garlicDipCents", label: "garlicDipCents (cents)", step: "1" },
+
+  { key: "w1Rating", label: "Weight: rating", step: "0.05" },
+  { key: "w2Proximity", label: "Weight: proximity", step: "0.05" },
+  { key: "w3QueueEmptiness", label: "Weight: queue emptiness", step: "0.05" },
+  { key: "dispatchTopN", label: "Dispatch top N", step: "1" },
+  {
+    key: "dispatchInitialRadiusMeters",
+    label: "Initial radius (m)",
+    step: "100",
+  },
+  {
+    key: "dispatchExpandedRadiusMeters",
+    label: "Expanded radius (m)",
+    step: "100",
+  },
+  { key: "offerTimeoutSeconds", label: "Offer timeout (s)", step: "1" },
+  { key: "cashFailThreshold", label: "Cash fail threshold", step: "1" },
+  { key: "cashHardCapCents", label: "Cash hard cap (cents)", step: "100" },
+  {
+    key: "qualityAutoSuspendThreshold",
+    label: "Quality auto-suspend score",
+    step: "1",
+  },
+  { key: "maxBatchSize", label: "Max batch size", step: "1" },
 ];
 
 export default function ConfigPage() {
@@ -52,7 +89,7 @@ export default function ConfigPage() {
 
   useLoadOnMount(() =>
     load().catch((err) =>
-      setError(err instanceof ApiError ? err.message : 'Failed to load config'),
+      setError(err instanceof ApiError ? err.message : "Failed to load config"),
     ),
   );
 
@@ -66,7 +103,7 @@ export default function ConfigPage() {
       });
       setConfig(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Save failed');
+      setError(err instanceof ApiError ? err.message : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -83,7 +120,7 @@ export default function ConfigPage() {
         </p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-3 p-0">
@@ -93,12 +130,15 @@ export default function ConfigPage() {
             <>
               <div className="grid gap-3 md:grid-cols-2">
                 {FIELDS.map((field) => (
-                  <label key={field.key} className="flex flex-col gap-1 text-sm">
+                  <label
+                    key={field.key}
+                    className="flex flex-col gap-1 text-sm"
+                  >
                     {field.label}
                     <input
                       type="number"
                       step={field.step}
-                      value={draft[field.key] ?? ''}
+                      value={draft[field.key] ?? ""}
                       onChange={(e) =>
                         setDraft((d) => ({
                           ...d,

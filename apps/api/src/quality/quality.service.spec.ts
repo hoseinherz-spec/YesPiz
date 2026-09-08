@@ -1,3 +1,4 @@
+import { MediaService } from "../media/media.module";
 import { BadRequestException } from "@nestjs/common";
 import { getModelToken } from "@nestjs/mongoose";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -20,6 +21,7 @@ describe("QualityService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QualityService,
+        { provide: MediaService, useValue: { assertReference: jest.fn() } },
         {
           provide: getModelToken(Order.name),
           useValue: { findById: jest.fn(), create: jest.fn() },

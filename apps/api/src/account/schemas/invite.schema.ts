@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 import { UserRole } from "../../common/enums";
@@ -25,7 +26,7 @@ export class Invite {
   @Prop({ lowercase: true, trim: true })
   email?: string;
 
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User", required: true })
   createdBy!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -34,7 +35,7 @@ export class Invite {
   @Prop()
   usedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: "User" })
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "User" })
   usedBy?: Types.ObjectId;
 }
 

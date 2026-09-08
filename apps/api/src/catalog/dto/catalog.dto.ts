@@ -3,6 +3,7 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -54,7 +55,7 @@ export class CreateMenuItemDto {
   description?: string;
 
   @ApiProperty({ description: "Price in cents" })
-  @IsNumber()
+  @IsInt()
   @Min(0)
   priceCents!: number;
 
@@ -128,13 +129,14 @@ export class UpdateMenuItemDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   priceCents?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
+  @Min(0.1)
   prepWeight?: number;
 
   @ApiPropertyOptional()

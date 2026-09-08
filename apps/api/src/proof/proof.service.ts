@@ -1,3 +1,4 @@
+import { MediaService } from "../media/media.module";
 import {
   BadRequestException,
   ForbiddenException,
@@ -6,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { randomInt } from "crypto";
+import { Batch, BatchDocument } from "../batches/schemas/batch.schema";
 import { Model, Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "../common/enums";
@@ -30,12 +32,14 @@ export class ProofService {
   constructor(
     @InjectModel(DeliveryProof.name)
     private readonly proofs: Model<DeliveryProofDocument>,
+    @InjectModel(Batch.name) private readonly batches: Model<BatchDocument>,
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     private readonly providers: ProvidersService,
     private readonly config: AppConfigService,
     private readonly realtime: RealtimeGateway,
     private readonly push: PushService,
     private readonly sla: SlaService,
+    private readonly media: MediaService,
   ) {}
 
   /**
@@ -56,7 +60,9 @@ export class ProofService {
   }
 
   async getOrCreateProof(orderId: string, courierId: string) {
-    let proof = await this.proofs.findOne({ orderId: new Types.ObjectId(orderId) }).exec();
+    let proof = await this.proofs
+      .findOne({ orderId: new Types.ObjectId(orderId) })
+      .exec();
     if (!proof) {
       proof = await this.proofs.create({
         orderId: new Types.ObjectId(orderId),
@@ -79,10 +85,10 @@ export class ProofService {
 
     await this.ensureCodes(order);
     const code = dto.code.trim();
-    if (code !== order.pickupCode && code !== "000000") {
+    if (code !== order.pickupCode) {
       throw new BadRequestException("errors.otpInvalid");
     }
-    if (order.sealId && dto.sealId && dto.sealId !== order.sealId) {
+    if (order.sealId && dto.sealId !== order.sealId) {
       throw new BadRequestException("errors.badRequest");
     }
 
@@ -163,12 +169,14 @@ export class ProofService {
 
     await this.ensureCodes(order);
     const hasPin = Boolean(dto.pin?.trim());
+    await this.media.assertReference(dto.signatureUrl, orderId, "signature");
+    await this.media.assertReference(dto.photoUrl, orderId, "dropoff");
     const hasSign = Boolean(dto.signatureUrl?.trim());
     const hasPhoto = Boolean(dto.photoUrl?.trim());
     if (!hasPin && !hasSign && !hasPhoto) {
       throw new BadRequestException("errors.badRequest");
     }
-    if (hasPin && dto.pin!.trim() !== order.doorPin && dto.pin!.trim() !== "0000") {
+    if (hasPin && dto.pin!.trim() !== order.doorPin) {
       throw new BadRequestException("errors.otpInvalid");
     }
 
@@ -215,7 +223,10 @@ export class ProofService {
       orderId,
       OrderStatus.DELIVERED,
     );
-    if (order.paymentMethod !== PaymentMethod.CASH) {
+    if (
+      order.paymentMethod !== PaymentMethod.CASH ||
+      dto.amountCents !== order.totalCents
+    ) {
       throw new BadRequestException("errors.badRequest");
     }
     const proof = await this.getOrCreateProof(orderId, courierId);
@@ -266,6 +277,22 @@ export class ProofService {
     if (order.providerId) {
       await this.providers.bumpOpenOrders(String(order.providerId), -1);
     }
+    if (order.batchId) {
+      const remaining = await this.orders.countDocuments({
+        batchId: order.batchId,
+        status: {
+          $nin: [
+            OrderStatus.COMPLETED,
+            OrderStatus.CANCELLED,
+            OrderStatus.FAILED_CASH,
+          ],
+        },
+      });
+      if (!remaining)
+        await this.batches
+          .updateOne({ _id: order.batchId }, { status: "completed" })
+          .exec();
+    }
 
     proof.custodyLog.push({
       at: new Date(),
@@ -283,13 +310,34 @@ export class ProofService {
     if (!order || String(order.courierId) !== courierId) {
       throw new NotFoundException("errors.notFound");
     }
+    const provider = order.providerId
+      ? await this.providers.getById(String(order.providerId))
+      : null;
     const proof = await this.proofs
       .findOne({ orderId: new Types.ObjectId(orderId) })
       .exec();
     return {
       orderId: order.id,
       status: order.status,
-      pickupCode: order.pickupCode,
+      pickup: provider
+        ? {
+            address: provider.address,
+            longitude: provider.longitude,
+            latitude: provider.latitude,
+          }
+        : undefined,
+      totalCents: order.totalCents,
+      deliveryStreet: order.deliveryStreet,
+      deliveryCity: order.deliveryCity,
+      deliveryZipcode: order.deliveryZipcode,
+      deliveryLongitude: order.deliveryLongitude,
+      deliveryLatitude: order.deliveryLatitude,
+      deliveryEntrance: order.deliveryEntrance,
+      deliveryFloor: order.deliveryFloor,
+      deliveryUnit: order.deliveryUnit,
+      deliveryDoorCode: order.deliveryDoorCode,
+      deliveryInstructions: order.deliveryInstructions,
+      leaveAtDoor: order.leaveAtDoor,
       sealId: order.sealId,
       hasDoorPin: Boolean(order.doorPin),
       paymentMethod: order.paymentMethod,
@@ -298,15 +346,19 @@ export class ProofService {
   }
 
   /** Admin / internal: codes for kitchen display */
-  async getPickupCodes(orderId: string) {
+  async getPickupCodes(orderId: string, providerUserId?: string) {
     const order = await this.orders.findById(orderId).exec();
     if (!order) throw new NotFoundException("errors.notFound");
+    if (providerUserId) {
+      const provider = await this.providers.getSelf(providerUserId);
+      if (String(order.providerId) !== provider.id)
+        throw new ForbiddenException("errors.forbidden");
+    }
     await this.ensureCodes(order);
     return {
       orderId: order.id,
       pickupCode: order.pickupCode,
       sealId: order.sealId,
-      doorPin: order.doorPin,
     };
   }
 

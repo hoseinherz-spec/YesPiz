@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
-    "./theme-provider": "./src/theme-provider.tsx"
+    "./theme-provider": "./src/theme-provider.tsx",
+    "./panel.css": "./src/panel.css"
   },
   "scripts": {
     "check-types": "tsc --noEmit",

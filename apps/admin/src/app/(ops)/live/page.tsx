@@ -48,7 +48,7 @@ export default function LiveOpsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {summary ? (

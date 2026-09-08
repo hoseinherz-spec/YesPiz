@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   ApiError,
@@ -6,11 +6,11 @@ import {
   providersClient,
   type ProviderOffer,
   type WaveRespondResponse,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useEffect, useState } from 'react';
-import { requireProviderToken } from '@/lib/auth';
-import { formatCents } from '@/lib/ids';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useEffect, useState } from "react";
+import { requireProviderToken } from "@/lib/auth";
+import { formatCents } from "@/lib/ids";
 
 type WaveOutcome = {
   orderId: string;
@@ -21,39 +21,44 @@ type WaveOutcome = {
 type OfferWaveState = {
   respondedAt?: string;
   awaitingResponses?: number;
-  outcome?: 'waiting' | 'won' | 'lost' | 'rejected' | 'expired';
+  outcome?: "waiting" | "won" | "lost" | "rejected" | "expired";
 };
 
 function secondsLeft(expiresAt?: string): number | null {
   if (!expiresAt) return null;
-  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
+  return Math.max(
+    0,
+    Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000),
+  );
 }
 
 function formatCountdown(seconds: number | null): string {
-  if (seconds == null) return '—';
-  if (seconds <= 0) return 'Window closed';
+  if (seconds == null) return "—";
+  if (seconds <= 0) return "Window closed";
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
+  return m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}s`;
 }
 
 function outcomeFromResponse(
   res: WaveRespondResponse,
   selfProviderId: string,
-): OfferWaveState['outcome'] {
-  if (res.awaitingResponses && res.awaitingResponses > 0) return 'waiting';
+): OfferWaveState["outcome"] {
+  if (res.awaitingResponses && res.awaitingResponses > 0) return "waiting";
   if (res.providerId) {
-    return res.providerId === selfProviderId ? 'won' : 'lost';
+    return res.providerId === selfProviderId ? "won" : "lost";
   }
-  if (res.status === 'ACCEPTED_BY_PROVIDER') return 'won';
-  return 'waiting';
+  if (res.status === "ACCEPTED_BY_PROVIDER") return "won";
+  return "waiting";
 }
 
 export default function OffersPage() {
   const [offers, setOffers] = useState<ProviderOffer[]>([]);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [prepByOrder, setPrepByOrder] = useState<Record<string, string>>({});
-  const [waveByOrder, setWaveByOrder] = useState<Record<string, OfferWaveState>>({});
+  const [waveByOrder, setWaveByOrder] = useState<
+    Record<string, OfferWaveState>
+  >({});
   const [recentOutcomes, setRecentOutcomes] = useState<WaveOutcome[]>([]);
   const [tick, setTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -67,11 +72,11 @@ export default function OffersPage() {
         providersClient.getMeProfile({ accessToken: token }),
         dispatchClient.listOffers({ accessToken: token }),
       ]);
-      const pid = profile.id ?? String((profile as { _id?: string })._id ?? '');
+      const pid = profile.id ?? String((profile as { _id?: string })._id ?? "");
       setProviderId(pid);
       setOffers(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load offers');
+      setError(err instanceof ApiError ? err.message : "Failed to load offers");
     }
   }, []);
 
@@ -100,10 +105,10 @@ export default function OffersPage() {
   }
 
   async function respondReady(orderId: string) {
-    const raw = prepByOrder[orderId] ?? '20';
+    const raw = prepByOrder[orderId] ?? "20";
     const quotedPrepMinutes = Number.parseInt(raw, 10);
     if (!Number.isFinite(quotedPrepMinutes) || quotedPrepMinutes < 5) {
-      setError('Prep time must be at least 5 minutes');
+      setError("Prep time must be at least 5 minutes");
       return;
     }
 
@@ -116,7 +121,9 @@ export default function OffersPage() {
         { ready: true, quotedPrepMinutes },
         { accessToken: token },
       );
-      const outcome = providerId ? outcomeFromResponse(res, providerId) : 'waiting';
+      const outcome = providerId
+        ? outcomeFromResponse(res, providerId)
+        : "waiting";
       setWaveByOrder((prev) => ({
         ...prev,
         [orderId]: {
@@ -125,16 +132,19 @@ export default function OffersPage() {
           outcome,
         },
       }));
-      if (outcome === 'won') {
-        recordOutcome(orderId, 'You won this wave');
-      } else if (outcome === 'lost') {
-        recordOutcome(orderId, 'Another kitchen won');
+      if (outcome === "won") {
+        recordOutcome(orderId, "You won this wave");
+      } else if (outcome === "lost") {
+        recordOutcome(orderId, "Another kitchen won");
       } else {
-        recordOutcome(orderId, `Bid submitted — waiting on ${res.awaitingResponses ?? 0} kitchen(s)`);
+        recordOutcome(
+          orderId,
+          `Bid submitted — waiting on ${res.awaitingResponses ?? 0} kitchen(s)`,
+        );
       }
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Response failed');
+      setError(err instanceof ApiError ? err.message : "Response failed");
     } finally {
       setBusyId(null);
     }
@@ -145,15 +155,22 @@ export default function OffersPage() {
     setError(null);
     try {
       const token = requireProviderToken();
-      await dispatchClient.respond(orderId, { ready: false }, { accessToken: token });
+      await dispatchClient.respond(
+        orderId,
+        { ready: false },
+        { accessToken: token },
+      );
       setWaveByOrder((prev) => ({
         ...prev,
-        [orderId]: { respondedAt: new Date().toISOString(), outcome: 'rejected' },
+        [orderId]: {
+          respondedAt: new Date().toISOString(),
+          outcome: "rejected",
+        },
       }));
-      recordOutcome(orderId, 'Declined offer');
+      recordOutcome(orderId, "Declined offer");
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Reject failed');
+      setError(err instanceof ApiError ? err.message : "Reject failed");
     } finally {
       setBusyId(null);
     }
@@ -169,7 +186,8 @@ export default function OffersPage() {
             Offers inbox
           </Typography>
           <p className="text-muted text-sm">
-            Wave dispatch — declare readiness and prep time; server picks the winner
+            Wave dispatch — declare readiness and prep time; server picks the
+            winner
           </p>
         </div>
         <Button size="sm" variant="secondary" onPress={load}>
@@ -177,7 +195,7 @@ export default function OffersPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {recentOutcomes.length ? (
         <Card className="p-4">
@@ -209,14 +227,14 @@ export default function OffersPage() {
         const responded = Boolean(offer.respondedAt ?? wave?.respondedAt);
         const countdown = formatCountdown(secondsLeft(offer.expiresAt));
         const outcomeLabel =
-          wave?.outcome === 'won'
-            ? 'You won — check Kitchen'
-            : wave?.outcome === 'lost'
-              ? 'Lost — another kitchen selected'
-              : wave?.outcome === 'rejected'
-                ? 'You declined'
+          wave?.outcome === "won"
+            ? "You won — check Kitchen"
+            : wave?.outcome === "lost"
+              ? "Lost — another kitchen selected"
+              : wave?.outcome === "rejected"
+                ? "You declined"
                 : responded
-                  ? `Waiting (${wave?.awaitingResponses ?? '…'} kitchens left)`
+                  ? `Waiting (${wave?.awaitingResponses ?? "…"} kitchens left)`
                   : null;
 
         return (
@@ -227,13 +245,15 @@ export default function OffersPage() {
                   {formatCents(offer.totalCents)}
                 </Typography>
                 <span className="text-muted text-xs">
-                  score {offer.score?.toFixed?.(2) ?? offer.score ?? '—'}
+                  score {offer.score?.toFixed?.(2) ?? offer.score ?? "—"}
                 </span>
               </div>
               <p className="text-muted text-xs">Order {offer.orderId}</p>
               <div className="flex flex-wrap gap-3 text-xs">
                 <span>Bid window: {countdown}</span>
-                {offer.wave ? <span className="text-muted">Wave offer</span> : null}
+                {offer.wave ? (
+                  <span className="text-muted">Wave offer</span>
+                ) : null}
               </div>
               {outcomeLabel ? (
                 <p className="text-sm font-medium">{outcomeLabel}</p>
@@ -241,19 +261,22 @@ export default function OffersPage() {
               <ul className="text-sm">
                 {offer.lines.map((line, idx) => (
                   <li key={`${offer.orderId}-${idx}`}>
-                    {line.quantity}× {line.name}
+                    {line.quantity}× {line.name} · {line.size ?? "medium"}
+                    {line.extras?.length ? ` · ${line.extras.join(", ")}` : ""}
                   </li>
                 ))}
               </ul>
               {!responded ? (
                 <>
                   <label className="flex flex-col gap-1 text-sm">
-                    <span className="text-muted">Quoted prep (minutes, min 5)</span>
+                    <span className="text-muted">
+                      Quoted prep (minutes, min 5)
+                    </span>
                     <input
                       type="number"
                       min={5}
                       step={1}
-                      value={prepByOrder[offer.orderId] ?? '20'}
+                      value={prepByOrder[offer.orderId] ?? "20"}
                       onChange={(e) =>
                         setPrepByOrder((prev) => ({
                           ...prev,
@@ -287,7 +310,7 @@ export default function OffersPage() {
                   Response recorded
                   {offer.quotedPrepMinutes != null
                     ? ` · ${offer.quotedPrepMinutes} min prep quoted`
-                    : ''}
+                    : ""}
                 </p>
               )}
             </Card.Content>

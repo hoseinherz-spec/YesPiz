@@ -1,19 +1,20 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { NextIntlClientProvider } from '@repo/i18n';
-import { getLocale } from '@repo/i18n/server';
-import type { ReactNode } from 'react';
-import { Providers } from './providers';
-import './globals.css';
+import type { Metadata } from "next";
+import { Poppins } from "next/font/google";
+import { NextIntlClientProvider } from "@repo/i18n";
+import { getLocale } from "@repo/i18n/server";
+import type { ReactNode } from "react";
+import { Providers } from "./providers";
+import "./globals.css";
 
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: 'Yespizz Admin',
-  description: 'Yespizz admin',
+  title: "Yespizz Admin",
+  description: "Yespizz admin",
 };
 
 export default async function RootLayout({
@@ -24,7 +25,11 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${poppins.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="bg-background text-foreground min-h-full flex flex-col">
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

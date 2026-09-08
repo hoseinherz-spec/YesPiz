@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -5,7 +6,12 @@ export type ProviderDocument = HydratedDocument<Provider>;
 
 @Schema({ timestamps: true, collection: "providers" })
 export class Provider {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, unique: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    unique: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -66,7 +72,10 @@ export class Provider {
   openOrders!: number;
 
   /** Menu item ids currently 86'd (unavailable) at this kitchen */
-  @Prop({ type: [{ type: Types.ObjectId, ref: "MenuItem" }], default: [] })
+  @Prop({
+    type: [{ type: MongoSchema.Types.ObjectId, ref: "MenuItem" }],
+    default: [],
+  })
   eightySixedItemIds!: Types.ObjectId[];
 
   @Prop()

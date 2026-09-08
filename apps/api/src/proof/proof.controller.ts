@@ -25,17 +25,20 @@ export class ProofController {
 
   @Roles(UserRole.COURIER)
   @Get("orders/:orderId")
-  get(
-    @CurrentUser() user: JwtPayloadUser,
-    @Param("orderId") orderId: string,
-  ) {
+  get(@CurrentUser() user: JwtPayloadUser, @Param("orderId") orderId: string) {
     return this.proof.getForCourier(user.userId, orderId);
   }
 
   @Roles(UserRole.PROVIDER, UserRole.ADMIN)
   @Get("orders/:orderId/codes")
-  codes(@Param("orderId") orderId: string) {
-    return this.proof.getPickupCodes(orderId);
+  codes(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("orderId") orderId: string,
+  ) {
+    return this.proof.getPickupCodes(
+      orderId,
+      user.activeRole === UserRole.ADMIN ? undefined : user.userId,
+    );
   }
 
   @Roles(UserRole.COURIER)

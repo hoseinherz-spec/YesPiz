@@ -1,3 +1,4 @@
+import { MediaService } from "../media/media.module";
 import {
   BadRequestException,
   ForbiddenException,
@@ -21,6 +22,7 @@ import {
 @Injectable()
 export class QualityService {
   constructor(
+    private readonly media: MediaService,
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     private readonly catalog: CatalogService,
     private readonly providers: ProvidersService,
@@ -58,6 +60,21 @@ export class QualityService {
     if (dto.answers.some((a) => !a.ok)) {
       throw new BadRequestException("errors.badRequest");
     }
+    const { items } = await this.catalog.getItemsByIds(
+      order.lines.map((line) => String(line.menuItemId)),
+      order.menuVersion,
+    );
+    const required = [
+      ...new Set(items.flatMap((item) => item.checklistTemplate ?? [])),
+    ];
+    if (
+      required.some(
+        (item) =>
+          !dto.answers.some((answer) => answer.item === item && answer.ok),
+      )
+    ) {
+      throw new BadRequestException("Complete every required quality check.");
+    }
     order.checklistAnswers = dto.answers;
     order.checklistCompletedAt = new Date();
     await order.save();
@@ -81,6 +98,7 @@ export class QualityService {
     const order = await this.requireProviderOrder(providerId, orderId);
     const photoUrl = dto.photoUrl.trim();
     if (!photoUrl) throw new BadRequestException("errors.badRequest");
+    await this.media.assertReference(photoUrl, orderId, "ready");
     order.readyPhotoUrl = photoUrl;
     await order.save();
     return this.toKitchenQualityView(order);

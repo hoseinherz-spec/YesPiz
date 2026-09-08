@@ -80,7 +80,7 @@ export default function ExceptionsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {!loading && !orders.length ? (

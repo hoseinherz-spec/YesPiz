@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import type { Request, Response, NextFunction } from "express";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
@@ -14,7 +16,33 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   assertProductionSecurity(config);
+  app.enableShutdownHooks();
+  (
+    app as import("@nestjs/platform-express").NestExpressApplication
+  ).useBodyParser("json", { limit: "8mb" });
 
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const incoming = req.headers["x-request-id"];
+    const requestId =
+      typeof incoming === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(incoming)
+        ? incoming
+        : randomUUID();
+    res.setHeader("X-Request-Id", requestId);
+    const started = Date.now();
+    res.on("finish", () =>
+      console.log(
+        JSON.stringify({
+          type: "http",
+          requestId,
+          method: req.method,
+          path: req.path,
+          status: res.statusCode,
+          durationMs: Date.now() - started,
+        }),
+      ),
+    );
+    next();
+  });
   app.setGlobalPrefix("api/v1");
   app.enableCors({
     origin: parseCorsOrigins(config),

@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  OnModuleInit,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import {
@@ -11,11 +16,15 @@ import {
 import { Provider, ProviderDocument } from "./schemas/provider.schema";
 
 @Injectable()
-export class ProvidersService {
+export class ProvidersService implements OnModuleInit {
   constructor(
     @InjectModel(Provider.name)
     private readonly providers: Model<ProviderDocument>,
   ) {}
+
+  async onModuleInit() {
+    await this.providers.init();
+  }
 
   create(dto: CreateProviderDto) {
     return this.providers.create({

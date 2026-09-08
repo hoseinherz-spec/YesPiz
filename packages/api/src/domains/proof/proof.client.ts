@@ -1,31 +1,27 @@
-import {
-  apiRequest,
-  withAuth,
-  type AuthRequestOptions,
-} from '../../core';
+import { apiRequest, withAuth, type AuthRequestOptions } from "../../core";
 import type {
   CashReceiptRequest,
   DeliverProofRequest,
-  DeliveryProof,
+  CourierOrderProofView,
   EnRouteRequest,
   PickupCodesResponse,
   PickupProofRequest,
   ProofTransitionResponse,
-} from './proof.dto';
-import { proofEndpoints } from './proof.endpoint';
+} from "./proof.dto";
+import { proofEndpoints } from "./proof.endpoint";
 
 export const proofClient = {
   get(orderId: string, options?: AuthRequestOptions) {
-    return apiRequest<DeliveryProof>(
+    return apiRequest<CourierOrderProofView>(
       proofEndpoints.byOrder(orderId),
-      withAuth({ ...options, method: 'GET' }),
+      withAuth({ ...options, method: "GET" }),
     );
   },
 
   getPickupCodes(orderId: string, options?: AuthRequestOptions) {
     return apiRequest<PickupCodesResponse>(
       proofEndpoints.codes(orderId),
-      withAuth({ ...options, method: 'GET' }),
+      withAuth({ ...options, method: "GET" }),
     );
   },
 
@@ -36,7 +32,7 @@ export const proofClient = {
   ) {
     return apiRequest<ProofTransitionResponse>(
       proofEndpoints.pickup(orderId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
@@ -47,7 +43,7 @@ export const proofClient = {
   ) {
     return apiRequest<ProofTransitionResponse>(
       proofEndpoints.enRoute(orderId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
@@ -58,7 +54,7 @@ export const proofClient = {
   ) {
     return apiRequest<ProofTransitionResponse>(
       proofEndpoints.deliver(orderId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
@@ -69,14 +65,14 @@ export const proofClient = {
   ) {
     return apiRequest<ProofTransitionResponse>(
       proofEndpoints.cashReceipt(orderId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
   complete(orderId: string, options?: AuthRequestOptions) {
     return apiRequest<ProofTransitionResponse>(
       proofEndpoints.complete(orderId),
-      withAuth({ ...options, method: 'POST' }),
+      withAuth({ ...options, method: "POST" }),
     );
   },
 };

@@ -1,3 +1,4 @@
+import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -35,7 +36,11 @@ export const MenuVersionSchema = SchemaFactory.createForClass(MenuVersion);
 
 @Schema({ timestamps: true, collection: "categories" })
 export class Category {
-  @Prop({ type: Types.ObjectId, ref: MenuVersion.name, required: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: MenuVersion.name,
+    required: true,
+  })
   menuVersionId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -52,10 +57,18 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 @Schema({ timestamps: true, collection: "menu_items" })
 export class MenuItem {
-  @Prop({ type: Types.ObjectId, ref: MenuVersion.name, required: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: MenuVersion.name,
+    required: true,
+  })
   menuVersionId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: Category.name, required: true })
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: Category.name,
+    required: true,
+  })
   categoryId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -89,7 +102,10 @@ export class MenuItem {
   requiresReadyPhoto!: boolean;
 
   /** Pre-handoff checklist template labels */
-  @Prop({ type: [String], default: ["Weight check", "Packaging seal", "Temperature"] })
+  @Prop({
+    type: [String],
+    default: ["Weight check", "Packaging seal", "Temperature"],
+  })
   checklistTemplate!: string[];
 
   @Prop({ default: true })

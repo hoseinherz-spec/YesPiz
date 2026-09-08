@@ -11,7 +11,9 @@ P0 is quality, wave dispatch, ETA, proof chain, safe batching, and incident work
 P1 is Cash Trust, ops dashboards, auto compensation, and retention.
 Loyalty, ads, and predictive ML beyond history-based ETA are after MVP.
 
-## Phase 1 — shipped skeleton (`apps/api`)
+## Ordering services (`apps/api`)
+
+Current implementation and launch acceptance gates: [Release readiness](RELEASE-READINESS.md). Historical phase tables below describe the wider roadmap, not live-service certification.
 
 Happy path E2E reaches **completed delivery** with proof chain when Phase 2 flows are exercised.
 See `apps/api/test/full-lifecycle.e2e-spec.ts`.
@@ -23,15 +25,15 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 | orders | Addresses + create/list/get; kitchen status; admin review resolve; courier-location (blind) |
 | dispatch | Start dispatch, provider list/accept/reject; 90s offer expiry cron (expand once → cancel) |
 | payments | Initiate (mock or Stripe PaymentIntent); `POST /payments/webhook/stripe`; cash-availability |
-| couriers | Profile, stub QR·OTP session, `POST /couriers/me/location` |
+| couriers | Profile, admin-issued single-use shift QR/OTP, current shift, `POST /couriers/me/location` |
 | batches | Create/suggest batch, reduce by provider, assign courier |
 | app-config | Admin get/update runtime config |
 | realtime | Socket.IO namespace `/realtime` — rooms `order:`, `provider:`, `courier:`, `user:` |
-| push | Dev/stub FCM — offer + status hooks; persists last notifications |
+| push | FCM HTTP v1, authenticated device binding, durable retry queue and failure review |
 
 ### Stripe
 
-- Without `STRIPE_SECRET_KEY`: mock capture + immediate dispatch.
+- Without `STRIPE_SECRET_KEY`: development/test mock capture; production rejects mock card payments.
 - With key: create PaymentIntent (`AUTHORIZED`), return `clientSecret`; webhook `payment_intent.succeeded` captures and starts dispatch if the order is still `PENDING_PAYMENT`.
 - Webhook verifies `STRIPE_WEBHOOK_SECRET` against raw body when set; otherwise accepts JSON event type (test mode). Nest boot uses `{ rawBody: true }`.
 
@@ -44,15 +46,16 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 ### Socket.IO
 
 - Gateway namespace `/realtime`. Clients `emit('join', { orderId | providerId | courierId | userId })`.
-- Optional JWT in handshake `auth.token`.
+- JWT in handshake `auth.token`; room joins are authorized against the current user. Raw `order:` rooms are admin-only; customer updates use the blind `user:` feed.
 - Emits: `order.status`, `offer.created`, `offer.expired`, `courier.location`.
 - Mobile tracking keeps **HTTP poll as primary**; `@repo/api` exports `realtimeUrl` / room helpers.
 
 ### Push
 
-- `PushService` logs payloads, stores in Mongo + in-memory ring buffer.
-- Hooks: offer created → provider; order status change → customer.
-- `FCM_SERVER_KEY` enables stub FCM path (device-token wiring deferred to Capacitor).
+- FCM HTTP v1 uses `FCM_PROJECT_ID` and service-account/ADC authentication.
+- Hooks: offers → provider, order status → customer, batch assignment → courier.
+- Web/Capacitor opt-in binds tokens to the authenticated user. MongoDB stores retry state; invalid tokens are removed and device bindings expire with the login token.
+- Actual notification delivery still needs project configuration and device acceptance.
 
 ### Live courier location
 
@@ -72,7 +75,7 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 ### Known Phase 1 gaps (do not document as done)
 
 - Dispatch ranking still uses open-order count more than prep-weight workload.
-- Checkout schedule chips and leave-at-door are not sent to the API.
+- Scheduled orders remain deferred. Leave-at-door and entrance details are persisted on checkout.
 
 ### Phase 2 progress (partial)
 
@@ -115,7 +118,7 @@ API for rows 1–8 below is largely done; remaining UI is mostly customer/courie
 
 Group order, split pay, loyalty / free-delivery subscription, ads, ML ETA beyond history.
 
-Production hardening that is already started (Stripe webhook, Socket.IO, push stub) stays in Phase 1 and should be finished in parallel with Phase 2 — it is not a substitute for Quality OS or wave dispatch.
+The release-readiness runbook distinguishes implemented payment, push, storage and communication adapters from acceptance tests that require external accounts.
 
 ## Environment
 
@@ -123,12 +126,12 @@ See `apps/api/.env.example`. Key vars:
 
 | Var | Purpose |
 |---|---|
-| `REDIS_URL` | Optional. Without it, in-memory lock store is used |
+| `REDIS_URL` | Required in production; development can use in-memory locks |
 | `OTP_DEV_BYPASS` | Local/dev — accepts OTP `000000` |
 | `STRIPE_SECRET_KEY` | When set, real Stripe PaymentIntent; otherwise mock |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification |
 | `STRIPE_PUBLISHABLE_KEY` | Client-side Stripe.js (not read by API) |
-| `FCM_SERVER_KEY` | Optional FCM stub |
+| `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON` | FCM HTTP v1 project and credentials (ADC is also supported) |
 | `NEXT_PUBLIC_API_URL` | Frontend clients (default `http://localhost:8058`) |
 
 ## Seed

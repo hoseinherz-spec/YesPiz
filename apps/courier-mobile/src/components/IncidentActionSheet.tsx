@@ -1,14 +1,16 @@
-'use client';
+"use client";
+import { ProofUpload } from "@repo/api/components/proof-upload";
+import { requireCourierToken } from "@/lib/auth";
 
-import type { Incident, IncidentKind } from '@repo/api';
-import { Button, Typography } from '@heroui/react';
-import { useCallback, useEffect, useState } from 'react';
+import type { Incident, IncidentKind } from "@repo/api";
+import { Button, Typography } from "@heroui/react";
+import { useCallback, useEffect, useState } from "react";
 
-import { ErrorBanner, ProofField } from '@/components/ProofUi';
-import { formatApiError } from '@/lib/api-errors';
-import { cn } from '@/lib/cn';
-import { getCurrentPosition, GeoError } from '@/lib/geolocation';
-import { hx } from '@/lib/heroui-classes';
+import { ErrorBanner, ProofField } from "@/components/ProofUi";
+import { formatApiError } from "@/lib/api-errors";
+import { cn } from "@/lib/cn";
+import { getCurrentPosition, GeoError } from "@/lib/geolocation";
+import { hx } from "@/lib/heroui-classes";
 
 export const INCIDENT_KINDS: {
   kind: IncidentKind;
@@ -18,40 +20,40 @@ export const INCIDENT_KINDS: {
   needsPhoto?: boolean;
 }[] = [
   {
-    kind: 'crash',
-    label: 'Crash',
-    description: 'Vehicle collision — ops will reassign your batch.',
+    kind: "crash",
+    label: "Crash",
+    description: "Vehicle collision — stop safely and report to operations.",
   },
   {
-    kind: 'no_answer',
-    label: 'No answer',
-    description: 'Customer not responding — 5 minute wait timer starts.',
+    kind: "no_answer",
+    label: "No answer",
+    description: "Customer not responding — 5 minute wait timer starts.",
   },
   {
-    kind: 'no_pay',
-    label: 'No payment',
-    description: 'Customer refused cash — debt path, cannot complete.',
+    kind: "no_pay",
+    label: "No payment",
+    description: "Customer refused cash — debt path, cannot complete.",
   },
   {
-    kind: 'wrong_address',
-    label: 'Wrong address',
-    description: 'Delivery location does not match the order.',
+    kind: "wrong_address",
+    label: "Wrong address",
+    description: "Delivery location does not match the order.",
   },
   {
-    kind: 'damaged_pack',
-    label: 'Damaged package',
-    description: 'Seal broken or food damaged — photo evidence required.',
+    kind: "damaged_pack",
+    label: "Damaged package",
+    description: "Seal broken or food damaged — photo evidence required.",
     needsPhoto: true,
   },
   {
-    kind: 'vehicle',
-    label: 'Vehicle problem',
-    description: 'Breakdown or mechanical issue — safe stop and reassign.',
+    kind: "vehicle",
+    label: "Vehicle problem",
+    description: "Breakdown or mechanical issue — safe stop and reassign.",
   },
   {
-    kind: 'sos',
-    label: 'SOS',
-    description: 'Emergency — location is shared immediately with dispatch.',
+    kind: "sos",
+    label: "SOS",
+    description: "Emergency — location is shared immediately with dispatch.",
   },
 ];
 
@@ -69,7 +71,12 @@ type IncidentActionSheetProps = {
 };
 
 function workflowSteps(incident: Incident): string[] {
-  const wf = incident.workflow as { steps?: string[]; currentStep?: string; waitUntil?: string; sos?: boolean };
+  const wf = incident.workflow as {
+    steps?: string[];
+    currentStep?: string;
+    waitUntil?: string;
+    sos?: boolean;
+  };
   return wf.steps ?? [];
 }
 
@@ -81,11 +88,14 @@ function workflowMeta(incident: Incident): string | null {
     sos?: boolean;
   };
   const parts: string[] = [];
-  if (wf.currentStep) parts.push(`Step: ${wf.currentStep.replaceAll('_', ' ')}`);
-  if (wf.waitUntil) parts.push(`Wait until ${new Date(wf.waitUntil).toLocaleTimeString()}`);
-  if (wf.debtCents != null) parts.push(`Debt: €${(wf.debtCents / 100).toFixed(2)}`);
-  if (wf.sos) parts.push('SOS — emergency contacts alerted');
-  return parts.length ? parts.join(' · ') : null;
+  if (wf.currentStep)
+    parts.push(`Step: ${wf.currentStep.replaceAll("_", " ")}`);
+  if (wf.waitUntil)
+    parts.push(`Wait until ${new Date(wf.waitUntil).toLocaleTimeString()}`);
+  if (wf.debtCents != null)
+    parts.push(`Debt: €${(wf.debtCents / 100).toFixed(2)}`);
+  if (wf.sos) parts.push("SOS — reported to operations");
+  return parts.length ? parts.join(" · ") : null;
 }
 
 export function IncidentActionSheet({
@@ -95,17 +105,22 @@ export function IncidentActionSheet({
   onReport,
   existing = [],
 }: IncidentActionSheetProps) {
-  const [selected, setSelected] = useState<(typeof INCIDENT_KINDS)[number] | null>(null);
-  const [notes, setNotes] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
+  const [selected, setSelected] = useState<
+    (typeof INCIDENT_KINDS)[number] | null
+  >(null);
+  const [notes, setNotes] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ longitude: number; latitude: number } | null>(null);
+  const [coords, setCoords] = useState<{
+    longitude: number;
+    latitude: number;
+  } | null>(null);
 
   const reset = useCallback(() => {
     setSelected(null);
-    setNotes('');
-    setPhotoUrl('');
+    setNotes("");
+    setPhotoUrl("");
     setError(null);
     setCoords(null);
   }, []);
@@ -137,7 +152,7 @@ export function IncidentActionSheet({
     try {
       let longitude = coords?.longitude;
       let latitude = coords?.latitude;
-      if (selected.kind === 'sos') {
+      if (selected.kind === "sos") {
         const pos = await getCurrentPosition({ timeoutMs: 15_000 });
         longitude = pos.longitude;
         latitude = pos.latitude;
@@ -149,14 +164,14 @@ export function IncidentActionSheet({
       }
       await onReport({
         kind: selected.kind,
-        notes: noteParts.filter(Boolean).join('\n'),
+        notes: noteParts.filter(Boolean).join("\n"),
         longitude,
         latitude,
       });
       closeSheet();
     } catch (err) {
       if (err instanceof GeoError) setError(err.message);
-      else setError(formatApiError(err, 'Could not report incident'));
+      else setError(formatApiError(err, "Could not report incident"));
     } finally {
       setBusy(false);
     }
@@ -174,20 +189,20 @@ export function IncidentActionSheet({
         className="min-h-0 flex-1"
         onClick={closeSheet}
       />
-      <div className={cn(hx.sheet, 'max-h-[85dvh] overflow-y-auto')}>
+      <div className={cn(hx.sheet, "max-h-[85dvh] overflow-y-auto")}>
         <Typography type="h3" className={hx.title}>
           Report incident
         </Typography>
-        <p className={cn(hx.bodySm, 'mt-1')}>Order {orderId}</p>
+        <p className={cn(hx.bodySm, "mt-1")}>Order {orderId}</p>
 
         {error ? <ErrorBanner message={error} className="mt-4" /> : null}
 
-        {selected?.kind === 'sos' ? (
+        {selected?.kind === "sos" ? (
           <div className="mt-4 rounded-[18px] border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
             <strong>Emergency SOS</strong>
             <p className="mt-1">
-              Your live location will be sent to dispatch immediately. Stay safe and
-              follow emergency instructions from operations.
+              Your live location will be sent to dispatch immediately. Stay safe
+              and follow emergency instructions from operations.
             </p>
             {coords ? (
               <p className="mt-2 font-mono text-xs">
@@ -205,12 +220,12 @@ export function IncidentActionSheet({
                   type="button"
                   className={cn(
                     hx.card,
-                    'w-full text-left transition-opacity hover:opacity-90',
+                    "w-full text-left transition-opacity hover:opacity-90",
                   )}
                   onClick={() => setSelected(item)}
                 >
                   <span className={hx.title}>{item.label}</span>
-                  <p className={cn(hx.caption, 'mt-1')}>{item.description}</p>
+                  <p className={cn(hx.caption, "mt-1")}>{item.description}</p>
                 </button>
               </li>
             ))}
@@ -225,20 +240,22 @@ export function IncidentActionSheet({
               placeholder="What happened?"
             />
             {selected.needsPhoto ? (
-              <ProofField
-                label="Photo URL (demo)"
-                value={photoUrl}
-                onChange={setPhotoUrl}
-                placeholder="https://…"
-                hint="Paste a hosted photo URL until upload ships."
+              <ProofUpload
+                orderId={orderId}
+                accessToken={requireCourierToken()}
+                purpose="incident"
+                onUploaded={setPhotoUrl}
               />
             ) : null}
             {coords ? (
               <p className={hx.caption}>
-                Location: {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+                Location: {coords.latitude.toFixed(5)},{" "}
+                {coords.longitude.toFixed(5)}
               </p>
             ) : (
-              <p className={hx.caption}>Fetching location… allow GPS if prompted.</p>
+              <p className={hx.caption}>
+                Fetching location… allow GPS if prompted.
+              </p>
             )}
             <div className="flex flex-col gap-2">
               <Button
@@ -247,18 +264,24 @@ export function IncidentActionSheet({
                 isDisabled={busy || (selected.needsPhoto && !photoUrl.trim())}
                 onPress={() => void submit()}
                 className={cn(
-                  selected.kind === 'sos' ? 'bg-danger text-white' : hx.btnPrimary,
-                  'h-14 text-base',
+                  selected.kind === "sos"
+                    ? "bg-danger text-white"
+                    : hx.btnPrimary,
+                  "h-14 text-base",
                 )}
               >
-                {busy ? 'Reporting…' : selected.kind === 'sos' ? 'Send SOS' : 'Submit report'}
+                {busy
+                  ? "Reporting…"
+                  : selected.kind === "sos"
+                    ? "Send SOS"
+                    : "Submit report"}
               </Button>
               <Button
                 variant="secondary"
                 fullWidth
                 isDisabled={busy}
                 onPress={() => setSelected(null)}
-                className={cn(hx.btnSecondary, 'h-12 text-base')}
+                className={cn(hx.btnSecondary, "h-12 text-base")}
               >
                 Back
               </Button>
@@ -273,18 +296,24 @@ export function IncidentActionSheet({
             </Typography>
             <ul className="mt-2 flex flex-col gap-2">
               {orderIncidents.map((inc) => (
-                <li key={inc.id} className={cn(hx.card, 'p-3')}>
+                <li key={inc.id} className={cn(hx.card, "p-3")}>
                   <div className="flex justify-between gap-2">
-                    <span className="font-semibold capitalize">{inc.kind.replaceAll('_', ' ')}</span>
+                    <span className="font-semibold capitalize">
+                      {inc.kind.replaceAll("_", " ")}
+                    </span>
                     <span className={hx.caption}>{inc.status}</span>
                   </div>
-                  {inc.notes ? <p className={cn(hx.bodySm, 'mt-1')}>{inc.notes}</p> : null}
+                  {inc.notes ? (
+                    <p className={cn(hx.bodySm, "mt-1")}>{inc.notes}</p>
+                  ) : null}
                   {workflowMeta(inc) ? (
-                    <p className={cn(hx.caption, 'mt-1')}>{workflowMeta(inc)}</p>
+                    <p className={cn(hx.caption, "mt-1")}>
+                      {workflowMeta(inc)}
+                    </p>
                   ) : null}
                   <ul className="mt-2 list-inside list-disc text-xs text-muted">
                     {workflowSteps(inc).map((step) => (
-                      <li key={step}>{step.replaceAll('_', ' ')}</li>
+                      <li key={step}>{step.replaceAll("_", " ")}</li>
                     ))}
                   </ul>
                 </li>

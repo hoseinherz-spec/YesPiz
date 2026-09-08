@@ -10,6 +10,7 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { CouriersService } from "./couriers.service";
 import {
+  IssueSessionCodeDto,
   SessionCodeDto,
   UpdateCourierLocationDto,
   UpdateCourierProfileDto,
@@ -22,6 +23,33 @@ import {
 @Controller("couriers")
 export class CouriersController {
   constructor(private readonly couriers: CouriersService) {}
+
+  @Roles(UserRole.PROVIDER, UserRole.ADMIN)
+  @Get("available")
+  available() {
+    return this.couriers.listAvailable();
+  }
+
+  @Roles(UserRole.ADMIN)
+  @Get("operations")
+  operations() {
+    return this.couriers.listForOperations();
+  }
+
+  @Roles(UserRole.ADMIN)
+  @Post("sessions/code")
+  issue(@CurrentUser() user: JwtPayloadUser, @Body() dto: IssueSessionCodeDto) {
+    return this.couriers.issueSessionCode(
+      user.userId,
+      dto.courierId,
+      dto.action,
+    );
+  }
+
+  @Get("sessions/current")
+  current(@CurrentUser() user: JwtPayloadUser) {
+    return this.couriers.currentSession(user.userId);
+  }
 
   @Get("me")
   me(@CurrentUser() user: JwtPayloadUser) {

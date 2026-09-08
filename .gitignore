@@ -48,3 +48,15 @@ apps/courier-mobile/android/app/build
 apps/courier-mobile/android/build
 apps/courier-mobile/ios/App/Pods
 apps/courier-mobile/ios/DerivedData
+
+# Browser tests
+/test-results/
+/playwright-report/
+
+.qa/
+.env.stripe-sandbox
+
+deploy/.env.staging
+**/uploads/
+**/google-services.json
+**/GoogleService-Info.plist

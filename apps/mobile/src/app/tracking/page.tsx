@@ -1,22 +1,26 @@
-'use client';
+"use client";
+import { LocationMap } from "@repo/api/components/location-map";
 
-import { Button, Card, Typography } from '@heroui/react';
-import { ordersClient, type CourierLocationView } from '@repo/api';
-import { ArrowLeft, Check, MapPin, MessageCircle, Phone, Truck } from '@repo/icons';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-
-import { AppFrame } from '@/components/AppFrame';
-import { mapCustomerOrder, ORDER_STEPS, useApp } from '@/context/AppContext';
+import { Button, Card, Typography } from "@heroui/react";
+import { ordersClient, type CourierLocationView } from "@repo/api";
 import {
-  etaArrivalTimestamp,
-  formatEtaRange,
-  isEtaStale,
-} from '@/lib/eta';
-import { cn } from '@/lib/cn';
-import { hx } from '@/lib/heroui-classes';
+  ArrowLeft,
+  Check,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Truck,
+} from "@repo/icons";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-const MASKED_COMMS_ENABLED = process.env.NEXT_PUBLIC_MASKED_COMMS_ENABLED === 'true';
+import { AppFrame } from "@/components/AppFrame";
+import { mapCustomerOrder, ORDER_STEPS, useApp } from "@/context/AppContext";
+import { etaArrivalTimestamp, formatEtaRange, isEtaStale } from "@/lib/eta";
+import { cn } from "@/lib/cn";
+import { hx } from "@/lib/heroui-classes";
+
+const MASKED_COMMS_ENABLED = true;
 
 export default function TrackingPage() {
   const router = useRouter();
@@ -30,20 +34,23 @@ export default function TrackingPage() {
     accessToken,
     addOrder,
   } = useApp();
-  const [courierLoc, setCourierLoc] = useState<CourierLocationView | null>(null);
+  const [courierLoc, setCourierLoc] = useState<CourierLocationView | null>(
+    null,
+  );
 
   const order = useMemo(() => {
     if (activeOrderId) return orders.find((item) => item.id === activeOrderId);
-    return orders.find((item) => item.status === 'active');
+    return orders.find((item) => item.status === "active");
   }, [orders, activeOrderId]);
   const address = addresses.find((item) => item.id === selectedAddressId);
   const orderId = order?.id;
   const orderStatus = order?.status;
   const orderStep = order?.stepIndex;
-  const isLocalOrder = Boolean(orderId?.startsWith('o-'));
+  const isLocalOrder = Boolean(orderId?.startsWith("o-"));
 
   useEffect(() => {
-    if (!accessToken || !orderId || isLocalOrder || orderStatus !== 'active') return;
+    if (!accessToken || !orderId || isLocalOrder || orderStatus !== "active")
+      return;
     if ((orderStep ?? 0) >= ORDER_STEPS.length - 1) return;
     let cancelled = false;
     const tick = async () => {
@@ -63,11 +70,14 @@ export default function TrackingPage() {
   }, [accessToken, orderId, isLocalOrder, orderStatus, orderStep, addOrder]);
 
   useEffect(() => {
-    if (!accessToken || !orderId || isLocalOrder || (orderStep ?? 0) < 3) return;
+    if (!accessToken || !orderId || isLocalOrder || (orderStep ?? 0) < 3)
+      return;
     let cancelled = false;
     const tick = async () => {
       try {
-        const location = await ordersClient.getCourierLocation(orderId, { accessToken });
+        const location = await ordersClient.getCourierLocation(orderId, {
+          accessToken,
+        });
         if (!cancelled) setCourierLoc(location);
       } catch {
         // Courier coordinates can arrive after the order status; keep retrying.
@@ -82,7 +92,7 @@ export default function TrackingPage() {
   }, [accessToken, orderId, isLocalOrder, orderStep]);
 
   useEffect(() => {
-    if (!isLocalOrder || !order || order.status !== 'active') return;
+    if (!isLocalOrder || !order || order.status !== "active") return;
     if (order.stepIndex >= ORDER_STEPS.length - 1) return;
     const timer = setInterval(() => advanceActiveOrder(), 3500);
     return () => clearInterval(timer);
@@ -95,12 +105,47 @@ export default function TrackingPage() {
           <span className="flex size-24 items-center justify-center rounded-full bg-surface-secondary text-muted">
             <MapPin size={38} />
           </span>
-          <Typography type="h2" className={cn(hx.h2, 'mt-6')}>{t('tracking.noActive')}</Typography>
-          <Typography type="body-sm" className={cn(hx.bodySm, 'mt-2 max-w-xs')}>{t('tracking.noActiveBody')}</Typography>
-          <Button variant="primary" onPress={() => router.push('/orders/')} className={cn(hx.btnPrimary, 'mt-8')}>
-            {t('tracking.viewOrders')}
+          <Typography type="h2" className={cn(hx.h2, "mt-6")}>
+            {t("tracking.noActive")}
+          </Typography>
+          <Typography type="body-sm" className={cn(hx.bodySm, "mt-2 max-w-xs")}>
+            {t("tracking.noActiveBody")}
+          </Typography>
+          <Button
+            variant="primary"
+            onPress={() => router.push("/orders/")}
+            className={cn(hx.btnPrimary, "mt-8")}
+          >
+            {t("tracking.viewOrders")}
           </Button>
         </div>
+      </AppFrame>
+    );
+  }
+
+  if (order.status === "cancelled" || order.awaitingPayment) {
+    return (
+      <AppFrame>
+        <Typography type="h2" className={hx.h2}>
+          {order.awaitingPayment ? "Payment needed" : t("orders.cancelled")}
+        </Typography>
+        <Typography type="body" className="mt-3 text-muted">
+          {order.awaitingPayment
+            ? "Complete payment to submit this order."
+            : "This order is no longer being delivered."}
+        </Typography>
+        <Button
+          className="mt-6"
+          onPress={() =>
+            router.push(
+              order.awaitingPayment
+                ? `/payment/?orderId=${encodeURIComponent(order.id)}`
+                : "/orders/",
+            )
+          }
+        >
+          {order.awaitingPayment ? "Resume payment" : t("tracking.viewOrders")}
+        </Button>
       </AppFrame>
     );
   }
@@ -119,55 +164,50 @@ export default function TrackingPage() {
     ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
     : null;
 
-  const etaLabel = delivered ? t('tracking.arrived') : formatEtaRange(order.eta, t);
+  const etaLabel = delivered
+    ? t("tracking.arrived")
+    : formatEtaRange(order.eta, t);
   const etaStale = !delivered && isEtaStale(order.eta.computedAt);
   const arrivalAt = etaArrivalTimestamp(order.eta.computedAt, order.eta.max);
   const showPinHandoff =
     !delivered &&
-    (order.requiresDeliveryPin || order.customerStatus === 'onway' || order.customerStatus === 'driver');
+    (order.requiresDeliveryPin ||
+      order.customerStatus === "onway" ||
+      order.customerStatus === "driver");
 
   return (
     <AppFrame padded={false} className="bg-[#202126]">
       <div className="relative min-h-[58dvh] overflow-hidden bg-[#202126]">
-        <div className="absolute -top-20 -right-20 h-72 w-72 rotate-12 rounded-[40%] bg-[#719647]" />
-        <div className="absolute top-8 -left-20 h-24 w-[130%] -rotate-[24deg] bg-black" />
-        <div className="absolute top-44 -left-14 h-20 w-[120%] rotate-[31deg] bg-black" />
-        <div className="absolute bottom-28 -left-20 h-16 w-[135%] -rotate-[12deg] bg-[#39758c]" />
-        <div className="absolute right-16 top-20 h-44 w-16 rotate-[18deg] rounded-full bg-black" />
-        <div className="absolute left-8 top-36 h-24 w-28 rotate-12 rounded-[18px] bg-[#2d2e34]" />
-        <div className="absolute right-6 bottom-20 h-20 w-28 -rotate-12 rounded-[18px] bg-[#2d2e34]" />
-
         {hasLiveLocation ? (
-          <div
-            className="absolute z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg"
-            style={{ left: '58%', top: '34%' }}
-          >
-            <Truck size={25} />
-            <span className="absolute -bottom-5 size-4 animate-pulse rounded-full border-4 border-[#1b1b22] bg-white" />
+          <div className="absolute inset-0">
+            <LocationMap
+              latitude={latitude}
+              longitude={longitude}
+              label="Courier location"
+            />
           </div>
         ) : (
-          <div className="absolute left-[62%] top-[35%] z-10 flex size-16 items-center justify-center rounded-full border-[6px] border-[#1b1b22] bg-accent text-accent-foreground shadow-lg">
-            <Truck size={25} />
-            <span className="absolute -bottom-5 size-4 rounded-full border-4 border-[#1b1b22] bg-white" />
+          <div className="absolute inset-0 flex items-center justify-center text-white/70">
+            Waiting for courier location
           </div>
         )}
 
         <Button
           isIconOnly
           variant="secondary"
-          aria-label={t('common.backToHome')}
+          aria-label={t("common.backToHome")}
           onPress={() => router.back()}
           className="absolute top-[max(18px,env(safe-area-inset-top))] left-5 z-20 size-14 min-w-14 rounded-full border-0 bg-[#1b1b22] text-white shadow-none"
         >
           <ArrowLeft size={21} />
         </Button>
         <div className="absolute top-[max(22px,env(safe-area-inset-top))] inset-x-20 z-10 text-center">
-          <p className="text-[12px] font-semibold text-white/60">{t('tracking.title')}</p>
-          <p className="text-[16px] font-bold text-white">{t(`step.${currentStep.key}.label`)}</p>
-        </div>
-
-        <div className="absolute left-[13%] top-[48%] h-1 w-[52%] -rotate-[24deg] bg-white shadow-[0_0_0_2px_#111]">
-          <span className="absolute -left-3 -top-3 size-7 rounded-full border-[7px] border-white bg-[#202126] shadow-[0_0_0_3px_#111]" />
+          <p className="text-[12px] font-semibold text-white/60">
+            {t("tracking.title")}
+          </p>
+          <p className="text-[16px] font-bold text-white">
+            {t(`step.${currentStep.key}.label`)}
+          </p>
         </div>
 
         {osmHref ? (
@@ -177,11 +217,13 @@ export default function TrackingPage() {
             rel="noreferrer"
             className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white"
           >
-            {t('tracking.openMap')} · {coordinateLabel}
+            {t("tracking.openMap")} · {coordinateLabel}
           </a>
         ) : (
           <span className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white/70">
-            {isLocalOrder ? t('tracking.demoMap') : t('tracking.awaitingLocation')}
+            {isLocalOrder
+              ? t("tracking.demoMap")
+              : t("tracking.awaitingLocation")}
           </span>
         )}
       </div>
@@ -194,16 +236,20 @@ export default function TrackingPage() {
               <Truck size={21} />
             </span>
             <div className="min-w-0 flex-1">
-              <Typography type="body-xs" className={hx.caption}>{t('tracking.courier')}</Typography>
-              <Typography type="h6" className={cn(hx.title, 'truncate')}>{t('tracking.courierName')}</Typography>
+              <Typography type="body-xs" className={hx.caption}>
+                {t("tracking.courier")}
+              </Typography>
+              <Typography type="h6" className={cn(hx.title, "truncate")}>
+                {t("tracking.courierName")}
+              </Typography>
             </div>
             {MASKED_COMMS_ENABLED ? (
               <>
                 <Button
                   isIconOnly
                   variant="secondary"
-                  aria-label={t('tracking.callCourier')}
-                  onPress={() => router.push('/call/')}
+                  aria-label={t("tracking.callCourier")}
+                  onPress={() => router.push("/call/")}
                   className="size-11 min-w-11 rounded-full border-0 bg-accent text-accent-foreground shadow-none"
                 >
                   <Phone size={18} />
@@ -211,8 +257,8 @@ export default function TrackingPage() {
                 <Button
                   isIconOnly
                   variant="secondary"
-                  aria-label={t('tracking.chatCourier')}
-                  onPress={() => router.push('/chat/')}
+                  aria-label={t("tracking.chatCourier")}
+                  onPress={() => router.push("/chat/")}
                   className="size-11 min-w-11 rounded-full border border-border bg-card text-foreground shadow-none"
                 >
                   <MessageCircle size={18} />
@@ -223,64 +269,107 @@ export default function TrackingPage() {
         </Card>
 
         <div className="mt-6 rounded-[30px] bg-[var(--canvas-inverse)] p-5 text-[var(--canvas-inverse-foreground)]">
-          <Typography type="body-sm" className="text-[13px] font-medium opacity-60">{t('tracking.deliveryAddress')}</Typography>
+          <Typography
+            type="body-sm"
+            className="text-[13px] font-medium opacity-60"
+          >
+            {t("tracking.deliveryAddress")}
+          </Typography>
           <div className="mt-2 flex items-start gap-3">
             <MapPin size={21} className="mt-0.5 shrink-0" />
-            <p className="text-[17px] font-bold">{address?.detail ?? t('tracking.savedAddress')}</p>
+            <p className="text-[17px] font-bold">
+              {address?.detail ?? t("tracking.savedAddress")}
+            </p>
           </div>
 
           {order.leaveAtDoor ? (
-            <Typography type="body-xs" className="mt-3 text-[12px] font-semibold text-warning">
-              {t('tracking.leaveAtDoorNote')}
+            <Typography
+              type="body-xs"
+              className="mt-3 text-[12px] font-semibold text-warning"
+            >
+              {t("tracking.leaveAtDoorNote")}
             </Typography>
           ) : null}
 
           {showPinHandoff ? (
             <div className="mt-5 rounded-[20px] bg-current/10 px-4 py-3">
-              <Typography type="body-sm" className="text-[13px] font-semibold opacity-80">
-                {t('tracking.pinTitle')}
+              <Typography
+                type="body-sm"
+                className="text-[13px] font-semibold opacity-80"
+              >
+                {t("tracking.pinTitle")}
               </Typography>
-              <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
+              {order.deliveryPin ? (
+                <p
+                  data-testid="delivery-pin"
+                  className="mt-2 text-2xl font-bold tracking-widest"
+                >
+                  {order.deliveryPin}
+                </p>
+              ) : null}
+              <Typography
+                type="body-xs"
+                className="mt-1 text-[12px] opacity-70"
+              >
                 {order.deliveryPin
-                  ? t('tracking.pinBodyWithCode', { pin: order.deliveryPin })
-                  : t('tracking.pinBodyPending')}
+                  ? t("tracking.pinBodyWithCode", { pin: order.deliveryPin })
+                  : t("tracking.pinBodyPending")}
               </Typography>
             </div>
           ) : null}
 
-          <Typography type="body-sm" className="mt-6 text-[13px] font-medium opacity-60">
-            {delivered ? t('step.delivered.label') : t('tracking.estimate')}
+          <Typography
+            type="body-sm"
+            className="mt-6 text-[13px] font-medium opacity-60"
+          >
+            {delivered ? t("step.delivered.label") : t("tracking.estimate")}
           </Typography>
           <p className="mt-1 text-[25px] font-bold">{etaLabel}</p>
           {arrivalAt && !delivered ? (
             <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
-              {t('tracking.arrivalBy', { time: arrivalAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
+              {t("tracking.arrivalBy", {
+                time: arrivalAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              })}
             </Typography>
           ) : null}
           {etaStale ? (
-            <Typography type="body-xs" className="mt-2 text-[12px] font-semibold text-warning">
-              {t('tracking.etaStale')}
+            <Typography
+              type="body-xs"
+              className="mt-2 text-[12px] font-semibold text-warning"
+            >
+              {t("tracking.etaStale")}
             </Typography>
           ) : null}
           {order.hasShortExtraStop ? (
-            <Typography type="body-xs" className="mt-2 text-[12px] font-semibold text-warning">
-              {t('tracking.delayNotice')}
+            <Typography
+              type="body-xs"
+              className="mt-2 text-[12px] font-semibold text-warning"
+            >
+              {t("tracking.delayNotice")}
             </Typography>
           ) : null}
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-current/20">
-            <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${progress}%` }} />
+            <div
+              className="h-full rounded-full bg-accent transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
           </div>
-          <p className="mt-3 text-[12px] font-semibold opacity-70">{t(`step.${currentStep.key}.hint`)}</p>
+          <p className="mt-3 text-[12px] font-semibold opacity-70">
+            {t(`step.${currentStep.key}.hint`)}
+          </p>
         </div>
 
         <Button
           variant="secondary"
           fullWidth
-          onPress={() => router.push(delivered ? '/home/' : '/orders/')}
-          className={cn(hx.btnSecondary, 'mt-5')}
+          onPress={() => router.push(delivered ? "/home/" : "/orders/")}
+          className={cn(hx.btnSecondary, "mt-5")}
         >
           {delivered ? <Check size={19} /> : null}
-          {delivered ? t('common.backToHome') : t('tracking.viewOrders')}
+          {delivered ? t("common.backToHome") : t("tracking.viewOrders")}
         </Button>
       </div>
     </AppFrame>

@@ -1,8 +1,9 @@
-'use client';
+"use client";
+import { LocationSharing } from "@/components/LocationSharing";
 
-import { ApiQueryProvider } from '@repo/api';
-import { ThemeProvider } from '@repo/theme';
-import type { ReactNode } from 'react';
+import { ApiQueryProvider } from "@repo/api";
+import { ThemeProvider } from "@repo/theme";
+import type { ReactNode } from "react";
 
 type ProvidersProps = {
   children: ReactNode;
@@ -11,7 +12,10 @@ type ProvidersProps = {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <ApiQueryProvider>{children}</ApiQueryProvider>
+      <ApiQueryProvider>
+        <LocationSharing />
+        {children}
+      </ApiQueryProvider>
     </ThemeProvider>
   );
 }

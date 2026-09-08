@@ -1,0 +1,50 @@
+/* Operations panels use the customer app's visual language at desktop density. */
+@theme inline {
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-text-secondary: var(--text-secondary);
+}
+:root {
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+[data-slot="card"] {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: none;
+  background: var(--card);
+}
+[data-slot="button"] {
+  border-radius: 999px;
+  min-height: 44px;
+  font-weight: 600;
+}
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-radius: 16px;
+  background: var(--field-background);
+  color: var(--field-foreground);
+  min-height: 44px;
+}
+:where(input, select, textarea, button, a):focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+:where(h1, h2, h3) {
+  letter-spacing: -0.025em;
+}
+
+/* Neutral secondary actions stay readable against both panel surfaces. */
+.button--secondary {
+  --button-fg: var(--foreground);
+}
+:root,
+.light,
+[data-theme="light"] {
+  --muted: #667085;
+}
+.dark,
+[data-theme="dark"] {
+  --muted: #8b95a8;
+}

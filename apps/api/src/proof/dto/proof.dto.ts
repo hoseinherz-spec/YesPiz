@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsInt, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class PickupProofDto {
   @ApiProperty({ description: "Kitchen QR / OTP pickup code" })
@@ -59,7 +59,7 @@ export class DeliverProofDto {
 
 export class CashReceiptDto {
   @ApiProperty()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   amountCents!: number;
 }

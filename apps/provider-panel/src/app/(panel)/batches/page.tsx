@@ -1,26 +1,32 @@
-'use client';
+"use client";
 
 import {
   ApiError,
   batchesClient,
+  couriersClient,
   providersClient,
   type Batch,
   type SuggestBatchResponse,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useState } from 'react';
-import { requireProviderToken } from '@/lib/auth';
-import { entityId } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useEffect, useState } from "react";
+import { requireProviderToken } from "@/lib/auth";
+import { entityId } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 export default function BatchesPage() {
+  const [couriers, setCouriers] = useState<
+    Array<{ userId: string; name: string; vehicleType?: string }>
+  >([]);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<SuggestBatchResponse | null>(
     null,
   );
   const [batches, setBatches] = useState<Batch[]>([]);
   const [keepByBatch, setKeepByBatch] = useState<Record<string, string[]>>({});
-  const [courierByBatch, setCourierByBatch] = useState<Record<string, string>>({});
+  const [courierByBatch, setCourierByBatch] = useState<Record<string, string>>(
+    {},
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,12 +34,14 @@ export default function BatchesPage() {
     setError(null);
     try {
       const token = requireProviderToken();
-      const [profile, list] = await Promise.all([
+      const [profile, list, available] = await Promise.all([
         providersClient.getMeProfile({ accessToken: token }),
         batchesClient.listForProvider({ accessToken: token }),
+        couriersClient.available({ accessToken: token }),
       ]);
       setProviderId(entityId(profile));
       setBatches(list);
+      setCouriers(available);
       const nextKeep: Record<string, string[]> = {};
       for (const batch of list) {
         const id = entityId(batch);
@@ -41,13 +49,22 @@ export default function BatchesPage() {
       }
       setKeepByBatch(nextKeep);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load batches');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load batches",
+      );
     }
   }, []);
 
   useLoadOnMount(() => {
     void load();
   });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void load();
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [load]);
 
   async function suggest() {
     if (!providerId) return;
@@ -61,7 +78,7 @@ export default function BatchesPage() {
       );
       setSuggestion(res);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Suggest failed');
+      setError(err instanceof ApiError ? err.message : "Suggest failed");
     } finally {
       setBusy(false);
     }
@@ -83,7 +100,7 @@ export default function BatchesPage() {
       setSuggestion(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Create failed');
+      setError(err instanceof ApiError ? err.message : "Create failed");
     } finally {
       setBusy(false);
     }
@@ -103,7 +120,7 @@ export default function BatchesPage() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Reduce failed');
+      setError(err instanceof ApiError ? err.message : "Reduce failed");
     } finally {
       setBusy(false);
     }
@@ -120,9 +137,9 @@ export default function BatchesPage() {
   }
 
   async function assignCourier(batchId: string) {
-    const courierId = (courierByBatch[batchId] ?? '').trim();
+    const courierId = (courierByBatch[batchId] ?? "").trim();
     if (!courierId) {
-      setError('Enter a courier ID');
+      setError("Choose a courier who is on duty");
       return;
     }
     setBusy(true);
@@ -134,10 +151,10 @@ export default function BatchesPage() {
         { courierId },
         { accessToken: token },
       );
-      setCourierByBatch((prev) => ({ ...prev, [batchId]: '' }));
+      setCourierByBatch((prev) => ({ ...prev, [batchId]: "" }));
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Assign courier failed');
+      setError(err instanceof ApiError ? err.message : "Assign courier failed");
     } finally {
       setBusy(false);
     }
@@ -149,10 +166,12 @@ export default function BatchesPage() {
         <Typography type="h1" className="text-2xl font-semibold">
           Batches
         </Typography>
-        <p className="text-muted text-sm">Suggest, create, and reduce batches</p>
+        <p className="text-muted text-sm">
+          Suggest, create, and reduce batches
+        </p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Card className="p-4">
         <Card.Content className="flex flex-col gap-3 p-0">
@@ -163,14 +182,16 @@ export default function BatchesPage() {
             Pulls ready-for-pickup orders up to max batch size.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" isDisabled={busy || !providerId} onPress={suggest}>
+            <Button
+              variant="secondary"
+              isDisabled={busy || !providerId}
+              onPress={suggest}
+            >
               Suggest
             </Button>
             <Button
               variant="primary"
-              isDisabled={
-                busy || !suggestion?.suggestedOrderIds.length
-              }
+              isDisabled={busy || !suggestion?.suggestedOrderIds.length}
               onPress={createFromSuggestion}
             >
               Create from suggestion
@@ -179,7 +200,7 @@ export default function BatchesPage() {
           {suggestion ? (
             <div className="text-sm">
               <p>
-                Suggested {suggestion.suggestedOrderIds.length} / max{' '}
+                Suggested {suggestion.suggestedOrderIds.length} / max{" "}
                 {suggestion.maxBatchSize}
               </p>
               <ul className="mt-1 list-disc pl-5">
@@ -228,18 +249,18 @@ export default function BatchesPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  isDisabled={busy || batch.status !== 'open'}
+                  isDisabled={busy || batch.status !== "open"}
                   onPress={() => reduceBatch(id)}
                 >
                   Reduce to checked
                 </Button>
-                {batch.status === 'open' && !batch.courierId ? (
+                {batch.status === "open" && !batch.courierId ? (
                   <div className="flex flex-col gap-2 pt-2">
                     <label className="flex flex-col gap-1 text-sm">
                       <span className="text-muted">Assign courier</span>
-                      <input
-                        placeholder="Courier user / document ID"
-                        value={courierByBatch[id] ?? ''}
+                      <select
+                        aria-label="Assign courier"
+                        value={courierByBatch[id] ?? ""}
                         onChange={(e) =>
                           setCourierByBatch((prev) => ({
                             ...prev,
@@ -247,7 +268,23 @@ export default function BatchesPage() {
                           }))
                         }
                         className="border-border bg-background rounded-md border px-3 py-2"
-                      />
+                      >
+                        <option value="">Choose an on-duty courier</option>
+                        {couriers.map((courier) => (
+                          <option key={courier.userId} value={courier.userId}>
+                            {courier.name}
+                            {courier.vehicleType
+                              ? ` · ${courier.vehicleType}`
+                              : ""}
+                          </option>
+                        ))}
+                      </select>
+                      {!couriers.length ? (
+                        <span>
+                          No couriers on duty. Ask a courier to start a shift,
+                          then refresh.
+                        </span>
+                      ) : null}
                     </label>
                     <Button
                       size="sm"

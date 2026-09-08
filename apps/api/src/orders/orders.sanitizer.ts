@@ -45,8 +45,7 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
   const lines =
     (plain.lines as Array<Record<string, unknown>> | undefined) ?? [];
 
-  const handoffStage =
-    projection === "onway" || projection === "driver";
+  const handoffStage = projection === "onway" || projection === "driver";
 
   const view: Record<string, unknown> = {
     id: String(plain._id ?? plain.id),
@@ -56,18 +55,37 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
       name: line.name,
       unitPriceCents: line.unitPriceCents,
       quantity: line.quantity,
+      size: line.size,
+      extras: line.extras,
     })),
     subtotalCents: plain.subtotalCents,
     deliveryFeeCents: plain.deliveryFeeCents,
     totalCents: plain.totalCents,
     // Blind: never expose raw kitchen/ops status strings — use customerStatus only
     customerStatus: projection,
+    orderState: [OrderStatus.CANCELLED, OrderStatus.FAILED_CASH].includes(
+      status,
+    )
+      ? "cancelled"
+      : status === OrderStatus.PENDING_PAYMENT
+        ? "awaiting_payment"
+        : [OrderStatus.COMPLETED, OrderStatus.DELIVERED].includes(status)
+          ? "completed"
+          : "active",
     paymentMethod: plain.paymentMethod,
     paymentStatus: plain.paymentStatus,
+    refundStatus: plain.refundStatus,
+    canCancel: [
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.PENDING_OFFERS,
+    ].includes(status),
     addressId: String(plain.addressId),
     notes: plain.notes,
     leaveAtDoor: Boolean(plain.leaveAtDoor),
     scheduledAt: plain.scheduledAt,
+    deliveryStreet: plain.deliveryStreet,
+    deliveryCity: plain.deliveryCity,
+    deliveryZipcode: plain.deliveryZipcode,
     deliveryEntrance: plain.deliveryEntrance,
     deliveryFloor: plain.deliveryFloor,
     deliveryUnit: plain.deliveryUnit,

@@ -6,6 +6,7 @@ import type { JwtPayloadUser } from "../../common/decorators/current-user.decora
 
 type RawJwt = {
   sub: string;
+  exp?: number;
   email?: string;
   phone?: string;
   roles: string[];
@@ -25,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   validate(payload: RawJwt): JwtPayloadUser {
     return {
       userId: payload.sub,
+      tokenExpiresAt: payload.exp,
       email: payload.email,
       phone: payload.phone,
       roles: payload.roles,

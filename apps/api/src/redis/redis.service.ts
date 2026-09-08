@@ -29,6 +29,11 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  async ready() {
+    if (this.client) return (await this.client.ping()) === "PONG";
+    return this.config.get("NODE_ENV") !== "production";
+  }
+
   async onModuleDestroy() {
     if (this.client) {
       await this.client.quit().catch(() => undefined);
@@ -45,6 +50,7 @@ export class RedisService implements OnModuleDestroy {
         const result = await this.client.set(key, owner, "PX", ttlMs, "NX");
         return result === "OK";
       } catch (err) {
+        if (this.config.get<string>("NODE_ENV") === "production") throw err;
         this.logger.warn(
           `Redis SET failed, falling back to memory: ${(err as Error).message}`,
         );

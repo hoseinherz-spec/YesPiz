@@ -1,4 +1,13 @@
 export type AppConfig = {
+  deliveryFeeCents: number;
+  smallSizeDeltaCents: number;
+  mediumSizeDeltaCents: number;
+  largeSizeDeltaCents: number;
+  extraCheeseCents: number;
+  jalapenosCents: number;
+  olivesCents: number;
+  garlicDipCents: number;
+
   id: string;
   key: string;
   w1Rating: number;
@@ -14,6 +23,4 @@ export type AppConfig = {
   maxBatchSize: number;
 };
 
-export type UpdateAppConfigRequest = Partial<
-  Omit<AppConfig, 'id' | 'key'>
->;
+export type UpdateAppConfigRequest = Partial<Omit<AppConfig, "id" | "key">>;

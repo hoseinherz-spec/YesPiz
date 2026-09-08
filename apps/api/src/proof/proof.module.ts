@@ -1,3 +1,4 @@
+import { Batch, BatchSchema } from "../batches/schemas/batch.schema";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Order, OrderSchema } from "../orders/schemas/order.schema";
@@ -15,6 +16,7 @@ import {
     MongooseModule.forFeature([
       { name: DeliveryProof.name, schema: DeliveryProofSchema },
       { name: Order.name, schema: OrderSchema },
+      { name: Batch.name, schema: BatchSchema },
     ]),
     ProvidersModule,
     SlaModule,

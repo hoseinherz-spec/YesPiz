@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/.next
+**/out
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+.qa
+test-results
+playwright-report
+**/uploads
+**/android
+**/ios

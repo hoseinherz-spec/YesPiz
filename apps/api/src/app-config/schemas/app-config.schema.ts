@@ -5,6 +5,15 @@ export type AppConfigDocument = HydratedDocument<AppConfig>;
 
 @Schema({ timestamps: true, collection: "app_config" })
 export class AppConfig {
+  @Prop({ default: 299 }) deliveryFeeCents!: number;
+  @Prop({ default: -200 }) smallSizeDeltaCents!: number;
+  @Prop({ default: 0 }) mediumSizeDeltaCents!: number;
+  @Prop({ default: 300 }) largeSizeDeltaCents!: number;
+  @Prop({ default: 150 }) extraCheeseCents!: number;
+  @Prop({ default: 100 }) jalapenosCents!: number;
+  @Prop({ default: 100 }) olivesCents!: number;
+  @Prop({ default: 90 }) garlicDipCents!: number;
+
   @Prop({ default: "default", unique: true })
   key!: string;
 

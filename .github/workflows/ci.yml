@@ -1,33 +1,63 @@
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - run: npm run build --workspace=@repo/i18n
+      - run: npm run lint
+      - run: npm run check-types
+      - run: npm run test --workspace=api -- --runInBand --watchman=false
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - run: npm run build --workspace=@repo/i18n
+      - run: npm run test:e2e --workspace=api -- --runInBand --watchman=false
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - run: npm run build --workspace=@repo/i18n
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run test:e2e:admin
+      - uses: actions/upload-artifact@v4
+        if: failure()
         with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run check-types
-
-      - name: Unit tests (api)
-        run: npm run test --workspace=api
-
-      - name: Build
-        run: npm run build
+          name: browser-failures
+          path: |
+            test-results
+            playwright-report
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [api, mobile, courier-mobile, provider-panel, admin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - run: npm run build --workspace=@repo/i18n
+      - if: matrix.app == 'api'
+        run: npm run build --workspace=api
+      - if: matrix.app != 'api'
+        run: npm exec --workspace=${{ matrix.app }} -- next build --webpack

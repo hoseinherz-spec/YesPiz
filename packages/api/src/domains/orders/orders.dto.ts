@@ -1,37 +1,27 @@
 export type OrderStatus =
-  | 'DRAFT'
-  | 'PENDING_PAYMENT'
-  | 'PENDING_OFFERS'
-  | 'ACCEPTED_BY_PROVIDER'
-  | 'PREPARING'
-  | 'READY_FOR_PICKUP'
-  | 'ASSIGNED_TO_COURIER'
-  | 'PICKED_UP'
-  | 'ON_THE_WAY'
-  | 'DELIVERED'
-  | 'COMPLETED'
-  | 'EXCEPTION_REPORTED'
-  | 'ADMIN_REVIEW'
-  | 'CANCELLED'
-  | 'FAILED_CASH';
+  | "DRAFT"
+  | "PENDING_PAYMENT"
+  | "PENDING_OFFERS"
+  | "ACCEPTED_BY_PROVIDER"
+  | "PREPARING"
+  | "READY_FOR_PICKUP"
+  | "ASSIGNED_TO_COURIER"
+  | "PICKED_UP"
+  | "ON_THE_WAY"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "EXCEPTION_REPORTED"
+  | "ADMIN_REVIEW"
+  | "CANCELLED"
+  | "FAILED_CASH";
 
 export type CustomerOrderProjection =
-  | 'received'
-  | 'kitchen'
-  | 'preparing'
-  | 'driver'
-  | 'onway'
-  | 'delivered';
+  "received" | "kitchen" | "preparing" | "driver" | "onway" | "delivered";
 
-export type PaymentMethod = 'card' | 'cash' | 'wallet';
+export type PaymentMethod = "card" | "cash" | "wallet";
 
 export type PaymentStatus =
-  | 'pending'
-  | 'authorized'
-  | 'captured'
-  | 'failed'
-  | 'refunded'
-  | 'cancelled';
+  "pending" | "authorized" | "captured" | "failed" | "refunded" | "cancelled";
 
 export type CreateAddressRequest = {
   label: string;
@@ -59,7 +49,7 @@ export type DeliveryAddress = {
   country?: string;
   longitude: number;
   latitude: number;
-  location: { type: 'Point'; coordinates: [number, number] };
+  location: { type: "Point"; coordinates: [number, number] };
   isDefault: boolean;
   entrance?: string;
   floor?: string;
@@ -71,11 +61,21 @@ export type DeliveryAddress = {
 };
 
 export type OrderLineRequest = {
+  size?: "small" | "medium" | "large";
+  extras?: string[];
   menuItemId: string;
   quantity: number;
 };
 
+export type OrderQuote = {
+  lines: CustomerOrderLine[];
+  subtotalCents: number;
+  deliveryFeeCents: number;
+  totalCents: number;
+};
+
 export type CreateOrderRequest = {
+  idempotencyKey?: string;
   menuVersion: number;
   addressId: string;
   paymentMethod: PaymentMethod;
@@ -91,15 +91,13 @@ export type CreateOrderRequest = {
 };
 
 export type KitchenStatusUpdate =
-  | 'PREPARING'
-  | 'READY_FOR_PICKUP'
-  | 'EXCEPTION_REPORTED';
+  "PREPARING" | "READY_FOR_PICKUP" | "EXCEPTION_REPORTED";
 
 export type UpdateKitchenStatusRequest = {
   status: KitchenStatusUpdate;
 };
 
-export type AdminResolveStatus = 'ADMIN_REVIEW' | 'PREPARING' | 'CANCELLED';
+export type AdminResolveStatus = "ADMIN_REVIEW" | "PREPARING" | "CANCELLED";
 
 export type ResolveAdminReviewRequest = {
   status: AdminResolveStatus;
@@ -113,6 +111,8 @@ export type CourierLocationView = {
 };
 
 export type CustomerOrderLine = {
+  size?: "small" | "medium" | "large";
+  extras?: string[];
   menuItemId: string;
   name: string;
   unitPriceCents: number;
@@ -121,13 +121,15 @@ export type CustomerOrderLine = {
 
 /** Blind-identity customer projection from orders.sanitizer.toCustomerView */
 export type CustomerOrderView = {
+  canCancel?: boolean;
+  refundStatus?: string;
   id: string;
   menuVersion: number;
   lines: CustomerOrderLine[];
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
-  status: OrderStatus;
+  orderState: "awaiting_payment" | "active" | "completed" | "cancelled";
   customerStatus: CustomerOrderProjection | null;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -152,6 +154,8 @@ export type CustomerOrderView = {
 };
 
 export type OrderLine = {
+  size?: "small" | "medium" | "large";
+  extras?: string[];
   menuItemId: string;
   name: string;
   unitPriceCents: number;
@@ -161,13 +165,14 @@ export type OrderLine = {
 
 export type OrderOffer = {
   providerId: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: "pending" | "accepted" | "rejected" | "expired";
   score: number;
   respondedAt?: string;
 };
 
 /** Full order document (provider/ops views, e.g. kitchen-status response) */
 export type Order = {
+  requiredChecklist?: string[];
   id: string;
   customerId: string;
   menuVersion: number;
@@ -201,6 +206,8 @@ export type DeleteAddressResponse = {
 };
 
 export type ReorderLinePreview = {
+  size: "small" | "medium" | "large";
+  extras: string[];
   menuItemId: string;
   name: string;
   quantity: number;
@@ -209,7 +216,7 @@ export type ReorderLinePreview = {
 };
 
 export type ReorderChangedLine = ReorderLinePreview & {
-  change: 'price';
+  change: "price";
 };
 
 export type ReorderUnavailableLine = {
@@ -226,6 +233,8 @@ export type ReorderPreviewResponse = {
   changed: ReorderChangedLine[];
   unavailable: ReorderUnavailableLine[];
   cartLines: Array<{
+    size: "small" | "medium" | "large";
+    extras: string[];
     menuItemId: string;
     name: string;
     quantity: number;
@@ -241,7 +250,7 @@ export type AtRiskOrderRow = {
   status: OrderStatus;
   totalCents: number;
   updatedAt?: string;
-  risk: 'exception' | 'delayed_eta';
+  risk: "exception" | "delayed_eta";
   etaDeliveryMax?: number;
   etaComputedAt?: string;
 };

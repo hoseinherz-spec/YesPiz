@@ -1,7 +1,20 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNumber, IsOptional, Max, Min } from "class-validator";
+import { IsInt, IsNumber, IsOptional, Max, Min } from "class-validator";
 
 export class UpdateAppConfigDto {
+  @IsOptional() @IsInt() @Min(0) @Max(100000) deliveryFeeCents?: number;
+  @IsOptional() @IsInt() @Min(-10000) @Max(100000) smallSizeDeltaCents?: number;
+  @IsOptional()
+  @IsInt()
+  @Min(-10000)
+  @Max(100000)
+  mediumSizeDeltaCents?: number;
+  @IsOptional() @IsInt() @Min(-10000) @Max(100000) largeSizeDeltaCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) extraCheeseCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) jalapenosCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) olivesCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100000) garlicDipCents?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()

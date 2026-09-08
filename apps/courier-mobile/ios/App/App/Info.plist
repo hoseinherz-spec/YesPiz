@@ -66,5 +66,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+<key>NSCameraUsageDescription</key><string>Scan pickup codes and capture delivery proof.</string>
+<key>NSLocationWhenInUseUsageDescription</key><string>Verify pickups and deliveries during your shift.</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>Share delivery progress while on duty, including when the app is in the background.</string>
+<key>UIBackgroundModes</key><array><string>location</string><string>remote-notification</string></array>
+<key>FirebaseMessagingAutoInitEnabled</key><false/>
 </dict>
 </plist>

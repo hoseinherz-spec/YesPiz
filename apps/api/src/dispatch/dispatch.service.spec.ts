@@ -310,7 +310,7 @@ describe("DispatchService", () => {
       });
     });
 
-    it("afterNoPendingOffers expands then eventually cancels", async () => {
+    it("sends an empty dispatch wave to admin review", async () => {
       const orderId = new Types.ObjectId().toHexString();
       const order = {
         id: orderId,
@@ -331,15 +331,8 @@ describe("DispatchService", () => {
       await service.afterNoPendingOffers(order as never);
       expect(order.waveExpandCount).toBe(1);
 
-      await service.afterNoPendingOffers(order as never);
-      expect(order.waveExpandCount).toBe(2);
-
-      const cancelled = await service.afterNoPendingOffers(order as never);
-      expect(cancelled).toEqual({
-        orderId,
-        status: OrderStatus.CANCELLED,
-        reason: "offers_exhausted",
-      });
+      expect(order.status).toBe(OrderStatus.ADMIN_REVIEW);
+      expect(order.offers).toHaveLength(0);
     });
   });
 });
