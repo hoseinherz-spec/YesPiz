@@ -3,8 +3,15 @@
 // reproducible until upstream updates it; native device acceptance is separate.
 const { readFileSync, writeFileSync } = require("node:fs");
 const { dirname, join } = require("node:path");
-const plugin =
-  require.resolve("@capacitor-community/background-geolocation/package.json");
+let plugin;
+try {
+  plugin = require.resolve(
+    "@capacitor-community/background-geolocation/package.json",
+  );
+} catch (error) {
+  if (error?.code === "MODULE_NOT_FOUND") process.exit(0);
+  throw error;
+}
 const pkg = JSON.parse(readFileSync(plugin, "utf8"));
 if (pkg.version !== "1.2.26")
   throw new Error(
