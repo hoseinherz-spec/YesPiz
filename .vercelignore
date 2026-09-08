@@ -14,13 +14,6 @@ prd
 deploy
 e2e
 
-# The yespizz.website Vercel project builds only the marketing website.
-apps/admin
-apps/api
-apps/mobile
-apps/courier-mobile
-apps/provider-panel
-
 **/.next
 **/out
 **/dist
