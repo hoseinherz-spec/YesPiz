@@ -1,4 +1,5 @@
 import { NestFactory } from "@nestjs/core";
+import type { INestApplicationContext } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import { Model } from "mongoose";
 import { getModelToken } from "@nestjs/mongoose";
@@ -15,8 +16,7 @@ import {
   ProviderDocument,
 } from "../providers/schemas/provider.schema";
 
-async function seed() {
-  const app = await NestFactory.createApplicationContext(AppModule);
+export async function seedApplication(app: INestApplicationContext) {
   const users = app.get<Model<UserDocument>>(getModelToken(User.name));
   const providersModel = app.get<Model<ProviderDocument>>(
     getModelToken(Provider.name),
@@ -193,11 +193,21 @@ async function seed() {
     console.log(`Published menu already at v${published.version.version}`);
   }
 
-  await app.close();
   console.log("Seed complete");
 }
 
-seed().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function seed() {
+  const app = await NestFactory.createApplicationContext(AppModule);
+  try {
+    await seedApplication(app);
+  } finally {
+    await app.close();
+  }
+}
+
+if (require.main === module) {
+  seed().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

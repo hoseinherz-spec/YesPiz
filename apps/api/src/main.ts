@@ -58,6 +58,11 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new I18nExceptionFilter());
 
+  if (config.get<string>("SEED_ON_BOOT") === "true") {
+    const { seedApplication } = await import("./scripts/seed");
+    await seedApplication(app);
+  }
+
   const isProd = config.get<string>("NODE_ENV") === "production";
   const swaggerEnabled =
     config.get<string>("SWAGGER_ENABLED") === "true" || !isProd;
