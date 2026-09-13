@@ -6,13 +6,20 @@ import {
   Fire1,
   Pizza,
 } from "@repo/icons";
+import { useRef } from "react";
+import Image from "next/image";
+import { useAnimationActive } from "@/hooks/use-animation-active";
+import { landingImages } from "@/content/images";
 import { landingContent } from "@/content/landing";
 
 const hero = landingContent.hero;
 
-const CircularBadge = () => (
+const CircularBadge = ({ active }: { active: boolean }) => (
   <div className="relative flex h-28 w-28 rotate-12 cursor-pointer items-center justify-center rounded-full border-[3px] border-brand-olive/5 bg-brand-lime text-brand-olive shadow-xl transition-transform hover:scale-105 md:h-36 md:w-36">
-    <div className="absolute inset-1 animate-[spin_10s_linear_infinite]">
+    <div
+      className="absolute inset-1 animate-[spin_10s_linear_infinite]"
+      style={{ animationPlayState: active ? "running" : "paused" }}
+    >
       <svg viewBox="0 0 100 100" className="h-full w-full">
         <path
           id="circlePath"
@@ -33,11 +40,16 @@ const CircularBadge = () => (
 );
 
 export function Hero() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const active = useAnimationActive(rootRef);
   return (
-    <div className="hero-section relative flex min-h-screen w-full flex-col overflow-hidden font-sans bg-accent">
+    <div
+      ref={rootRef}
+      className="hero-section relative flex min-h-screen w-full flex-col overflow-hidden font-sans bg-accent"
+    >
       <div className="hero-section__grid pointer-events-none absolute inset-0 z-0" />
 
-      <main className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center justify-center px-4 pt-28 pb-32 md:pt-36 md:pb-48">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-1 flex-col items-center justify-center px-4 pt-28 pb-32 md:pt-36 md:pb-48">
         <div className="relative z-10 mx-auto mt-8 mb-16 flex w-full max-w-5xl flex-col items-center justify-center text-center md:mt-10">
           <h1 className="relative z-10 flex w-full flex-col items-center space-y-2 md:space-y-4">
             <span className="sr-only">{hero.seoHeadline}</span>
@@ -89,11 +101,11 @@ export function Hero() {
             </div>
 
             <div className="pointer-events-auto absolute right-[0%] bottom-[-10%] z-40 md:right-[15%]">
-              <CircularBadge />
+              <CircularBadge active={active} />
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <section className="relative z-20 mt-auto w-full rounded-t-[2.5rem] bg-surface px-6 py-12 text-foreground shadow-[0_-20px_50px_rgba(0,0,0,0.2)] md:rounded-t-[3.5rem] md:px-10 md:py-16">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
@@ -110,8 +122,10 @@ export function Hero() {
             <div className="relative mt-6 flex w-full justify-center">
               <div className="relative z-10 flex items-center rounded-2xl bg-brand-purple p-2 pr-16 text-accent-foreground shadow-lg">
                 <div className="mr-3 h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-accent-foreground/30 bg-surface-secondary">
-                  <img
-                    src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=100&h=100&fit=crop"
+                  <Image
+                    src={landingImages.margheritaTray}
+                    width={32}
+                    height={32}
                     alt={hero.cards[0].imageAlt}
                     className="h-full w-full object-cover"
                   />
@@ -159,7 +173,11 @@ export function Hero() {
               </div>
 
               <div className="absolute right-1/3 -bottom-6 z-20 rotate-12 transform rounded-full bg-brand-lime p-2.5 text-brand-olive shadow-lg">
-                <Fire1 size={16} color="currentColor" secondaryColor="currentColor" />
+                <Fire1
+                  size={16}
+                  color="currentColor"
+                  secondaryColor="currentColor"
+                />
               </div>
             </div>
 

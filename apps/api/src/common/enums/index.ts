@@ -26,6 +26,7 @@ export function toPublicRole(role: UserRole): string {
 export enum OrderStatus {
   DRAFT = "DRAFT",
   PENDING_PAYMENT = "PENDING_PAYMENT",
+  SCHEDULED = "SCHEDULED",
   PENDING_OFFERS = "PENDING_OFFERS",
   ACCEPTED_BY_PROVIDER = "ACCEPTED_BY_PROVIDER",
   PREPARING = "PREPARING",
@@ -54,6 +55,7 @@ export const ORDER_STATUS_TO_CUSTOMER: Partial<
   Record<OrderStatus, CustomerOrderProjection>
 > = {
   [OrderStatus.PENDING_PAYMENT]: CustomerOrderProjection.RECEIVED,
+  [OrderStatus.SCHEDULED]: CustomerOrderProjection.RECEIVED,
   [OrderStatus.PENDING_OFFERS]: CustomerOrderProjection.RECEIVED,
   [OrderStatus.ACCEPTED_BY_PROVIDER]: CustomerOrderProjection.KITCHEN,
   [OrderStatus.PREPARING]: CustomerOrderProjection.PREPARING,

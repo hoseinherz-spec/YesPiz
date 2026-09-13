@@ -1,4 +1,6 @@
 "use client";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+
 
 import { Button, Typography } from "@heroui/react";
 import { Check, MapPin, ShoppingBag } from "@repo/icons";
@@ -7,7 +9,6 @@ import { useMemo } from "react";
 
 import { AppFrame } from "@/components/AppFrame";
 import { MobileActionBar } from "@/components/MobileActionBar";
-import { formatPrice } from "@/constants/pizzas";
 import { useApp } from "@/context/AppContext";
 import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
@@ -79,7 +80,7 @@ export default function OrderSuccessPage() {
           {t("success.body")}
         </Typography>
         <div className="mt-6 rounded-full bg-surface-secondary px-5 py-2.5 text-[13px] font-semibold text-muted">
-          {t("orders.orderNum", { id: shortId })} · {formatPrice(order.total)}
+          {t("orders.orderNum", { id: shortId })} · <AnimatedNumber currency value={order.total} />
         </div>
       </div>
 

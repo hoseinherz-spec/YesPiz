@@ -3,7 +3,7 @@ import {
   withAuth,
   type ApiRequestOptions,
   type AuthRequestOptions,
-} from '../../core';
+} from "../../core";
 import type {
   AcceptInviteRequest,
   AuthResponse,
@@ -20,16 +20,26 @@ import type {
   SendOtpRequest,
   SendOtpResponse,
   UserRole,
-} from './account.dto';
-import { accountEndpoints } from './account.endpoint';
+} from "./account.dto";
+import { accountEndpoints } from "./account.endpoint";
 
 export type { AuthRequestOptions };
 
 export const accountClient = {
+  socialLogin(
+    body: { provider: "google" | "apple"; idToken: string; nonce: string },
+    options?: ApiRequestOptions,
+  ) {
+    return apiRequest<AuthResponse>("/api/v1/account/auth/social", {
+      ...options,
+      method: "POST",
+      body,
+    });
+  },
   register(body: RegisterRequest, options?: ApiRequestOptions) {
     return apiRequest<AuthResponse>(accountEndpoints.register, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -37,7 +47,7 @@ export const accountClient = {
   sendOtp(body: SendOtpRequest, options?: ApiRequestOptions) {
     return apiRequest<SendOtpResponse>(accountEndpoints.otp, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -45,7 +55,7 @@ export const accountClient = {
   confirmOtp(body: ConfirmOtpRequest, options?: ApiRequestOptions) {
     return apiRequest<AuthResponse>(accountEndpoints.otpConfirm, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -53,19 +63,19 @@ export const accountClient = {
   login(body: LoginRequest, options?: ApiRequestOptions) {
     return apiRequest<AuthResponse>(accountEndpoints.login, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
 
   loginAsRole(
     role: UserRole,
-    body: Omit<LoginRequest, 'role'>,
+    body: Omit<LoginRequest, "role">,
     options?: ApiRequestOptions,
   ) {
     return apiRequest<AuthResponse>(accountEndpoints.roleLogin(role), {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -73,7 +83,7 @@ export const accountClient = {
   bootstrapAdmin(body: BootstrapAdminRequest, options?: ApiRequestOptions) {
     return apiRequest<AuthResponse>(accountEndpoints.bootstrapAdmin, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -81,14 +91,14 @@ export const accountClient = {
   createInvite(body: CreateInviteRequest, options?: AuthRequestOptions) {
     return apiRequest<CreateInviteResponse>(
       accountEndpoints.createInvite,
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
   acceptInvite(body: AcceptInviteRequest, options?: ApiRequestOptions) {
     return apiRequest<AuthResponse>(accountEndpoints.acceptInvite, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -96,18 +106,15 @@ export const accountClient = {
   forgotPassword(body: ForgotPasswordRequest, options?: ApiRequestOptions) {
     return apiRequest<ForgotPasswordResponse>(accountEndpoints.forgotPassword, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
 
-  resetPassword(
-    body: ResetPasswordRequest,
-    options?: ApiRequestOptions,
-  ) {
+  resetPassword(body: ResetPasswordRequest, options?: ApiRequestOptions) {
     return apiRequest<{ status: string }>(accountEndpoints.resetPassword, {
       ...options,
-      method: 'POST',
+      method: "POST",
       body,
     });
   },
@@ -115,7 +122,7 @@ export const accountClient = {
   getMe(options?: AuthRequestOptions) {
     return apiRequest<ProfileResponse>(
       accountEndpoints.me,
-      withAuth({ ...options, method: 'GET' }),
+      withAuth({ ...options, method: "GET" }),
     );
   },
 
@@ -126,7 +133,7 @@ export const accountClient = {
   ) {
     return apiRequest<ProfileResponse>(
       accountEndpoints.cashRestore(userId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 };

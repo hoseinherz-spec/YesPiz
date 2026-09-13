@@ -9,6 +9,7 @@ import {
   IsMongoId,
   Max,
   MaxLength,
+  Matches,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -88,7 +89,25 @@ export class CreateAddressDto {
   instructions?: string;
 }
 
+export class PizzaSelectionDto {
+  @IsString() @MaxLength(60) groupId!: string;
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  optionIds!: string[];
+}
+
 export class OrderLineDto {
+  @IsOptional() @IsString() @MaxLength(60) variantId?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => PizzaSelectionDto)
+  selections?: PizzaSelectionDto[];
+
   @ApiProperty()
   @IsMongoId()
   menuItemId!: string;
@@ -114,6 +133,12 @@ export class OrderLineDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional() @IsString() @Matches(/^[A-Z0-9-]{3,32}$/) couponCode?: string;
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9-]{3,40}$/)
+  campaignCode?: string;
+
   @ApiPropertyOptional({
     description: "Reuse for retries of the same checkout",
   })
@@ -153,7 +178,9 @@ export class CreateOrderDto {
   @IsBoolean()
   leaveAtDoor?: boolean;
 
-  @ApiPropertyOptional({ description: "ISO8601 delivery slot; omit for ASAP" })
+  @ApiPropertyOptional({
+    description: "ISO8601 order start time (not arrival); omit for ASAP",
+  })
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;

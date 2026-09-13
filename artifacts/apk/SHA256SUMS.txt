@@ -1,0 +1,2 @@
+be33300733e90e619fda42b8a155f0c37db5e4acecf2a792231c9a8534281a5a  yespizz-courier-test.apk
+bdc7bcbadc17bf9c14a2b5ce5a8d8eb75f0159c2f2b0ed2e7940cf5fb5107429  yespizz-customer-test.apk

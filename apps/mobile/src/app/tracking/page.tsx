@@ -1,4 +1,6 @@
 "use client";
+import { AppText } from "@/components/Text";
+
 import { LocationMap } from "@repo/api/components/location-map";
 
 import { Button, Card, Typography } from "@heroui/react";
@@ -14,6 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { OrderProgress } from "@/components/OrderProgress";
 import { AppFrame } from "@/components/AppFrame";
 import { mapCustomerOrder, ORDER_STEPS, useApp } from "@/context/AppContext";
 import { etaArrivalTimestamp, formatEtaRange, isEtaStale } from "@/lib/eta";
@@ -28,7 +31,6 @@ export default function TrackingPage() {
     t,
     orders,
     addresses,
-    selectedAddressId,
     activeOrderId,
     advanceActiveOrder,
     accessToken,
@@ -42,7 +44,7 @@ export default function TrackingPage() {
     if (activeOrderId) return orders.find((item) => item.id === activeOrderId);
     return orders.find((item) => item.status === "active");
   }, [orders, activeOrderId]);
-  const address = addresses.find((item) => item.id === selectedAddressId);
+  const address = addresses.find((item) => item.id === order?.addressId);
   const orderId = order?.id;
   const orderStatus = order?.status;
   const orderStep = order?.stepIndex;
@@ -152,7 +154,6 @@ export default function TrackingPage() {
 
   const safeStep = Math.min(order.stepIndex, ORDER_STEPS.length - 1);
   const delivered = safeStep >= ORDER_STEPS.length - 1;
-  const progress = ((safeStep + 1) / ORDER_STEPS.length) * 100;
   const currentStep = ORDER_STEPS[safeStep];
   const latitude = courierLoc?.latitude;
   const longitude = courierLoc?.longitude;
@@ -202,12 +203,12 @@ export default function TrackingPage() {
           <ArrowLeft size={21} />
         </Button>
         <div className="absolute top-[max(22px,env(safe-area-inset-top))] inset-x-20 z-10 text-center">
-          <p className="text-[12px] font-semibold text-white/60">
+          <AppText as="p" className="text-[12px] font-semibold text-white/60">
             {t("tracking.title")}
-          </p>
-          <p className="text-[16px] font-bold text-white">
+          </AppText>
+          <AppText as="p" className="text-[16px] font-bold text-white">
             {t(`step.${currentStep.key}.label`)}
-          </p>
+          </AppText>
         </div>
 
         {osmHref ? (
@@ -220,16 +221,41 @@ export default function TrackingPage() {
             {t("tracking.openMap")} · {coordinateLabel}
           </a>
         ) : (
-          <span className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white/70">
+          <AppText as="span" className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white/70">
             {isLocalOrder
               ? t("tracking.demoMap")
               : t("tracking.awaitingLocation")}
-          </span>
+          </AppText>
         )}
       </div>
 
       <div className="-mt-3 relative z-20 rounded-t-[42px] bg-surface px-[clamp(20px,8vw,38px)] pt-5 pb-[max(28px,env(safe-area-inset-bottom))]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-tertiary" />
+        {order.scheduledAt && order.isScheduled && (
+          <AppText as="p" className="mb-4 rounded-2xl bg-card p-4 text-sm">
+            Order starts {new Date(order.scheduledAt).toLocaleString()}.
+            Preparation and delivery follow this time.
+          </AppText>
+        )}
+        {order.promisedDeliveryAt && (
+          <AppText as="p" className="mb-4 text-sm text-muted">
+            Original delivery promise: by{" "}
+            {new Date(order.promisedDeliveryAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </AppText>
+        )}
+        <Button
+          variant="ghost"
+          className="mb-3"
+          onPress={() =>
+            router.push(`/help/?order=${encodeURIComponent(order.id)}`)
+          }
+        >
+          Get help from Yespizz
+        </Button>
+
         <Card className="rounded-[26px] border-0 bg-surface-secondary p-3 shadow-none">
           <Card.Content className="flex items-center gap-3 p-0">
             <span className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
@@ -277,10 +303,18 @@ export default function TrackingPage() {
           </Typography>
           <div className="mt-2 flex items-start gap-3">
             <MapPin size={21} className="mt-0.5 shrink-0" />
-            <p className="text-[17px] font-bold">
-              {address?.detail ?? t("tracking.savedAddress")}
-            </p>
+            <AppText as="p" className="text-[17px] font-bold">
+              {order.deliveryAddress ||
+                address?.detail ||
+                t("tracking.savedAddress")}
+            </AppText>
           </div>
+
+          {order.deliveryInstructions ? (
+            <AppText as="p" className="mt-3 text-sm opacity-80">
+              {order.deliveryInstructions}
+            </AppText>
+          ) : null}
 
           {order.leaveAtDoor ? (
             <Typography
@@ -300,12 +334,12 @@ export default function TrackingPage() {
                 {t("tracking.pinTitle")}
               </Typography>
               {order.deliveryPin ? (
-                <p
+                <AppText as="p"
                   data-testid="delivery-pin"
                   className="mt-2 text-2xl font-bold tracking-widest"
                 >
                   {order.deliveryPin}
-                </p>
+                </AppText>
               ) : null}
               <Typography
                 type="body-xs"
@@ -324,7 +358,7 @@ export default function TrackingPage() {
           >
             {delivered ? t("step.delivered.label") : t("tracking.estimate")}
           </Typography>
-          <p className="mt-1 text-[25px] font-bold">{etaLabel}</p>
+          <AppText as="p" className="mt-1 text-[25px] font-bold">{etaLabel}</AppText>
           {arrivalAt && !delivered ? (
             <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
               {t("tracking.arrivalBy", {
@@ -351,15 +385,12 @@ export default function TrackingPage() {
               {t("tracking.delayNotice")}
             </Typography>
           ) : null}
-          <div className="mt-5 h-2 overflow-hidden rounded-full bg-current/20">
-            <div
-              className="h-full rounded-full bg-accent transition-all duration-700"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="mt-5 rounded-2xl bg-surface-secondary p-4 text-foreground">
+            <OrderProgress stepIndex={safeStep} />
           </div>
-          <p className="mt-3 text-[12px] font-semibold opacity-70">
+          <AppText as="p" className="mt-3 text-[12px] font-semibold opacity-70">
             {t(`step.${currentStep.key}.hint`)}
-          </p>
+          </AppText>
         </div>
 
         <Button

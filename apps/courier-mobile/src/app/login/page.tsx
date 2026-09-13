@@ -1,9 +1,11 @@
-'use client';
+"use client";
+import { Form } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
 
-import { accountClient, ApiError } from '@repo/api';
-import { Button } from '@heroui/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { accountClient, ApiError } from "@repo/api";
+import { Button } from "@heroui/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
   AccountField,
@@ -11,36 +13,36 @@ import {
   AccountNotice,
   AccountScreen,
   PasswordField,
-} from '@/components/AccountScreen';
-import { getCourierToken, setCourierToken } from '@/lib/auth';
-import { cn } from '@/lib/cn';
-import { hx } from '@/lib/heroui-classes';
+} from "@/components/AccountScreen";
+import { getCourierToken, setCourierToken } from "@/lib/auth";
+import { cn } from "@/lib/cn";
+import { hx } from "@/lib/heroui-classes";
 
 export default function CourierLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    if (getCourierToken()) router.replace('/home/');
+    if (getCourierToken()) router.replace("/home/");
   }, [router]);
 
   const submit = async () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await accountClient.loginAsRole('courier', {
-        method: 'password',
+      const res = await accountClient.loginAsRole("courier", {
+        method: "password",
         email,
         password,
       });
       setCourierToken(res.accessToken);
-      router.replace('/home/');
+      router.replace("/home/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Login failed');
+      setError(err instanceof ApiError ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ export default function CourierLoginPage() {
       {error ? <AccountNotice tone="danger">{error}</AccountNotice> : null}
       {notice ? <AccountNotice>{notice}</AccountNotice> : null}
 
-      <form
+      <Form
         className="mt-4 grid gap-5"
         onSubmit={(event) => {
           event.preventDefault();
@@ -82,33 +84,36 @@ export default function CourierLoginPage() {
         />
         <Button
           variant="ghost"
-          onPress={() => setNotice('Contact dispatch to reset your courier password.')}
+          onPress={() =>
+            setNotice("Contact dispatch to reset your courier password.")
+          }
           className="h-auto justify-end self-end px-1 py-1 font-semibold text-danger"
         >
           Forget Password?
         </Button>
         <Button
-          type="button"
+          type="submit"
           variant="primary"
           isPending={loading}
-          onPress={() => void submit()}
+
           className={hx.btnPrimary}
         >
-          {loading ? 'Logging in…' : 'Log In'}
+          {loading ? "Logging in…" : "Log In"}
         </Button>
-      </form>
+      </Form>
 
       <p className="mt-6 text-center text-sm font-medium text-muted">
-        Don&apos;t Have Account?{' '}
-        <button
+        Don&apos;t Have Account?{" "}
+        <FormButton
+          variant="ghost"
           type="button"
           className="font-bold text-foreground outline-none focus-visible:underline"
-          onClick={() =>
-            setNotice('Courier accounts are created by your dispatch manager.')
+          onPress={() =>
+            setNotice("Courier accounts are created by your dispatch manager.")
           }
         >
           Sign Up
-        </button>
+        </FormButton>
       </p>
 
       <div className="mt-auto pt-10">
@@ -118,14 +123,14 @@ export default function CourierLoginPage() {
           <span className="h-px flex-1 bg-border" />
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          {['Google', 'Apple'].map((provider) => (
+          {["Google", "Apple"].map((provider) => (
             <Button
               key={provider}
               variant="secondary"
               onPress={() => {
                 setNotice(`${provider} login is not configured yet.`);
               }}
-              className={cn(hx.btnSecondary, 'h-16 rounded-2xl')}
+              className={cn(hx.btnSecondary, "h-16 rounded-2xl")}
             >
               {provider}
             </Button>

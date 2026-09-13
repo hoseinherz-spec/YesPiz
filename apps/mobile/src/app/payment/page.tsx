@@ -1,7 +1,15 @@
 "use client";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+
+import { AppText } from "@/components/Text";
+
+import { FormScope, RadioField } from "@repo/ui/forms";
+import { Form, Input } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
 
 import { Button, Card, Separator, Typography } from "@heroui/react";
 import {
+  walletClient,
   ordersClient,
   paymentsClient,
   type PaymentMethod,
@@ -37,6 +45,13 @@ import { hx } from "@/lib/heroui-classes";
 
 const METHODS = [
   {
+    id: "wallet",
+    icon: CreditCard,
+    titleKey: "payment.wallet",
+    detailKey: "payment.walletDetail",
+    api: "wallet" as PaymentMethod,
+  },
+  {
     id: "card",
     icon: CreditCard,
     titleKey: "payment.card",
@@ -68,6 +83,14 @@ export default function PaymentPage() {
   const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>(() =>
     typeof window === "undefined" ? "card" : readPaymentMethod(),
   );
+  const [creditCents, setCreditCents] = useState<number | null>(null);
+  useEffect(() => {
+    if (accessToken)
+      void walletClient
+        .statement({ accessToken })
+        .then((value) => setCreditCents(value.balanceCents))
+        .catch(() => setCreditCents(null));
+  }, [accessToken]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cashAvail, setCashAvail] = useState<Awaited<
@@ -94,21 +117,39 @@ export default function PaymentPage() {
     (pendingOrder?.subtotalCents ?? quote?.subtotalCents ?? 0) / 100;
   const deliveryFee =
     (pendingOrder?.deliveryFeeCents ?? quote?.deliveryFeeCents ?? 0) / 100;
-  const discount = 0;
+  const discount =
+    (pendingOrder?.discountCents ?? quote?.discountCents ?? 0) / 100;
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const checkoutRequest = useMemo<CreateOrderRequest>(
     () => ({
       menuVersion,
+      couponCode: couponCode || undefined,
+      campaignCode: (() => {
+        try {
+          return typeof window === "undefined"
+            ? undefined
+            : sessionStorage.getItem("yespizz_campaign") || undefined;
+        } catch {
+          return undefined;
+        }
+      })(),
       addressId: selectedAddressId,
       paymentMethod: method,
-      lines: items.map(({ menuItemId, quantity, size, extras }) => ({
-        menuItemId,
-        quantity,
-        size,
-        extras,
-      })),
+      lines: items.map(
+        ({ menuItemId, quantity, size, extras, variantId, selections }) => ({
+          menuItemId,
+          variantId,
+          selections,
+          quantity,
+          size,
+          extras,
+        }),
+      ),
       ...(() => {
         const prefs = readCheckoutPrefs();
         return {
+          scheduledAt: prefs.scheduledAt,
           leaveAtDoor: prefs.leaveAtDoor,
           deliveryEntrance: prefs.deliveryEntrance,
           deliveryFloor: prefs.deliveryFloor,
@@ -118,7 +159,7 @@ export default function PaymentPage() {
         };
       })(),
     }),
-    [items, menuVersion, selectedAddressId, method],
+    [items, menuVersion, selectedAddressId, method, couponCode],
   );
 
   useEffect(() => {
@@ -136,7 +177,13 @@ export default function PaymentPage() {
           const order = await ordersClient.get(resumeId, { accessToken });
           if (!cancelled) {
             setPendingOrder(order);
-            setMethod(order.paymentMethod === "cash" ? "cash" : "card");
+            setMethod(
+              order.paymentMethod === "cash"
+                ? "cash"
+                : order.paymentMethod === "wallet"
+                  ? "wallet"
+                  : "card",
+            );
           }
         } else if (
           checkoutRequest.addressId &&
@@ -315,163 +362,201 @@ export default function PaymentPage() {
     }
   };
 
+  // Redirect-based methods return to the saved order; only the API can confirm payment.
+  const confirmedReturn = useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (
+      !resumeId ||
+      !accessToken ||
+      !pendingOrder ||
+      !params.has("payment_intent") ||
+      confirmedReturn.current === resumeId
+    )
+      return;
+    confirmedReturn.current = resumeId;
+    void onStripeSuccess();
+    // The persisted order must be loaded before processing a provider redirect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId, accessToken, pendingOrder, search]);
+
   return (
-    <AppFrame className="!pb-36">
-      <ScreenHeader
-        title={t("payment.title")}
-        subtitle={t("payment.subtitle")}
-        backHref="/checkout/"
-      />
-
-      {stripeSecret ? (
-        <StripePaymentSheet
-          clientSecret={stripeSecret}
-          amountLabel={formatPrice(total)}
-          processingLabel={t("payment.processing")}
-          payLabel={t("payment.pay", { amount: "{amount}" })}
-          cancelLabel={t("payment.cancelStripe")}
-          errorFallback={t("payment.error")}
-          onCancel={() => {
-            setStripeSecret(null);
-            setError(t("payment.stripeCancelled"));
-          }}
-          onSuccess={onStripeSuccess}
+    <FormScope>
+      <AppFrame className="!pb-36">
+        <ScreenHeader
+          title={t("payment.title")}
+          subtitle={t("payment.subtitle")}
+          backHref="/checkout/"
         />
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {METHODS.map((item) => {
-            const active =
-              (pendingOrder?.paymentMethod ?? selectedMethod) === item.id;
-            const Icon = item.icon;
-            const disabled =
-              busy ||
-              Boolean(pendingOrder) ||
-              (item.id === "cash" && cashDisabled);
-            return (
-              <Button
-                key={item.id}
-                variant="secondary"
-                isDisabled={disabled}
-                onPress={() => setMethod(item.id)}
-                className={cn(
-                  "h-auto min-h-[82px] w-full justify-start gap-3 rounded-[24px] border px-3 py-3 text-left shadow-none",
-                  active
-                    ? "border-foreground bg-surface-secondary"
-                    : "border-border bg-card",
-                  disabled && "opacity-50",
-                )}
-              >
-                <span className="flex size-13 shrink-0 items-center justify-center rounded-[17px] bg-card text-foreground">
-                  <Icon size={21} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[16px] font-bold text-foreground">
-                    {t(item.titleKey)}
-                  </span>
-                  <span className="block text-[12px] font-medium text-muted">
-                    {t(item.detailKey)}
-                  </span>
-                  {item.id === "cash" && cashReasonLabel ? (
-                    <span className="mt-1 block text-[11px] font-semibold text-warning">
+
+        {stripeSecret ? (
+          <StripePaymentSheet
+            clientSecret={stripeSecret}
+            amountLabel={formatPrice(total)}
+            processingLabel={t("payment.processing")}
+            payLabel={t("payment.pay", { amount: "{amount}" })}
+            cancelLabel={t("payment.cancelStripe")}
+            errorFallback={t("payment.error")}
+            onCancel={() => {
+              setStripeSecret(null);
+              setError(t("payment.stripeCancelled"));
+            }}
+            onSuccess={onStripeSuccess}
+          />
+        ) : (
+          <RadioField
+            name="paymentMethod"
+            label={t("checkout.payment")}
+            required
+            disabled={busy || Boolean(pendingOrder)}
+            value={pendingOrder?.paymentMethod ?? selectedMethod}
+            onChange={(v) => setMethod(v as typeof selectedMethod)}
+            options={METHODS.map((item) => ({
+              id: item.id,
+              disabled:
+                (item.id === "cash" && cashDisabled) ||
+                (item.id === "wallet" &&
+                  (creditCents === null ||
+                    creditCents < Math.round(total * 100))),
+              label: (
+                <AppText as="span">
+                  <AppText as="strong">
+                    {item.id === "wallet" ? "Yespizz credit" : t(item.titleKey)}
+                  </AppText>
+                  <AppText as="span" className="block text-xs text-muted">
+                    {item.id === "wallet"
+                      ? `${creditCents === null ? "—" : formatPrice(creditCents / 100)} available · full-order payment`
+                      : t(item.detailKey)}
+                  </AppText>
+                  {item.id === "cash" && cashReasonLabel && (
+                    <AppText as="span" className="text-xs text-warning">
                       {cashReasonLabel}
-                    </span>
-                  ) : null}
-                </span>
-                <span
-                  className={cn(
-                    "size-6 shrink-0 rounded-full border-2 p-1",
-                    active ? "border-foreground" : "border-border",
+                    </AppText>
                   )}
-                >
-                  <span
-                    className={cn(
-                      "block size-full rounded-full",
-                      active && "bg-foreground",
-                    )}
-                  />
-                </span>
-              </Button>
-            );
-          })}
-        </div>
-      )}
+                </AppText>
+              ),
+            }))}
+          />
+        )}
 
-      {!stripeSecret ? (
-        <Typography type="body-xs" className={cn(hx.caption, "mt-3")}>
-          {t("payment.stripeDisclosure")}
-        </Typography>
-      ) : null}
-
-      {quoteBusy ? (
-        <p role="status" className="mt-4 text-sm text-muted">
-          Checking your order…
-        </p>
-      ) : null}
-      {!authed ? (
-        <Button
-          className="mt-4"
-          onPress={() => router.push("/login/?next=/payment/")}
-        >
-          Sign in to order
-        </Button>
-      ) : null}
-      {error ? (
-        <div
-          role="alert"
-          className="mt-4 rounded-[20px] bg-[color-mix(in_oklab,var(--danger)_12%,transparent)] px-4 py-3"
-        >
-          <Typography type="body-sm" className="text-danger">
-            {error}
+        {!stripeSecret ? (
+          <Typography type="body-xs" className={cn(hx.caption, "mt-3")}>
+            {t("payment.stripeDisclosure")}
           </Typography>
-        </div>
-      ) : null}
+        ) : null}
 
-      {!stripeSecret ? (
-        <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
-          <Card.Content className="p-0">
-            <Typography type="h3" className={cn(hx.h3, "mb-4")}>
-              {t("payment.summary")}
+        {!pendingOrder && !resumeId && (
+          <Form
+            className="my-4 rounded-2xl border border-border p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setCouponCode(couponInput.trim().toUpperCase());
+            }}
+          >
+            <Input
+              label={<>Discount code</>}
+              wrapperClassName="text-sm"
+              className="mt-2 w-full rounded-xl bg-field-background p-3"
+              maxLength={32}
+              value={couponInput}
+              onChange={(e) => setCouponInput(e.target.value)}
+            />
+            <div className="mt-3 flex gap-3">
+              <FormButton
+                variant="ghost"
+                type="submit"
+                isDisabled={busy || quoteBusy}
+                className="underline"
+              >
+                Apply code
+              </FormButton>
+              {couponCode && (
+                <FormButton
+                  variant="ghost"
+                  type="button"
+                  className="underline"
+                  onPress={() => {
+                    setCouponCode("");
+                    setCouponInput("");
+                  }}
+                >
+                  Remove code
+                </FormButton>
+              )}
+            </div>
+          </Form>
+        )}
+        {quoteBusy ? (
+          <AppText as="p" role="status" className="mt-4 text-sm text-muted">
+            Checking your order…
+          </AppText>
+        ) : null}
+        {!authed ? (
+          <Button
+            className="mt-4"
+            onPress={() => router.push("/login/?next=/payment/")}
+          >
+            Sign in to order
+          </Button>
+        ) : null}
+        {error ? (
+          <div
+            role="alert"
+            className="mt-4 rounded-[20px] bg-[color-mix(in_oklab,var(--danger)_12%,transparent)] px-4 py-3"
+          >
+            <Typography type="body-sm" className="text-danger">
+              {error}
             </Typography>
-            <div className="flex items-center justify-between text-[14px] text-muted">
-              <span>{t("common.subtotal")}</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            {discount > 0 ? (
-              <div className="mt-3 flex items-center justify-between text-[14px] text-success">
-                <span>{t("common.discount")}</span>
-                <span>−{formatPrice(discount)}</span>
-              </div>
-            ) : null}
-            <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
-              <span>{t("common.delivery")}</span>
-              <span>{formatPrice(deliveryFee)}</span>
-            </div>
-            <Separator className="my-4 bg-border" />
-            <div className="flex items-center justify-between">
-              <span className="text-[16px] font-semibold text-muted">
-                {t("common.total")}
-              </span>
-              <span className="text-[23px] font-bold text-foreground">
-                {formatPrice(total)}
-              </span>
-            </div>
-          </Card.Content>
-        </Card>
-      ) : null}
+          </div>
+        ) : null}
 
-      {!stripeSecret ? (
-        <MobileActionBar
-          onPress={() => void pay()}
-          icon={<ShoppingBag size={20} />}
-          isDisabled={busy || quoteBusy || (!pendingOrder && !quote)}
-          isPending={busy || quoteBusy}
-          label={
-            busy || quoteBusy
-              ? t("payment.processing")
-              : t("payment.pay", { amount: formatPrice(total) })
-          }
-        />
-      ) : null}
-    </AppFrame>
+        {!stripeSecret ? (
+          <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
+            <Card.Content className="p-0">
+              <Typography type="h3" className={cn(hx.h3, "mb-4")}>
+                {t("payment.summary")}
+              </Typography>
+              <div className="flex items-center justify-between text-[14px] text-muted">
+                <AppText as="span">{t("common.subtotal")}</AppText>
+                <AppText as="span"><AnimatedNumber currency value={subtotal} /></AppText>
+              </div>
+              {discount > 0 ? (
+                <div className="mt-3 flex items-center justify-between text-[14px] text-success">
+                  <AppText as="span">{t("common.discount")}</AppText>
+                  <AppText as="span">−<AnimatedNumber currency value={discount} /></AppText>
+                </div>
+              ) : null}
+              <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
+                <AppText as="span">{t("common.delivery")}</AppText>
+                <AppText as="span"><AnimatedNumber currency value={deliveryFee} /></AppText>
+              </div>
+              <Separator className="my-4 bg-border" />
+              <div className="flex items-center justify-between">
+                <AppText as="span" className="text-[16px] font-semibold text-muted">
+                  {t("common.total")}
+                </AppText>
+                <AppText as="span" className="text-[23px] font-bold text-foreground">
+                  <AnimatedNumber currency value={total} />
+                </AppText>
+              </div>
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {!stripeSecret ? (
+          <MobileActionBar
+            onPress={() => void pay()}
+            icon={<ShoppingBag size={20} />}
+            isDisabled={busy || quoteBusy || (!pendingOrder && !quote)}
+            isPending={busy || quoteBusy}
+            label={
+              busy || quoteBusy
+                ? t("payment.processing")
+                : t("payment.pay", { amount: formatPrice(total) })
+            }
+          />
+        ) : null}
+      </AppFrame>
+    </FormScope>
   );
 }

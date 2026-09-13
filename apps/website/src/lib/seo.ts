@@ -112,12 +112,6 @@ export function createJsonLd() {
         price: "0",
         priceCurrency: "EUR",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        ratingCount: "1200",
-        bestRating: "5",
-      },
     },
     {
       "@context": "https://schema.org",

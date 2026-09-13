@@ -1,0 +1,316 @@
+.mobile-transition-page {
+  min-height: 100dvh;
+  flex: 1;
+}
+
+/* Snapshot transforms never change the containing block of fixed app bars. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(mobile-page) {
+  animation-duration: var(--app-motion-page, 360ms);
+  animation-timing-function: var(
+    --app-motion-ease,
+    cubic-bezier(0.22, 1, 0.36, 1)
+  );
+}
+::view-transition-old(mobile-page),
+::view-transition-new(mobile-page) {
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  mix-blend-mode: normal;
+  animation: var(--app-motion-control, 220ms) var(--app-motion-ease, ease) both
+    mobile-fade-in;
+}
+::view-transition-old(mobile-page) {
+  animation-name: mobile-fade-out;
+}
+::view-transition-new(.mobile-zoom-in),
+::view-transition-old(.mobile-zoom-out) {
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both mobile-zoom-in;
+}
+::view-transition-old(.mobile-zoom-out) {
+  animation-direction: reverse;
+}
+::view-transition-old(.mobile-zoom-in),
+::view-transition-new(.mobile-zoom-out) {
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both mobile-recede;
+}
+::view-transition-new(.mobile-zoom-out) {
+  animation-direction: reverse;
+}
+::view-transition-new(.mobile-sheet-in),
+::view-transition-old(.mobile-sheet-out) {
+  z-index: 2;
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both mobile-sheet;
+}
+::view-transition-old(.mobile-sheet-out) {
+  animation-direction: reverse;
+}
+::view-transition-old(.mobile-sheet-in),
+::view-transition-new(.mobile-sheet-out) {
+  animation: none;
+  opacity: 1;
+}
+::view-transition-new(.mobile-slide-forward),
+::view-transition-old(.mobile-slide-back) {
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both
+    mobile-from-right;
+}
+::view-transition-old(.mobile-slide-back) {
+  animation-direction: reverse;
+}
+::view-transition-old(.mobile-slide-forward),
+::view-transition-new(.mobile-slide-back) {
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both mobile-to-left;
+}
+::view-transition-new(.mobile-slide-back) {
+  animation-direction: reverse;
+}
+@keyframes mobile-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mobile-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes mobile-zoom-in {
+  from {
+    transform: scale(0.88);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes mobile-recede {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.06);
+    opacity: 0;
+  }
+}
+@keyframes mobile-sheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes mobile-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes mobile-to-left {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-30%);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* Default drill: an opaque foreground over a 20% parallax layer. */
+::view-transition-new(.mobile-drill-in),
+::view-transition-old(.mobile-drill-out) {
+  z-index: 2;
+  opacity: 1;
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both
+    mobile-drill-cover;
+}
+::view-transition-old(.mobile-drill-out) {
+  animation-direction: reverse;
+}
+::view-transition-old(.mobile-drill-in),
+::view-transition-new(.mobile-drill-out) {
+  z-index: 1;
+  opacity: 1;
+  animation: var(--app-motion-page, 360ms)
+    var(--app-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)) both
+    mobile-drill-parallax;
+}
+::view-transition-new(.mobile-drill-out) {
+  animation-direction: reverse;
+}
+@keyframes mobile-drill-cover {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes mobile-drill-parallax {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-20%);
+  }
+}
+
+/* Peer screens travel the same distance; hierarchy uses drill's parallax. */
+::view-transition-old(.mobile-slide-forward),
+::view-transition-new(.mobile-slide-back) {
+  animation-name: mobile-slide-leave;
+}
+@keyframes mobile-slide-leave {
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+::view-transition-group(.mobile-hero) {
+  z-index: 3;
+  animation-duration: var(--app-motion-page, 360ms);
+  animation-timing-function: var(--app-motion-ease, ease);
+}
+::view-transition-old(.mobile-hero),
+::view-transition-new(.mobile-hero) {
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(.mobile-axis-forward),
+::view-transition-old(.mobile-axis-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-axis-enter;
+}
+::view-transition-old(.mobile-axis-forward),
+::view-transition-new(.mobile-axis-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-axis-leave;
+}
+::view-transition-old(.mobile-axis-back),
+::view-transition-new(.mobile-axis-back) {
+  animation-direction: reverse;
+}
+
+::view-transition-new(.mobile-strip-forward),
+::view-transition-old(.mobile-strip-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-strip-enter;
+}
+::view-transition-old(.mobile-strip-forward),
+::view-transition-new(.mobile-strip-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-strip-leave;
+}
+::view-transition-old(.mobile-strip-back),
+::view-transition-new(.mobile-strip-back) {
+  animation-direction: reverse;
+}
+
+::view-transition-new(.mobile-scroll-forward),
+::view-transition-old(.mobile-scroll-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-scroll-enter;
+}
+::view-transition-old(.mobile-scroll-forward),
+::view-transition-new(.mobile-scroll-back) {
+  animation: var(--app-motion-page, 360ms) var(--app-motion-ease, ease) both
+    mobile-scroll-leave;
+}
+::view-transition-old(.mobile-scroll-back),
+::view-transition-new(.mobile-scroll-back) {
+  animation-direction: reverse;
+}
+
+@keyframes mobile-axis-enter {
+  from {
+    transform: translateX(32px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mobile-axis-leave {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-32px) scale(0.98);
+    opacity: 0;
+  }
+}
+@keyframes mobile-strip-enter {
+  from {
+    transform: perspective(1200px) translateX(100%) rotateY(-20deg) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mobile-strip-leave {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: perspective(1200px) translateX(-100%) rotateY(20deg) scale(0.92);
+    opacity: 0;
+  }
+}
+@keyframes mobile-scroll-enter {
+  from {
+    transform: translateY(48px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mobile-scroll-leave {
+  from {
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-48px);
+    opacity: 0;
+  }
+}

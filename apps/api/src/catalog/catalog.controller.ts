@@ -18,6 +18,8 @@ import {
   CreateMenuItemDto,
   CreateMenuVersionDto,
   UpdateMenuItemDto,
+  UpdateCategoryDto,
+  ScheduleMenuDto,
 } from "./dto/catalog.dto";
 
 @ApiTags("catalog")
@@ -84,5 +86,28 @@ export class CatalogController {
   @Patch("items/:itemId")
   updateItem(@Param("itemId") itemId: string, @Body() dto: UpdateMenuItemDto) {
     return this.catalog.updateItem(itemId, dto);
+  }
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch("categories/:id")
+  updateCategory(@Param("id") id: string, @Body() dto: UpdateCategoryDto) {
+    return this.catalog.updateCategory(id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post("versions/:id/clone")
+  cloneVersion(@Param("id") id: string) {
+    return this.catalog.cloneVersion(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post("versions/:id/schedule")
+  schedule(@Param("id") id: string, @Body() dto: ScheduleMenuDto) {
+    return this.catalog.schedulePublish(id, dto.scheduledPublishAt);
   }
 }

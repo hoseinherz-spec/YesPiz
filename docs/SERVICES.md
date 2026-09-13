@@ -70,12 +70,12 @@ See `apps/api/test/full-lifecycle.e2e-spec.ts`.
 
 ### Apple Sign-In
 
-- Still hidden on mobile login — not implemented.
+- Apple JS sign-in and server token verification are implemented on web login/signup. Configure the registered Services ID and HTTPS return URL; see [social sign-in](PAYMENTS-AND-SOCIAL-LOGIN.md). Native system-browser OAuth and live provider acceptance remain open.
 
 ### Known Phase 1 gaps (do not document as done)
 
 - Dispatch ranking still uses open-order count more than prep-weight workload.
-- Scheduled orders remain deferred. Leave-at-door and entrance details are persisted on checkout.
+- Scheduled order starts are implemented: paid orders wait until the selected start time, then the dispatch scheduler releases them. This is a start time, not a guaranteed delivery slot. Leave-at-door and entrance details are persisted on checkout.
 
 ### Phase 2 progress (partial)
 

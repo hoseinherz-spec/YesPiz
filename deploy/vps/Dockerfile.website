@@ -1,0 +1,8 @@
+FROM yespizz-runtime:latest
+USER root
+ARG PUBLIC_APP_URL=http://185.105.239.140:8051
+ENV NEXT_PUBLIC_APP_URL=$PUBLIC_APP_URL NODE_OPTIONS=--max-old-space-size=1536
+RUN npm exec --workspace=website -- next build --webpack && chown -R node:node /app/apps/website/.next
+ENV NODE_OPTIONS=--max-old-space-size=384
+USER node
+CMD ["npm", "run", "start", "--workspace=website"]

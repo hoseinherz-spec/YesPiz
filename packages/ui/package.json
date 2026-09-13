@@ -3,12 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "exports": {
-    "./*": "./src/*.tsx"
+    "./*": "./src/*.tsx",
+    "./mobile-transitions.css": "./src/mobile-transitions.css"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test:forms": "node --import tsx --test src/form-schemas.test.ts"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
@@ -17,10 +19,16 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
+    "tsx": "^4.23.13",
     "typescript": "5.9.2"
   },
   "dependencies": {
+    "@heroui/react": "^3.2.4",
+    "@hookform/resolvers": "^5.9.1",
+    "motion": "^12.42.2",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.87.0",
+    "zod": "^4.4.3"
   }
 }

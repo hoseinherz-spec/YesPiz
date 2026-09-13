@@ -1,3 +1,4 @@
+import type { PizzaSelection } from "../../catalog/customization";
 import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
@@ -12,6 +13,19 @@ export type OrderDocument = HydratedDocument<Order>;
 
 @Schema({ _id: false })
 export class OrderLine {
+  @Prop() pizzaId?: string;
+  @Prop() variantId?: string;
+  @Prop({ type: [MongoSchema.Types.Mixed], default: [] })
+  selections!: PizzaSelection[];
+  @Prop({ type: [String], default: [] }) selectionLabels!: string[];
+  @Prop({ type: MongoSchema.Types.Mixed }) recipeSnapshot?: {
+    recipeIngredients: Array<{ name: string; weightGrams: number }>;
+    checklistTemplate: string[];
+    requiresNumberedSeal: boolean;
+    requiresReadyPhoto: boolean;
+    handoffTempC: number;
+  };
+
   @Prop({ type: MongoSchema.Types.ObjectId, required: true })
   menuItemId!: Types.ObjectId;
 
@@ -73,6 +87,11 @@ const OrderOfferSchema = SchemaFactory.createForClass(OrderOffer);
 
 @Schema({ timestamps: true, collection: "orders" })
 export class Order {
+  @Prop() couponCode?: string;
+  @Prop({ default: 0 }) discountCents!: number;
+  @Prop()
+  campaignCode?: string;
+
   @Prop() cancellationReason?: string;
   @Prop() cancelledBy?: string;
   @Prop() refundStatus?: string;
@@ -261,6 +280,12 @@ export class Order {
 
   @Prop()
   compensatedAt?: Date;
+
+  @Prop()
+  promisedDeliveryAt?: Date;
+
+  @Prop()
+  deliveredAt?: Date;
 
   @Prop()
   completedAt?: Date;

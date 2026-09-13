@@ -150,10 +150,6 @@ export async function seedApplication(app: INestApplicationContext) {
       name: "Pizzas",
       sortOrder: 1,
     });
-    const drinks = await catalog.addCategory(version.id, {
-      name: "Drinks",
-      sortOrder: 2,
-    });
 
     await catalog.addItem(version.id, {
       categoryId: pizzas.id,
@@ -178,13 +174,6 @@ export async function seedApplication(app: INestApplicationContext) {
       priceCents: 1199,
       prepWeight: 1.1,
       tags: ["vegetarian"],
-    });
-    await catalog.addItem(version.id, {
-      categoryId: drinks.id,
-      name: "Cola 0.33l",
-      description: "Chilled soft drink",
-      priceCents: 249,
-      prepWeight: 0.2,
     });
 
     await catalog.publish(version.id);

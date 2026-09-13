@@ -1,4 +1,7 @@
 "use client";
+import { Form, TextArea } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiRequest, withAuth } from "../core";
 export function OrderChat({
@@ -79,33 +82,35 @@ export function OrderChat({
           </p>
         ))}
       </div>
-      <form
+      <Form
         onSubmit={(event) => {
           event.preventDefault();
           void send();
         }}
         className="space-y-2"
       >
-        <label>
-          Message
-          <textarea
-            className="block w-full rounded-2xl border border-border bg-field-background p-3"
-            value={text}
-            maxLength={1000}
-            onChange={(event) => setText(event.target.value)}
-          />
-        </label>
-        <button
-          disabled={busy || !text.trim()}
+        <TextArea
+          label={<>Message</>}
+          className="block w-full rounded-2xl border border-border bg-field-background p-3"
+          value={text}
+          maxLength={1000}
+          onChange={(event) => setText(event.target.value)}
+        />
+        <FormButton
+          variant="ghost"
+          type="submit"
+          isDisabled={busy || !text.trim()}
           className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
         >
           Send message
-        </button>
-      </form>
-      <button
-        disabled={busy}
+        </FormButton>
+      </Form>
+      <FormButton
+        variant="ghost"
+        type="button"
+        isDisabled={busy}
         className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
-        onClick={() => {
+        onPress={() => {
           setBusy(true);
           setError("");
           void apiRequest<{ message: string }>(
@@ -122,7 +127,7 @@ export function OrderChat({
         }}
       >
         Connect by phone
-      </button>
+      </FormButton>
       {error && <p role="alert">{error}</p>}
       {status && <p role="status">{status}</p>}
     </section>

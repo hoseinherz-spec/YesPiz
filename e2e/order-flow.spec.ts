@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { startRoleApp, stopRoleApp, stopRoleApps } from "./role-servers";
+test.afterAll(stopRoleApps);
 
 async function login(
   page: Page,
@@ -32,20 +34,61 @@ test.beforeAll(async ({ request }) => {
   );
   expect(login.ok()).toBeTruthy();
   const { accessToken } = await login.json();
+  // Configure the pizza through the same API used by the menu editor.
+  const menu = await (
+    await request.get("http://localhost:8158/api/v1/catalog/menu")
+  ).json();
+  const pizza = menu.items.find(
+    (item: { name: string }) => item.name === "Margherita",
+  );
+  const configured = await request.patch(
+    `http://localhost:8158/api/v1/catalog/items/${pizza.id}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: {
+        customization: {
+          variants: [
+            { id: "medium", name: "Medium", priceCents: 899, isActive: true },
+            { id: "large", name: "Large", priceCents: 1199, isActive: true },
+          ],
+          groups: [
+            {
+              id: "extras",
+              name: "Extras",
+              min: 0,
+              max: 2,
+              options: [
+                {
+                  id: "extra-cheese",
+                  name: "Extra Cheese",
+                  priceCents: 150,
+                  isActive: true,
+                  variantIds: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  );
+  expect(configured.ok()).toBeTruthy();
   const couriers = await request.get(
     "http://localhost:8158/api/v1/couriers/operations",
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   const rows = await couriers.json();
-  const code = await request.post(
-    "http://localhost:8158/api/v1/couriers/sessions/code",
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      data: { courierId: rows[0].userId, action: "start" },
-    },
-  );
-  expect(code.ok()).toBeTruthy();
-  shiftCode = (await code.json()).code;
+  if (!rows[0].session) {
+    const code = await request.post(
+      "http://localhost:8158/api/v1/couriers/sessions/code",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        data: { courierId: rows[0].userId, action: "start" },
+      },
+    );
+    expect(code.ok()).toBeTruthy();
+    shiftCode = (await code.json()).code;
+  }
 
   const updated = await request.patch(
     "http://localhost:8158/api/v1/app-config",
@@ -75,7 +118,11 @@ for (const method of ["card", "cash"] as const) {
     const customer = await customerContext.newPage();
     const kitchen = await kitchenContext.newPage();
     const courier = await courierContext.newPage();
+    const courierErrors: string[] = [];
+    courier.on("pageerror", (error) => courierErrors.push(error.message));
     try {
+      await startRoleApp("provider-panel", 8184);
+      await startRoleApp("courier-mobile", 8153);
       console.log(`${method}: signing in`);
       await login(
         customer,
@@ -111,6 +158,29 @@ for (const method of ["card", "cash"] as const) {
           .click();
         await expect(courier.getByText(/^On duty/)).toBeVisible();
       }
+      await kitchen.goto("http://localhost:8184/operations/");
+      const cap = kitchen.getByLabel("Accept cap (blank = no limit)");
+      await expect(cap).toBeVisible();
+      await cap.fill("12");
+      await kitchen.getByRole("button", { name: "Save accept cap" }).click();
+      await expect(
+        kitchen.getByText("12 spaces remaining before new offers stop."),
+      ).toBeVisible();
+      await cap.fill("");
+      await kitchen.getByRole("button", { name: "Save accept cap" }).click();
+      await expect(kitchen.getByText(/^No capacity limit/)).toBeVisible();
+      const item = kitchen
+        .getByRole("listitem")
+        .filter({ hasText: "Margherita" });
+      await item.getByRole("button", { name: "86 item" }).click();
+      await expect(item.getByRole("button", { name: "Restore" })).toBeVisible();
+      await kitchen.reload();
+      await expect(
+        kitchen.getByLabel("Accept cap (blank = no limit)"),
+      ).toHaveValue("");
+      await item.getByRole("button", { name: "Restore" }).click();
+      await expect(item.getByRole("button", { name: "86 item" })).toBeVisible();
+      await kitchen.goto("http://localhost:8184/offers/");
       await customer.bringToFront();
       console.log(`${method}: saving address and building cart`);
       // Save a real delivery coordinate through the customer's address screen.
@@ -118,21 +188,33 @@ for (const method of ["card", "cash"] as const) {
       await customer
         .locator('input[name="street"]')
         .fill("Maximilianstrasse 12");
+      await customer.locator('input[name="postalCode"]').fill("80539");
       await customer.locator('input[name="latitude"]').fill("48.14");
       await customer.locator('input[name="longitude"]').fill("11.58");
+      const addressSaved = customer.waitForResponse(
+        (response) =>
+          response.url().endsWith("/orders/addresses") &&
+          response.request().method() === "POST",
+      );
       await customer
         .locator("form")
         .getByRole("button", { name: /save|add address/i })
         .click();
-      await expect(customer).toHaveURL(/checkout/);
+      const savedAddress = await (await addressSaved).json();
+      expect(savedAddress.latitude).toBe(48.14);
+      expect(savedAddress.longitude).toBe(11.58);
+      await expect(customer).toHaveURL(/\/checkout\/?$/);
       await customer.goto("http://localhost:8151/menu/");
       await customer
-        .getByRole("button", { name: "Margherita", exact: true })
+        .getByRole("link", { name: "Margherita", exact: true })
         .first()
         .click();
       await expect(customer).toHaveURL(/pizza/);
-      await customer.getByRole("button", { name: /Large/ }).click();
-      await customer.getByRole("button", { name: /Extra Cheese/i }).click();
+      await customer.getByText("Large · €11.99", { exact: true }).click();
+      await expect(
+        customer.getByRole("radio", { name: /Large/ }),
+      ).toBeChecked();
+      await customer.getByText("Extra Cheese +€1.50", { exact: true }).click();
       await customer.getByRole("button", { name: /Add to cart/i }).click();
       await expect(customer).toHaveURL(/cart/);
       await customer.reload();
@@ -143,9 +225,10 @@ for (const method of ["card", "cash"] as const) {
       await customer.locator('input[name="floor"]').fill("3");
       await customer.locator('input[name="instructions"]').fill("Ring once");
       await customer
-        .getByRole("button", {
-          name: method === "cash" ? /Cash on delivery/i : /^Card/,
-        })
+        .getByText(
+          method === "cash" ? "Cash on Delivery" : "Online payment · Stripe",
+          { exact: true },
+        )
         .click();
       await customer
         .getByRole("button", { name: /continue.*payment/i })
@@ -166,10 +249,16 @@ for (const method of ["card", "cash"] as const) {
           response.request().method() === "POST",
       );
       await customer.getByRole("button", { name: /Pay.*16.48/ }).click();
-      const order = await (await created).json();
+      const createdResponse = await created;
+      const order = await createdResponse.json();
+      expect(
+        createdResponse.request().postDataJSON().addressId,
+        "Checkout preserves the newly selected address",
+      ).toBe(savedAddress.id ?? savedAddress._id);
       await expect(customer).toHaveURL(/order-success/);
       await customer.getByRole("button", { name: /track/i }).click();
       await expect(customer).toHaveURL(/tracking/);
+      await expect(customer.getByText(/Maximilianstrasse 12/)).toBeVisible();
 
       await kitchen.bringToFront();
       console.log(`${method}: kitchen handoff`);
@@ -183,7 +272,7 @@ for (const method of ["card", "cash"] as const) {
       await kitchen
         .getByRole("button", { name: "Start preparing", exact: true })
         .click();
-      await expect(kitchen.getByText(/large.*extra-cheese/)).toBeVisible();
+      await expect(kitchen.getByText(/Large.*Extra Cheese/)).toBeVisible();
       await expect(kitchen.getByRole("checkbox").first()).toBeVisible();
       await kitchen.screenshot({
         path: `.qa/ui/kitchen-${method}.png`,
@@ -202,8 +291,11 @@ for (const method of ["card", "cash"] as const) {
         fullPage: true,
       });
       await kitchen.setViewportSize({ width: 1280, height: 720 });
-      for (const check of await kitchen.getByRole("checkbox").all())
-        await check.check();
+      for (const check of await kitchen.getByRole("checkbox").all()) {
+        await check.focus();
+        await check.press("Space");
+        await expect(check).toBeChecked();
+      }
       await kitchen
         .getByRole("button", { name: "Submit checklist", exact: true })
         .click();
@@ -238,14 +330,10 @@ for (const method of ["card", "cash"] as const) {
       await kitchen
         .getByRole("button", { name: /create.*batch|create.*suggest/i })
         .click();
-      const courierOption = await kitchen
-        .getByRole("combobox", { name: "Assign courier" })
-        .locator("option")
-        .filter({ hasText: "Demo Courier" })
-        .getAttribute("value");
       await kitchen
         .getByRole("combobox", { name: "Assign courier" })
-        .selectOption(courierOption!);
+        .fill("Demo Courier");
+      await kitchen.getByRole("option", { name: /Demo Courier/ }).click();
       await kitchen
         .getByRole("button", { name: "Assign courier", exact: true })
         .click();
@@ -264,7 +352,9 @@ for (const method of ["card", "cash"] as const) {
         .click();
       await courier.locator('a[href*="/home/batch/"]').last().click();
       await expect(courier).toHaveURL(/\/home\/batch\//, { timeout: 60_000 });
-      await expect(courier.locator('a[href*="/home/order/"]')).toBeVisible({ timeout: 60_000 });
+      await expect(courier.locator('a[href*="/home/order/"]')).toBeVisible({
+        timeout: 60_000,
+      });
       await courier.screenshot({
         path: `.qa/ui/courier-batch-${method}.png`,
         fullPage: true,
@@ -302,10 +392,26 @@ for (const method of ["card", "cash"] as const) {
           ),
         )
         .toBe(true);
-      await courier.getByLabel("Door PIN", { exact: true }).fill(pin);
+      await courier
+        .getByLabel("Door PIN", { exact: true })
+        .fill(pin === "0000" ? "1111" : "0000");
       await courier
         .getByRole("button", { name: "Confirm delivery", exact: true })
         .click();
+      await expect(
+        courier.getByRole("alert").filter({ hasText: /invalid|expired/i }),
+      ).toBeVisible();
+      await courier.getByLabel("Door PIN", { exact: true }).fill(pin);
+      const deliveryResponse = courier.waitForResponse(
+        (response) =>
+          response.url().endsWith("/deliver") &&
+          response.request().method() === "POST",
+      );
+      await courier
+        .getByRole("button", { name: "Confirm delivery", exact: true })
+        .click();
+      const deliveryResult = await deliveryResponse;
+      expect(deliveryResult.ok(), await deliveryResult.text()).toBeTruthy();
       if (method === "cash") {
         await expect(courier.getByLabel("Amount received (€)")).toHaveValue(
           "16.48",
@@ -325,6 +431,9 @@ for (const method of ["card", "cash"] as const) {
       ).toBeVisible();
       await expect(courier.getByText(/completed/i).first()).toBeVisible();
       expect(order.totalCents).toBe(1648);
+      expect(courierErrors).toEqual([]);
+      await courierContext.close();
+      await stopRoleApp("courier-mobile");
       await customer.goto("http://localhost:8151/orders/");
       await customer
         .getByRole("button", { name: /history/i, exact: true })
@@ -335,10 +444,125 @@ for (const method of ["card", "cash"] as const) {
         .click();
       await expect(
         customer.getByRole("dialog", { name: "Review reorder" }),
-      ).toContainText("large");
+      ).toContainText(
+        "Review this pizza's current choices before ordering again.",
+      );
       await expect(
-        customer.getByRole("dialog", { name: "Review reorder" }),
-      ).toContainText("extra-cheese");
+        customer
+          .getByRole("dialog", { name: "Review reorder" })
+          .getByRole("button", { name: "Choose options" }),
+      ).toBeVisible();
+      await customer.goto(`http://localhost:8151/feedback/?order=${order.id}`);
+      for (const dimension of [
+        "Taste",
+        "Temperature",
+        "Packaging",
+        "Delivery",
+      ]) {
+        await customer
+          .getByRole("radiogroup", { name: new RegExp(`^${dimension}`) })
+          .getByRole("radio", { name: "4", exact: true })
+          .press("Space");
+      }
+      await customer
+        .getByRole("radio", { name: "Yes", exact: true })
+        .press("Space");
+      await customer
+        .getByLabel("What could we improve? (optional)")
+        .fill(`Private pizza feedback ${method}`);
+      await customer
+        .getByRole("button", { name: "Send feedback", exact: true })
+        .click();
+      await expect(
+        customer.getByText("Thanks for helping us improve"),
+      ).toBeVisible();
+      await customer.reload();
+      await expect(
+        customer.getByText("Thanks for helping us improve"),
+      ).toBeVisible();
+      await customer.goto(`http://localhost:8151/help/?order=${order.id}`);
+      await customer
+        .getByLabel("Tell us more")
+        .fill(`Please review my pizza packaging ${method}.`);
+      await customer
+        .getByRole("button", { name: "Send to Yespizz", exact: true })
+        .click();
+      await expect(customer.getByRole("status")).toContainText(
+        "Your request has been received.",
+      );
+      await customer.screenshot({
+        path: `.qa/ui/customer-care-${method}.png`,
+        fullPage: true,
+      });
+      expect(await customer.locator("body").innerText()).not.toContain(
+        "Secret source",
+      );
+      await startRoleApp("admin", 8152);
+      const adminContext = await browser.newContext({
+        viewport: { width: 1360, height: 960 },
+      });
+      try {
+        const admin = await adminContext.newPage();
+        await login(
+          admin,
+          "http://localhost:8152",
+          "admin@yespizz.local",
+          "Admin123!",
+        );
+        await admin.goto("http://localhost:8152/feedback");
+        await expect(
+          admin.getByText(`Private pizza feedback ${method}`, { exact: true }),
+        ).toBeVisible();
+        await admin.screenshot({
+          path: `.qa/ui/admin-private-feedback-${method}.png`,
+          fullPage: true,
+        });
+        await admin.goto("http://localhost:8152/support");
+        const requestCard = admin
+          .locator("article")
+          .filter({ hasText: `Please review my pizza packaging ${method}.` });
+        await requestCard
+          .getByRole("button", { name: "Claim & review" })
+          .click();
+        await admin
+          .getByLabel("Internal review note", { exact: false })
+          .fill("Quality review complete; internal details stay with Yespizz.");
+        await admin
+          .getByRole("button", { name: "Resolve request", exact: true })
+          .click();
+        await expect(requestCard).toHaveCount(0);
+        await customer.reload();
+        await expect(
+          customer
+            .locator("article")
+            .filter({ hasText: `Please review my pizza packaging ${method}.` }),
+        ).toContainText("Resolved");
+        await admin.goto("http://localhost:8152/finance");
+        await admin.getByRole("button", { name: /Completed order/ }).click();
+        await admin
+          .getByRole("option", { name: new RegExp(order.id.slice(-6)) })
+          .click();
+        await admin
+          .getByLabel("Agreed amount (€)", { exact: true })
+          .fill("7.50");
+        await admin.getByLabel("Due date", { exact: true }).fill("2026-10-01");
+        await admin
+          .getByLabel("Internal accounting note", { exact: true })
+          .fill("Approved agreed pizza production amount");
+        await admin
+          .getByRole("button", { name: "Approve settlement", exact: true })
+          .click();
+        await expect(
+          admin.getByRole("article").filter({ hasText: order.id.slice(-6) }),
+        ).toContainText(/€\s*7[.,]50/);
+        await kitchen.goto("http://localhost:8184/statement");
+        await expect(
+          kitchen.getByRole("article").filter({ hasText: order.id.slice(-6) }),
+        ).toContainText(/€\s*7[.,]50/);
+      } finally {
+        await adminContext.close();
+        await stopRoleApp("admin");
+      }
     } finally {
       await customerContext.close();
       await courierContext.close();

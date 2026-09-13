@@ -1,4 +1,8 @@
 "use client";
+import { AppText } from "@/components/Text";
+
+import { FormScope, Input, Form, RadioField } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
 
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -106,205 +110,223 @@ export default function AddAddressPage() {
   };
 
   return (
-    <AccountScreen
-      title={t("address.newTitle")}
-      subtitle={t("address.subtitle")}
-      backHref={returnPath}
-    >
-      <div className="mb-5 h-72 overflow-hidden rounded-2xl border">
-        <LocationMap
-          latitude={
-            latitude
-              ? Number(latitude)
-              : Number(process.env.NEXT_PUBLIC_SERVICE_AREA_LATITUDE || 48.1374)
-          }
-          longitude={
-            longitude
-              ? Number(longitude)
-              : Number(
-                  process.env.NEXT_PUBLIC_SERVICE_AREA_LONGITUDE || 11.5755,
-                )
-          }
-          onSelect={(coords) => {
-            setLatitude(coords.latitude.toFixed(6));
-            setLongitude(coords.longitude.toFixed(6));
-          }}
-        />
-      </div>
-      <p className="mb-3 text-sm">
-        Tap the map to place your delivery pin, or search for an address.
-      </p>
-      <div className="mb-5 space-y-2">
-        <label>
-          Search address
-          <input
-            className="block w-full rounded-xl border p-3"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        <Button
-          isDisabled={searching || query.trim().length < 3}
-          onPress={() => {
-            setSearching(true);
-            setError(null);
-            void apiRequest<typeof results>(
-              `/api/v1/delivery/search?q=${encodeURIComponent(query.trim())}`,
-              withAuth({ accessToken: accessToken ?? undefined }),
-            )
-              .then(setResults)
-              .catch((err) =>
-                setError(err instanceof Error ? err.message : "Search failed."),
-              )
-              .finally(() => setSearching(false));
-          }}
+    <FormScope>
+      {
+        <AccountScreen
+          title={t("address.newTitle")}
+          subtitle={t("address.subtitle")}
+          backHref={returnPath}
         >
-          Search
-        </Button>
-        {results.map((result, i) => (
-          <button
-            type="button"
-            key={i}
-            className="block w-full rounded border p-2 text-left"
-            onClick={() => {
-              setStreet(result.street);
-              setCity(result.city);
-              setZipcode(result.zipcode);
-              setLatitude(String(result.latitude));
-              setLongitude(String(result.longitude));
-              setResults([]);
-            }}
-          >
-            {result.label}
-          </button>
-        ))}
-      </div>
-
-      {error ? <AccountNotice tone="danger">{error}</AccountNotice> : null}
-      {status ? <AccountNotice tone="success">{status}</AccountNotice> : null}
-
-      <form
-        className="mt-4 grid gap-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        <AccountField
-          label={t("address.street")}
-          name="street"
-          autoComplete="street-address"
-          placeholder={t("address.street")}
-          value={street}
-          onChange={(event) => setStreet(event.target.value)}
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <AccountField
-            label={t("address.city")}
-            name="city"
-            autoComplete="address-level2"
-            placeholder={t("address.city")}
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-            className="px-4"
-          />
-          <AccountField
-            label={t("address.zip")}
-            name="postalCode"
-            inputMode="numeric"
-            autoComplete="postal-code"
-            placeholder={t("address.zip")}
-            value={zipcode}
-            onChange={(event) => setZipcode(event.target.value)}
-            className="px-4"
-          />
-        </div>
-
-        <div className="rounded-[24px] bg-surface-secondary p-4">
-          <p className="mb-3 text-sm text-muted">
-            Set the delivery location so your courier can find the right door.
-            Use your current location only when you are at this address.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            isPending={locating}
-            isDisabled={locating}
-            onPress={() => {
-              if (!navigator.geolocation) {
-                setError("Location is unavailable. Enter coordinates below.");
-                return;
+          <div className="mb-5 h-72 overflow-hidden rounded-2xl border">
+            <LocationMap
+              latitude={
+                latitude
+                  ? Number(latitude)
+                  : Number(
+                      process.env.NEXT_PUBLIC_SERVICE_AREA_LATITUDE || 48.1374,
+                    )
               }
-              setLocating(true);
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  setLatitude(String(position.coords.latitude));
-                  setLongitude(String(position.coords.longitude));
-                  setLocating(false);
-                  setError(null);
-                },
-                () => {
-                  setLocating(false);
-                  setError(
-                    "Location permission was denied or timed out. Enter coordinates below.",
-                  );
-                },
-                { enableHighAccuracy: true, timeout: 15000 },
-              );
-            }}
-          >
-            Use current location
-          </Button>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <AccountField
-              label="Latitude"
-              name="latitude"
-              placeholder="Latitude"
-              inputMode="decimal"
-              value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-            />
-            <AccountField
-              label="Longitude"
-              name="longitude"
-              placeholder="Longitude"
-              inputMode="decimal"
-              value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
+              longitude={
+                longitude
+                  ? Number(longitude)
+                  : Number(
+                      process.env.NEXT_PUBLIC_SERVICE_AREA_LONGITUDE || 11.5755,
+                    )
+              }
+              onSelect={(coords) => {
+                setLatitude(coords.latitude.toFixed(6));
+                setLongitude(coords.longitude.toFixed(6));
+              }}
             />
           </div>
-        </div>
-        <fieldset>
-          <legend className="mb-3 text-[20px] font-bold text-foreground">
-            {t("address.labelAs")}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {LABELS.map((option) => (
-              <Button
-                key={option.value}
+          <AppText as="p" className="mb-3 text-sm">
+            Tap the map to place your delivery pin, or search for an address.
+          </AppText>
+          <div className="mb-5 space-y-2">
+            <Input
+              label={<>Search address</>}
+              className="block w-full rounded-xl border p-3"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <Button
+              isDisabled={searching || query.trim().length < 3}
+              onPress={() => {
+                setSearching(true);
+                setError(null);
+                void apiRequest<typeof results>(
+                  `/api/v1/delivery/search?q=${encodeURIComponent(query.trim())}`,
+                  withAuth({ accessToken: accessToken ?? undefined }),
+                )
+                  .then(setResults)
+                  .catch((err) =>
+                    setError(
+                      err instanceof Error ? err.message : "Search failed.",
+                    ),
+                  )
+                  .finally(() => setSearching(false));
+              }}
+            >
+              Search
+            </Button>
+            {results.map((result, i) => (
+              <FormButton
+                variant="ghost"
                 type="button"
-                variant={label === option.value ? "primary" : "secondary"}
-                onPress={() => setLabel(option.value)}
-                className={cn("h-13 rounded-full px-4 font-semibold")}
+                key={i}
+                className="block w-full rounded border p-2 text-left"
+                onPress={() => {
+                  setStreet(result.street);
+                  setCity(result.city);
+                  setZipcode(result.zipcode);
+                  setLatitude(String(result.latitude));
+                  setLongitude(String(result.longitude));
+                  setResults([]);
+                }}
               >
-                <span aria-hidden="true">{option.icon}</span>
-                {t(option.key)}
-              </Button>
+                {result.label}
+              </FormButton>
             ))}
           </div>
-        </fieldset>
 
-        <Button
-          type="button"
-          variant="primary"
-          isPending={saving}
-          isDisabled={saving}
-          onPress={() => void save()}
-          className={cn(hx.btnPrimary, "mt-4")}
-        >
-          {t("address.action")}
-        </Button>
-      </form>
-    </AccountScreen>
+          {error ? <AccountNotice tone="danger">{error}</AccountNotice> : null}
+          {status ? (
+            <AccountNotice tone="success">{status}</AccountNotice>
+          ) : null}
+
+          <Form
+            className="mt-4 grid gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <AccountField
+              label={t("address.street")}
+              name="street"
+              autoComplete="street-address"
+              placeholder={t("address.street")}
+              value={street}
+              onChange={(event) => setStreet(event.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <AccountField
+                label={t("address.city")}
+                name="city"
+                autoComplete="address-level2"
+                placeholder={t("address.city")}
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                className="px-4"
+              />
+              <AccountField
+                label={t("address.zip")}
+                name="postalCode"
+                inputMode="numeric"
+                autoComplete="postal-code"
+                placeholder={t("address.zip")}
+                value={zipcode}
+                onChange={(event) => setZipcode(event.target.value)}
+                className="px-4"
+              />
+            </div>
+
+            <div className="rounded-[24px] bg-surface-secondary p-4">
+              <AppText as="p" className="mb-3 text-sm text-muted">
+                Set the delivery location so your courier can find the right
+                door. Use your current location only when you are at this
+                address.
+              </AppText>
+              <Button
+                type="button"
+                variant="secondary"
+                isPending={locating}
+                isDisabled={locating}
+                onPress={() => {
+                  if (!navigator.geolocation) {
+                    setError(
+                      "Location is unavailable. Enter coordinates below.",
+                    );
+                    return;
+                  }
+                  setLocating(true);
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      setLatitude(String(position.coords.latitude));
+                      setLongitude(String(position.coords.longitude));
+                      setLocating(false);
+                      setError(null);
+                    },
+                    () => {
+                      setLocating(false);
+                      setError(
+                        "Location permission was denied or timed out. Enter coordinates below.",
+                      );
+                    },
+                    { enableHighAccuracy: true, timeout: 15000 },
+                  );
+                }}
+              >
+                Use current location
+              </Button>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <AccountField
+                  label="Latitude"
+                  name="latitude"
+                  required
+                  type="number"
+                  min={-90}
+                  max={90}
+                  step="any"
+                  placeholder="Latitude"
+                  inputMode="decimal"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                />
+                <AccountField
+                  label="Longitude"
+                  name="longitude"
+                  required
+                  type="number"
+                  min={-180}
+                  max={180}
+                  step="any"
+                  placeholder="Longitude"
+                  inputMode="decimal"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                />
+              </div>
+            </div>
+            <RadioField
+              name="addressLabel"
+              label={t("address.labelAs")}
+              value={label}
+              onChange={(v) => setLabel(v as typeof label)}
+              required
+              options={LABELS.map((o) => ({
+                id: o.value,
+                label: (
+                  <>
+                    <AppText as="span" aria-hidden="true">{o.icon}</AppText> {t(o.key)}
+                  </>
+                ),
+              }))}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              isPending={saving}
+              isDisabled={saving}
+
+              className={cn(hx.btnPrimary, "mt-4")}
+            >
+              {t("address.action")}
+            </Button>
+          </Form>
+        </AccountScreen>
+      }
+    </FormScope>
   );
 }

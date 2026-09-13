@@ -60,3 +60,11 @@ deploy/.env.staging
 **/uploads/
 **/google-services.json
 **/GoogleService-Info.plist
+
+# Isolated local browser-test compilation
+**/.next-e2e/
+
+# Local Android export artifacts
+/artifacts/apk-build/
+/artifacts/apk/*.apk
+/artifacts/apk/*.idsig

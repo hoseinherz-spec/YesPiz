@@ -1,3 +1,5 @@
+import { priceCustomization } from "../catalog/customization";
+import { GrowthService } from "../growth/growth.module";
 import { ConfigService } from "@nestjs/config";
 import { linePrice, pricingOptions } from "./pricing";
 import {
@@ -5,6 +7,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Optional,
   OnModuleInit,
   NotFoundException,
 } from "@nestjs/common";
@@ -80,6 +83,7 @@ export class OrdersService implements OnModuleInit {
     private readonly eta: EtaService,
     private readonly providersService: ProvidersService,
     private readonly environment: ConfigService,
+    @Optional() private readonly growth?: GrowthService,
   ) {}
 
   async onModuleInit() {
@@ -173,7 +177,8 @@ export class OrdersService implements OnModuleInit {
   async quote(userId: string, dto: CreateOrderDto) {
     const order = await this.prepareOrder(userId, dto);
     return {
-      lines: order.lines,
+      lines: toCustomerView(order).lines,
+      discountCents: order.discountCents,
       subtotalCents: order.subtotalCents,
       deliveryFeeCents: order.deliveryFeeCents,
       totalCents: order.totalCents,
@@ -219,6 +224,7 @@ export class OrdersService implements OnModuleInit {
     const { items } = await this.catalog.getActiveItemsByIds(
       itemIds,
       dto.menuVersion,
+      dto.scheduledAt ? new Date(dto.scheduledAt) : new Date(),
     );
     if (items.length !== new Set(itemIds).size) {
       throw new BadRequestException("errors.badRequest");
@@ -231,15 +237,40 @@ export class OrdersService implements OnModuleInit {
       const item = byId.get(line.menuItemId)!;
       const size = line.size ?? "medium";
       const extras = line.extras ?? [];
-      const unitPriceCents = linePrice(
-        item.priceCents,
-        size,
-        extras,
-        pricingConfig,
-      );
+      if (
+        item.customization &&
+        ((line.extras?.length ?? 0) > 0 ||
+          (line.size && line.size !== "medium"))
+      )
+        throw new BadRequestException("Use this pizza's configured choices.");
+      if (!item.customization && (line.variantId || line.selections?.length))
+        throw new BadRequestException(
+          "This pizza does not accept those choices.",
+        );
+      const custom = item.customization
+        ? priceCustomization(
+            item.customization,
+            line.variantId,
+            line.selections,
+          )
+        : undefined;
+      const unitPriceCents =
+        custom?.unitPriceCents ??
+        linePrice(item.priceCents, size, extras, pricingConfig);
       subtotalCents += unitPriceCents * line.quantity;
       return {
         menuItemId: item._id,
+        pizzaId: item.pizzaId ?? item.id,
+        variantId: custom?.variantId,
+        selections: custom?.selections ?? [],
+        selectionLabels: custom?.selectionLabels ?? [],
+        recipeSnapshot: {
+          recipeIngredients: item.recipeIngredients ?? [],
+          checklistTemplate: item.checklistTemplate ?? [],
+          requiresNumberedSeal: item.requiresNumberedSeal !== false,
+          requiresReadyPhoto: item.requiresReadyPhoto === true,
+          handoffTempC: item.handoffTempC ?? 65,
+        },
         name: item.name,
         unitPriceCents,
         size,
@@ -251,7 +282,9 @@ export class OrdersService implements OnModuleInit {
     });
 
     const deliveryFeeCents = pricingOptions(pricingConfig).deliveryFeeCents;
-    const totalCents = subtotalCents + deliveryFeeCents;
+    const discountCents =
+      (await this.growth?.discount(dto.couponCode, subtotalCents)) ?? 0;
+    const totalCents = subtotalCents - discountCents + deliveryFeeCents;
 
     if (dto.paymentMethod === PaymentMethod.CASH) {
       const cfg = await this.appConfig.get();
@@ -261,13 +294,24 @@ export class OrdersService implements OnModuleInit {
     }
 
     if (dto.scheduledAt) {
-      throw new BadRequestException(
-        "Scheduled delivery is not available yet. Please choose ASAP.",
-      );
+      const delay = new Date(dto.scheduledAt).getTime() - Date.now();
+      if (
+        !Number.isFinite(delay) ||
+        delay < 15 * 60_000 ||
+        delay > 7 * 86400_000
+      ) {
+        throw new BadRequestException(
+          "Choose an order start time between 15 minutes and 7 days from now.",
+        );
+      }
     }
 
     return {
       customerId: new Types.ObjectId(userId),
+      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      campaignCode: await this.growth?.campaignSource(dto.campaignCode),
+      couponCode: dto.couponCode,
+      discountCents,
       menuVersion: dto.menuVersion,
       lines,
       subtotalCents,
@@ -378,7 +422,9 @@ export class OrdersService implements OnModuleInit {
         order.etaComputedAt ??
         (order as OrderDocument & { createdAt?: Date }).createdAt;
       if (!base || order.etaDeliveryMax == null) return false;
-      const deadline = base.getTime() + order.etaDeliveryMax * 60_000;
+      const deadline =
+        order.promisedDeliveryAt?.getTime() ??
+        base.getTime() + order.etaDeliveryMax * 60_000;
       return now > deadline;
     });
 
@@ -473,7 +519,12 @@ export class OrdersService implements OnModuleInit {
     for (const line of order.lines) {
       const byId = publishedById.get(String(line.menuItemId));
       const match =
-        byId ?? publishedByName.get(line.name.toLowerCase()) ?? null;
+        byId ??
+        publishedItems.find(
+          (i) => line.pizzaId && i.pizzaId === line.pizzaId,
+        ) ??
+        publishedByName.get(line.name.toLowerCase()) ??
+        null;
 
       if (!match) {
         unavailable.push({
@@ -485,6 +536,15 @@ export class OrdersService implements OnModuleInit {
         continue;
       }
 
+      if (line.variantId || match.customization) {
+        unavailable.push({
+          menuItemId: match.id,
+          name: match.name,
+          quantity: line.quantity,
+          reason: "Review this pizza's current choices before ordering again.",
+        });
+        continue;
+      }
       const size = line.size ?? "medium";
       const extras = line.extras ?? [];
       const currentPrice = linePrice(
@@ -602,7 +662,15 @@ export class OrdersService implements OnModuleInit {
         return {
           ...view,
           requiredChecklist: [
-            ...new Set(items.flatMap((item) => item.checklistTemplate ?? [])),
+            ...new Set(
+              order.lines.flatMap(
+                (line) =>
+                  line.recipeSnapshot?.checklistTemplate ??
+                  items.find((item) => item.id === String(line.menuItemId))
+                    ?.checklistTemplate ??
+                  [],
+              ),
+            ),
           ],
         };
       }),
@@ -688,10 +756,7 @@ export class OrdersService implements OnModuleInit {
     if (!order || String(order.customerId) !== userId) {
       throw new NotFoundException("errors.notFound");
     }
-    if (
-      !order.courierId ||
-      ![OrderStatus.PICKED_UP, OrderStatus.ON_THE_WAY].includes(order.status)
-    ) {
+    if (!order.courierId || order.status !== OrderStatus.ON_THE_WAY) {
       return { longitude: null, latitude: null, updatedAt: null };
     }
 
@@ -712,6 +777,22 @@ export class OrdersService implements OnModuleInit {
     ) {
       return { longitude: null, latitude: null, updatedAt: null };
     }
+
+    // Do not reveal a pickup origin through the first live GPS marker.
+    if (!order.providerId)
+      return { longitude: null, latitude: null, updatedAt: null };
+    const origin = await this.providersService.getById(
+      String(order.providerId),
+    );
+    const rad = Math.PI / 180;
+    const a =
+      Math.sin(((session.lastLatitude - origin.latitude) * rad) / 2) ** 2 +
+      Math.cos(origin.latitude * rad) *
+        Math.cos(session.lastLatitude * rad) *
+        Math.sin(((session.lastLongitude - origin.longitude) * rad) / 2) ** 2;
+    const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (!Number.isFinite(distance) || distance < 300)
+      return { longitude: null, latitude: null, updatedAt: null };
 
     return {
       longitude: session.lastLongitude,

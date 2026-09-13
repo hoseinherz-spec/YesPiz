@@ -75,7 +75,7 @@ The latest [multi-user acceptance](MULTI-USER-ACCEPTANCE.md) checks three custom
 
 The existing Stripe sandbox was connected and real API payment, signed webhook, kitchen offer visibility, decline/retry, 3DS cancellation and refund checks passed. Three browser scenarios also passed, including successful 3DS challenge completion. No live payments were made. Actual FCM delivery, S3 persistence, phone calls, geocoding coverage, native background behavior, staging deployment and backup restoration still require their accounts/configuration, tools or devices. The adapter implementations and local test doubles do not prove these integrations work in your account.
 
-Scheduled orders, loyalty and subscriptions remain deferred beyond the initial ordering release.
+Scheduled order starts are implemented and locally tested. Loyalty and subscriptions remain unimplemented. Web Apple/Google sign-in is implemented but needs account configuration and live acceptance; packaged native authentication still needs its own integration. See [release follow-up](RELEASE-FOLLOWUP.md) for the current execution status.
 
 ## Integration references
 

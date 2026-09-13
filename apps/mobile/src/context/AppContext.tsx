@@ -48,12 +48,19 @@ export type Order = {
   refundStatus?: string;
   stepIndex: number;
   eta: EtaWindow;
+  scheduledAt?: string;
+  isScheduled?: boolean;
+  promisedDeliveryAt?: string;
+  compensationCents?: number;
   customerStatus?: CustomerOrderProjection | null;
   requiresDeliveryPin?: boolean;
   deliveryPin?: string;
   leaveAtDoor?: boolean;
   hasShortExtraStop?: boolean;
   thumbnail?: string;
+  addressId?: string;
+  deliveryAddress?: string;
+  deliveryInstructions?: string;
 };
 
 export type AppNotification = {
@@ -106,6 +113,7 @@ type AppContextValue = {
     code: string,
     names?: { firstName?: string; lastName?: string },
   ) => Promise<void>;
+  loginWithSocial: (provider: "google" | "apple", idToken: string, nonce: string) => Promise<void>;
   loginWithPassword: (email: string, password: string) => Promise<void>;
   register: (
     email: string,
@@ -259,6 +267,15 @@ export function mapCustomerOrder(view: CustomerOrderView): Order {
   const cancelled = view.orderState === "cancelled";
   return {
     id: view.id,
+    addressId: view.addressId,
+    deliveryAddress: [
+      view.deliveryStreet,
+      view.deliveryCity,
+      view.deliveryZipcode,
+    ]
+      .filter(Boolean)
+      .join(", "),
+    deliveryInstructions: view.deliveryInstructions,
     items: view.lines.map((line) => ({
       name: line.name,
       quantity: line.quantity,
@@ -270,6 +287,10 @@ export function mapCustomerOrder(view: CustomerOrderView): Order {
     awaitingPayment: view.orderState === "awaiting_payment",
     stepIndex,
     eta: delivered ? {} : pickDeliveryEta(view),
+    scheduledAt: view.scheduledAt,
+    isScheduled: view.isScheduled,
+    promisedDeliveryAt: view.promisedDeliveryAt,
+    compensationCents: view.compensationCents,
     customerStatus: view.customerStatus,
     requiresDeliveryPin: view.requiresDeliveryPin,
     deliveryPin: view.deliveryPin,
@@ -366,6 +387,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('campaign');
+    if (code && /^[a-z0-9-]{3,40}$/.test(code)) {
+      try { sessionStorage.setItem('yespizz_campaign', code); } catch { /* attribution is optional */ }
+    }
+  }, []);
+
+  useEffect(() => {
     /* Intentional: hydrate UI state from localStorage after mount (SSR-safe). */
     let cancelled = false;
 
@@ -426,8 +454,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               });
               setOrders(orderList.map(mapCustomerOrder));
             }
-          } catch {
-            if (!cancelled) {
+          } catch (error) {
+            // Interrupted navigation and temporary API failures do not invalidate a session.
+            if (!cancelled && error instanceof ApiError && error.status === 401) {
               localStorage.removeItem(TOKEN_KEY);
               setAccessToken(null);
               setUser(null);
@@ -560,6 +589,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [applyAuth],
   );
+
+  const loginWithSocial = useCallback(async (provider: "google" | "apple", idToken: string, nonce: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await accountClient.socialLogin({ provider, idToken, nonce });
+      applyAuth(res.accessToken, mapProfile(res.user));
+      setOnboarded(true);
+    } catch (err) {
+      setAuthError(authErrorMessage(err));
+      throw err;
+    } finally { setAuthLoading(false); }
+  }, [applyAuth]);
 
   const loginWithPassword = useCallback(
     async (email: string, password: string) => {
@@ -728,6 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sendOtp,
     loginWithOtp,
     loginWithPassword,
+    loginWithSocial,
     register,
     logout,
     completeOnboarding,

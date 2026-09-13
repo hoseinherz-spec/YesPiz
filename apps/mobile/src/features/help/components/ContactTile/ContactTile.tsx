@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Card, Typography } from '@heroui/react';
 
@@ -11,7 +13,7 @@ export function ContactTile({ icon, title, detail }: ContactTileProps) {
   return (
     <Card className={cn(hx.card, '!p-3')}>
       <Card.Content className="p-0">
-        <span className="text-accent">{icon}</span>
+        <AppText as="span" className="text-accent">{icon}</AppText>
         <Typography type="h6" className={cn(hx.title, 'mt-2')}>
           {title}
         </Typography>

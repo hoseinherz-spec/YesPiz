@@ -18,7 +18,9 @@
     "@tanstack/react-query": "^5.84.1",
     "firebase": "^12.18.0",
     "leaflet": "^1.9.4",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "@repo/ui": "*",
+    "@heroui/react": "^3.2.4"
   },
   "peerDependencies": {
     "react": "^19",

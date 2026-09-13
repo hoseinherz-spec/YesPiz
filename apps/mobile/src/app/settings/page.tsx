@@ -1,7 +1,9 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Button } from '@heroui/react';
-import { ChevronRight } from '@repo/icons';
+import { ChevronRight, Sun, Moon } from '@repo/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -9,7 +11,6 @@ import { useState } from 'react';
 
 import { AppFrame } from '@/components/AppFrame';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { LANGUAGES } from '@/constants/i18n';
 import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/cn';
@@ -31,14 +32,14 @@ function SettingsRow({
   const content = (
     <>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-[21px] font-bold text-foreground">{title}</span>
-        <span className="mt-1 block text-sm leading-relaxed text-muted">{detail}</span>
+        <AppText as="span" className="block text-[21px] font-bold text-foreground">{title}</AppText>
+        <AppText as="span" className="mt-1 block text-sm leading-relaxed text-muted">{detail}</AppText>
       </span>
       {control ?? <ChevronRight size={24} color="var(--foreground)" />}
     </>
   );
   const className =
-    'flex w-full items-center gap-4 border-b border-border py-6 text-left';
+    'flex w-full min-w-0 items-center gap-4 border-b border-border py-6 text-left whitespace-normal';
 
   if (control) {
     return <div className={className}>{content}</div>;
@@ -85,34 +86,37 @@ export default function SettingsPage() {
   };
 
   return (
-    <AppFrame>
+    <AppFrame className="reference-screen">
       <ScreenHeader title={t('settings.title')} backHref="/profile/" />
 
       <div className="grid">
-        <SettingsRow
-          title={t('settings.theme')}
-          detail={t('settings.themeDetail')}
-          onPress={toggleMode}
-          control={
-            <ThemeSwitch
-              isSelected={mode === 'dark'}
-              onChange={() => toggleMode()}
-              aria-label={t('settings.darkMode')}
-            />
-          }
-        />
+        <section className="appearance-section" aria-labelledby="appearance-heading">
+          <AppText as="h1" id="appearance-heading">{language === 'de' ? 'Wähle deinen Look' : 'Choose your app theme'}</AppText>
+          <AppText as="p">{t('settings.themeDetail')}</AppText>
+          <div className="appearance-options">
+            {(['light', 'dark'] as const).map((option) => {
+              const Icon = option === 'light' ? Sun : Moon;
+              return <button key={option} type="button" aria-pressed={mode === option}
+                onClick={() => { if (mode !== option) toggleMode(); }} className="appearance-option">
+                <span className={`appearance-preview appearance-preview-${option}`}><Icon size={28} /></span>
+                <AppText as="span">{language === 'de' ? (option === 'light' ? 'Heller Modus' : 'Dunkler Modus') : (option === 'light' ? 'Light mode' : 'Dark mode')}</AppText>
+                <span className="appearance-radio" aria-hidden="true" />
+              </button>;
+            })}
+          </div>
+        </section>
         <SettingsRow
           title={t('notifications.title')}
           detail={t('settings.notificationsDetail')}
           href="/notifications/"
         />
         <div className="border-b border-border py-6">
-          <h2 className="text-[21px] font-bold text-foreground">
+          <AppText as="h2" className="text-[21px] font-bold text-foreground">
             {t('settings.language')}
-          </h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
+          </AppText>
+          <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">
             {t('settings.languageDetail')}
-          </p>
+          </AppText>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {LANGUAGES.map((option) => (
               <Button

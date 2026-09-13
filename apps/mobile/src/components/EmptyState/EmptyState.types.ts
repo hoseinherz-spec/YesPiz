@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 export type EmptyStateProps = {
   icon: ReactNode;
@@ -6,4 +6,5 @@ export type EmptyStateProps = {
   body: string;
   actionLabel?: string;
   actionHref?: string;
+  image?: string;
 };

@@ -1,7 +1,9 @@
 "use client";
 
 import gsap from "gsap";
-import { Galada } from "next/font/google";
+import { useGSAP } from "@gsap/react";
+import { useAnimationActive } from "@/hooks/use-animation-active";
+import { galada } from "@repo/theme/display-font";
 import Image from "next/image";
 import {
   useCallback,
@@ -15,13 +17,6 @@ import { APP_WEB_URL } from "@/content/app-links";
 import { landingImages } from "@/content/images";
 import { cn } from "@/lib/utils";
 import "./landing-pizza-menu-section.css";
-
-const galada = Galada({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-galada",
-  display: "swap",
-});
 
 const { ingredients } = landingImages;
 
@@ -110,6 +105,8 @@ function createFloaterStates(count: number): FloaterState[] {
 
 export function LandingPizzaMenuSection() {
   const rootRef = useRef<HTMLElement>(null);
+  const active = useAnimationActive(rootRef);
+  const { contextSafe } = useGSAP({ scope: rootRef });
   const productRef = useRef<HTMLDivElement>(null);
   const floatersFgRef = useRef<HTMLDivElement>(null);
   const floatersBgRef = useRef<HTMLDivElement>(null);
@@ -155,122 +152,133 @@ export function LandingPizzaMenuSection() {
 
   const switchFlavor = useCallback(
     (nextId: FlavorId) => {
-      if (isSwitchingRef.current || nextId === flavorRef.current) return;
-      isSwitchingRef.current = true;
-      flavorRef.current = nextId;
-      setFlavorId(nextId);
-      applyThemeColors(nextId, true);
+      contextSafe((nextId: FlavorId) => {
+        if (
+          isSwitchingRef.current ||
+          switchSpinRef.current !== 0 ||
+          nextId === flavorRef.current
+        )
+          return;
+        isSwitchingRef.current = true;
+        flavorRef.current = nextId;
+        setFlavorId(nextId);
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          applyThemeColors(nextId, false);
+          setProductSrc(FLAVORS[nextId].product);
+          setFloaters(FLAVORS[nextId].floaters);
+          isSwitchingRef.current = false;
+          return;
+        }
+        applyThemeColors(nextId, true);
 
-      const product = productRef.current;
-      const center = centerRef.current;
-      const floaterEls = floaterElsRef.current.filter(Boolean) as HTMLDivElement[];
-      const nextFlavor = FLAVORS[nextId];
+        const product = productRef.current;
+        const center = centerRef.current;
+        const floaterEls = floaterElsRef.current.filter(
+          Boolean,
+        ) as HTMLDivElement[];
+        const nextFlavor = FLAVORS[nextId];
 
-      if (product) {
-        const spinObj = { val: 0, blur: 0 };
-        gsap.to(spinObj, {
-          val: 360,
-          blur: 15,
-          duration: 0.6,
-          ease: "power2.in",
-          onUpdate: () => {
-            switchSpinRef.current = spinObj.val;
-            product.style.filter = `blur(${spinObj.blur}px)`;
-          },
-          onComplete: () => {
-            setProductSrc(nextFlavor.product);
-            gsap.to(spinObj, {
-              val: 720,
-              blur: 0,
-              duration: 1.5,
-              ease: "back.out(0.7)",
-              onUpdate: () => {
-                switchSpinRef.current = spinObj.val;
-                product.style.filter = `blur(${spinObj.blur}px)`;
-              },
+        if (product) {
+          const spinObj = { val: 0 };
+          gsap.to(spinObj, {
+            val: 360,
+            duration: 0.6,
+            ease: "power2.in",
+            onUpdate: () => {
+              switchSpinRef.current = spinObj.val;
+            },
+            onComplete: contextSafe(() => {
+              setProductSrc(nextFlavor.product);
+              gsap.to(spinObj, {
+                val: 720,
+                duration: 1.5,
+                ease: "back.out(0.7)",
+                onUpdate: () => {
+                  switchSpinRef.current = spinObj.val;
+                },
+                onComplete: () => {
+                  switchSpinRef.current = 0;
+                },
+              });
+            }),
+          });
+        }
+
+        let completed = 0;
+        floaterEls.forEach((floater, i) => {
+          const state = floaterStateRef.current[i];
+          if (!state) return;
+
+          const bW = floater.offsetWidth / 2;
+          const bH = floater.offsetHeight / 2;
+          const centerX = window.innerWidth / 2 - floater.offsetLeft - bW;
+          const centerY = window.innerHeight / 2 - floater.offsetTop - bH;
+          const startAngle = state.angle;
+          const currentBaseX = state.baseX;
+          const currentBaseY = state.baseY;
+          const nextBaseX = (Math.random() - 0.5) * 160;
+          const nextBaseY = (Math.random() - 0.5) * 160;
+
+          gsap.set(floater, {
+            rotation: startAngle,
+            x: currentBaseX,
+            y: currentBaseY,
+          });
+
+          const berryTl = gsap.timeline();
+          berryTl
+            .to(floater, {
+              x: centerX,
+              y: centerY,
+              rotation: startAngle + 45,
+              scale: 0.1,
+              opacity: 0,
+              duration: 0.5,
+              ease: "power2.in",
               onComplete: () => {
-                switchSpinRef.current = 0;
-                product.style.filter = "none";
+                if (i === 0) setFloaters(nextFlavor.floaters);
+                if (center) center.style.zIndex = "50";
+              },
+            })
+            .to(floater, { duration: 0.3 })
+            .to(floater, {
+              onStart: () => {
+                if (center) center.style.zIndex = "1";
+              },
+              x: nextBaseX,
+              y: nextBaseY,
+              rotation: startAngle + 90,
+              scale: 1,
+              opacity: 1,
+              duration: 0.9,
+              ease: "back.out(1.5)",
+              onComplete: () => {
+                state.angle = startAngle + 90;
+                state.baseX = nextBaseX;
+                state.baseY = nextBaseY;
+                state.rx = 0;
+                state.ry = 0;
+                gsap.set(floater, {
+                  clearProps: "x,y,rotation,scale,opacity",
+                });
+                floater.style.transform = `translate(${nextBaseX}px, ${nextBaseY}px) rotate(${startAngle + 90}deg)`;
+                floater.style.opacity = "1";
+
+                completed += 1;
+                if (completed === floaterEls.length) {
+                  isSwitchingRef.current = false;
+                }
               },
             });
-          },
-        });
-      }
-
-      let completed = 0;
-      floaterEls.forEach((floater, i) => {
-        const state = floaterStateRef.current[i];
-        if (!state) return;
-
-        const bW = floater.offsetWidth / 2;
-        const bH = floater.offsetHeight / 2;
-        const centerX = window.innerWidth / 2 - floater.offsetLeft - bW;
-        const centerY = window.innerHeight / 2 - floater.offsetTop - bH;
-        const startAngle = state.angle;
-        const currentBaseX = state.baseX;
-        const currentBaseY = state.baseY;
-        const nextBaseX = (Math.random() - 0.5) * 160;
-        const nextBaseY = (Math.random() - 0.5) * 160;
-
-        gsap.set(floater, {
-          rotation: startAngle,
-          x: currentBaseX,
-          y: currentBaseY,
         });
 
-        const berryTl = gsap.timeline();
-        berryTl
-          .to(floater, {
-            x: centerX,
-            y: centerY,
-            rotation: startAngle + 45,
-            scale: 0.1,
-            opacity: 0,
-            duration: 0.5,
-            ease: "power2.in",
-            onComplete: () => {
-              if (i === 0) setFloaters(nextFlavor.floaters);
-              if (center) center.style.zIndex = "50";
-            },
-          })
-          .to(floater, { duration: 0.3 })
-          .to(floater, {
-            onStart: () => {
-              if (center) center.style.zIndex = "1";
-            },
-            x: nextBaseX,
-            y: nextBaseY,
-            rotation: startAngle + 90,
-            scale: 1,
-            opacity: 1,
-            duration: 0.9,
-            ease: "back.out(1.5)",
-            onComplete: () => {
-              state.angle = startAngle + 90;
-              state.baseX = nextBaseX;
-              state.baseY = nextBaseY;
-              state.rx = 0;
-              state.ry = 0;
-              gsap.set(floater, {
-                clearProps: "x,y,rotation,scale,opacity",
-              });
-              floater.style.transform = `translate(${nextBaseX}px, ${nextBaseY}px) rotate(${startAngle + 90}deg)`;
-              floater.style.opacity = "1";
-
-              completed += 1;
-              if (completed === floaterEls.length) {
-                isSwitchingRef.current = false;
-              }
-            },
-          });
-      });
-
-      if (floaterEls.length === 0) {
-        setFloaters(nextFlavor.floaters);
-        isSwitchingRef.current = false;
-      }
+        if (floaterEls.length === 0) {
+          setFloaters(nextFlavor.floaters);
+          isSwitchingRef.current = false;
+        }
+      })(nextId);
     },
-    [applyThemeColors],
+    [contextSafe, applyThemeColors],
   );
 
   const goPrev = useCallback(() => {
@@ -286,6 +294,12 @@ export function LandingPizzaMenuSection() {
   }, [applyThemeColors]);
 
   useEffect(() => {
+    if (!active) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const finePointer = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
     const onMove = (e: MouseEvent) => {
       mouseRef.current.x = e.clientX / window.innerWidth - 0.5;
       mouseRef.current.y = e.clientY / window.innerHeight - 0.5;
@@ -293,16 +307,29 @@ export function LandingPizzaMenuSection() {
       mouseRef.current.py = e.clientY;
     };
 
-    window.addEventListener("mousemove", onMove);
+    if (finePointer)
+      root.addEventListener("mousemove", onMove, { passive: true });
 
     let frame = 0;
-    const animate = () => {
-      const time = Date.now() * 0.001;
+    let previousTime = 0;
+    const animate = (timestamp: number) => {
+      const delta = previousTime
+        ? Math.min((timestamp - previousTime) / 16.667, 3)
+        : 1;
+      previousTime = timestamp;
+      const time = timestamp * 0.001;
+      // Complete layout reads before any transform writes.
+      const rects =
+        finePointer && !isSwitchingRef.current
+          ? floaterElsRef.current.map((el) => el?.getBoundingClientRect())
+          : [];
+      const follow = 1 - Math.pow(0.95, delta);
+      const repel = 1 - Math.pow(0.9, delta);
       const mouse = mouseRef.current;
       const current = currentMouseRef.current;
 
-      current.x += (mouse.x - current.x) * 0.05;
-      current.y += (mouse.y - current.y) * 0.05;
+      current.x += (mouse.x - current.x) * follow;
+      current.y += (mouse.y - current.y) * follow;
 
       const product = productRef.current;
       if (product) {
@@ -323,9 +350,9 @@ export function LandingPizzaMenuSection() {
           const state = floaterStateRef.current[i];
           if (!floater || !state) return;
 
-          const rect = floater.getBoundingClientRect();
-          const berryX = rect.left + rect.width / 2;
-          const berryY = rect.top + rect.height / 2;
+          const rect = rects[i];
+          const berryX = rect ? rect.left + rect.width / 2 : mouse.px;
+          const berryY = rect ? rect.top + rect.height / 2 : mouse.py;
           const diffX = mouse.px - berryX;
           const diffY = mouse.py - berryY;
           const distance = Math.sqrt(diffX * diffX + diffY * diffY);
@@ -341,9 +368,9 @@ export function LandingPizzaMenuSection() {
             speedMult = 1 + force * 5;
           }
 
-          state.rx += (targetRx - state.rx) * 0.1;
-          state.ry += (targetRy - state.ry) * 0.1;
-          state.angle += 0.2 * speedMult;
+          state.rx += (targetRx - state.rx) * repel;
+          state.ry += (targetRy - state.ry) * repel;
+          state.angle += 0.2 * speedMult * delta;
 
           const dur = FLOAT_DURATIONS[i % FLOAT_DURATIONS.length] ?? 6;
           const phase = (time + i * 0.7) * ((Math.PI * 2) / dur);
@@ -360,14 +387,14 @@ export function LandingPizzaMenuSection() {
     frame = requestAnimationFrame(animate);
 
     return () => {
-      window.removeEventListener("mousemove", onMove);
+      root.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [active]);
 
   useEffect(() => {
     const container = bubblesRef.current;
-    if (!container) return;
+    if (!container || !active) return;
 
     const createBubble = () => {
       const bubble = document.createElement("span");
@@ -380,19 +407,24 @@ export function LandingPizzaMenuSection() {
       const duration = Math.random() * 6 + 4;
       bubble.style.animationDuration = `${duration}s`;
       container.appendChild(bubble);
-      window.setTimeout(() => bubble.remove(), duration * 1000);
+      bubble.addEventListener("animationend", () => bubble.remove(), {
+        once: true,
+      });
     };
 
     const interval = window.setInterval(createBubble, 400);
-    return () => window.clearInterval(interval);
-  }, []);
+    return () => {
+      window.clearInterval(interval);
+      container.replaceChildren();
+    };
+  }, [active]);
 
   const renderFloater = (index: number) => {
     const item = floaters[index];
     if (!item) return null;
     return (
       <div
-        key={`floater-${index}-${item.alt}`}
+        key={`floater-${index}`}
         ref={(el) => {
           floaterElsRef.current[index] = el;
         }}
@@ -416,6 +448,7 @@ export function LandingPizzaMenuSection() {
     <section
       ref={rootRef}
       id="menu"
+      data-animation-active={active}
       aria-label="Pizza menu showcase"
       className={cn("landing-pizza-menu", galada.variable)}
       style={
@@ -426,7 +459,11 @@ export function LandingPizzaMenuSection() {
         } as CSSProperties
       }
     >
-      <div ref={bubblesRef} className="landing-pizza-menu__bubbles" aria-hidden />
+      <div
+        ref={bubblesRef}
+        className="landing-pizza-menu__bubbles"
+        aria-hidden
+      />
 
       <div className="landing-pizza-menu__hero">
         <div className="landing-pizza-menu__content">
@@ -436,7 +473,9 @@ export function LandingPizzaMenuSection() {
               <br />
               {flavor.titleLeft[1]}
             </h2>
-            <p className="landing-pizza-menu__description">{flavor.description}</p>
+            <p className="landing-pizza-menu__description">
+              {flavor.description}
+            </p>
             <a href={APP_WEB_URL} className="landing-pizza-menu__cta">
               Order Now
               <span className="landing-pizza-menu__cta-plus" aria-hidden>
@@ -445,10 +484,16 @@ export function LandingPizzaMenuSection() {
             </a>
             <div className="landing-pizza-menu__badge">
               <div className="landing-pizza-menu__badge-icon">
-                <Fire1 size={22} color="currentColor" secondaryColor="currentColor" />
+                <Fire1
+                  size={22}
+                  color="currentColor"
+                  secondaryColor="currentColor"
+                />
               </div>
               <div>
-                <span className="landing-pizza-menu__badge-title">VIENNA KITCHEN</span>
+                <span className="landing-pizza-menu__badge-title">
+                  VIENNA KITCHEN
+                </span>
                 <span className="landing-pizza-menu__badge-subtitle">
                   NEAPOLITAN CRAFT 2026
                 </span>
@@ -471,13 +516,17 @@ export function LandingPizzaMenuSection() {
                 alt={flavor.name}
                 width={640}
                 height={640}
-                priority
+                sizes="(max-width: 1200px) 420px, 640px"
                 draggable={false}
               />
             </div>
           </div>
 
-          <div ref={floatersFgRef} className="landing-pizza-menu__floaters" aria-hidden>
+          <div
+            ref={floatersFgRef}
+            className="landing-pizza-menu__floaters"
+            aria-hidden
+          >
             {FG_INDICES.map(renderFloater)}
           </div>
 

@@ -1,6 +1,8 @@
+import type { PizzaSelection } from "../catalog/catalog.dto";
 export type OrderStatus =
   | "DRAFT"
   | "PENDING_PAYMENT"
+  | "SCHEDULED"
   | "PENDING_OFFERS"
   | "ACCEPTED_BY_PROVIDER"
   | "PREPARING"
@@ -61,6 +63,9 @@ export type DeliveryAddress = {
 };
 
 export type OrderLineRequest = {
+  variantId?: string;
+  selections?: PizzaSelection[];
+  selectionLabels?: string[];
   size?: "small" | "medium" | "large";
   extras?: string[];
   menuItemId: string;
@@ -69,12 +74,15 @@ export type OrderLineRequest = {
 
 export type OrderQuote = {
   lines: CustomerOrderLine[];
+  discountCents?: number;
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
 };
 
 export type CreateOrderRequest = {
+  couponCode?: string;
+  campaignCode?: string;
   idempotencyKey?: string;
   menuVersion: number;
   addressId: string;
@@ -111,6 +119,9 @@ export type CourierLocationView = {
 };
 
 export type CustomerOrderLine = {
+  variantId?: string;
+  selections?: PizzaSelection[];
+  selectionLabels?: string[];
   size?: "small" | "medium" | "large";
   extras?: string[];
   menuItemId: string;
@@ -126,6 +137,7 @@ export type CustomerOrderView = {
   id: string;
   menuVersion: number;
   lines: CustomerOrderLine[];
+  discountCents?: number;
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
@@ -137,6 +149,10 @@ export type CustomerOrderView = {
   notes?: string;
   leaveAtDoor?: boolean;
   scheduledAt?: string;
+  isScheduled?: boolean;
+  deliveryStreet?: string;
+  deliveryCity?: string;
+  deliveryZipcode?: string;
   deliveryEntrance?: string;
   deliveryFloor?: string;
   deliveryUnit?: string;
@@ -146,6 +162,9 @@ export type CustomerOrderView = {
   etaDeliveryMin?: number;
   etaDeliveryMax?: number;
   etaComputedAt?: string;
+  promisedDeliveryAt?: string;
+  compensationCents?: number;
+  compensatedAt?: string;
   hasShortExtraStop?: boolean;
   requiresDeliveryPin?: boolean;
   deliveryPin?: string;
@@ -154,6 +173,9 @@ export type CustomerOrderView = {
 };
 
 export type OrderLine = {
+  variantId?: string;
+  selections?: PizzaSelection[];
+  selectionLabels?: string[];
   size?: "small" | "medium" | "large";
   extras?: string[];
   menuItemId: string;
@@ -177,6 +199,7 @@ export type Order = {
   customerId: string;
   menuVersion: number;
   lines: OrderLine[];
+  discountCents?: number;
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
@@ -240,6 +263,7 @@ export type ReorderPreviewResponse = {
     quantity: number;
     unitPriceCents: number;
   }>;
+  discountCents?: number;
   subtotalCents: number;
   deliveryFeeCents: number;
   estimatedTotalCents: number;
@@ -253,6 +277,9 @@ export type AtRiskOrderRow = {
   risk: "exception" | "delayed_eta";
   etaDeliveryMax?: number;
   etaComputedAt?: string;
+  promisedDeliveryAt?: string;
+  compensationCents?: number;
+  compensatedAt?: string;
 };
 
 export type AtRiskIncidentRow = {

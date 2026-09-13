@@ -1,3 +1,4 @@
+import { WalletModule } from "../wallet/wallet.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "../account/schemas/user.schema";
@@ -8,6 +9,7 @@ import { SlaService } from "./sla.service";
 
 @Module({
   imports: [
+    WalletModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },

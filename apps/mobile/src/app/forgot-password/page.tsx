@@ -1,30 +1,31 @@
-'use client';
+"use client";
+import { Form } from "@repo/ui/forms";
 
-import { accountClient } from '@repo/api';
-import { Button } from '@heroui/react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { accountClient } from "@repo/api";
+import { Button } from "@heroui/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   AccountField,
   AccountHero,
   AccountNotice,
-  AccountScreen,
-} from '@/components/AccountScreen';
-import { useApp } from '@/context/AppContext';
-import { hx } from '@/lib/heroui-classes';
+} from "@/components/AccountScreen";
+import { useApp } from "@/context/AppContext";
+import { AuthScreen } from "@/components/AuthScreen";
+import { hx } from "@/lib/heroui-classes";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { t } = useApp();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
 
   const submit = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      setError(t('login.emailLabel'));
+    if (!email.trim() || !email.includes("@")) {
+      setError(t("login.emailLabel"));
       return;
     }
     setBusy(true);
@@ -40,25 +41,25 @@ export default function ForgotPasswordPage() {
         );
       }
     } catch {
-      setError(t('forgot.error') || 'Could not start reset');
+      setError(t("forgot.error") || "Could not start reset");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <AccountScreen title={t('forgot.title')} backHref="/login/">
+    <AuthScreen variant="email" title={t("forgot.title")} backHref="/login/">
       <AccountHero
-        title={t('forgot.heading')}
-        description={t('forgot.subtitle')}
+        title={t("forgot.heading")}
+        description={t("forgot.subtitle")}
       />
       {sent && !error ? (
         <AccountNotice tone="success">
-          {t('forgot.sent') ||
-            'If that account exists, a reset link was issued. In local demo the token is opened automatically.'}
+          {t("forgot.sent") ||
+            "If that account exists, a reset link was issued. In local demo the token is opened automatically."}
         </AccountNotice>
       ) : null}
-      <form
+      <Form
         className="mt-7 grid gap-6"
         onSubmit={(event) => {
           event.preventDefault();
@@ -66,13 +67,13 @@ export default function ForgotPasswordPage() {
         }}
       >
         <AccountField
-          label={t('login.emailLabel')}
+          label={t("login.emailLabel")}
           name="email"
           type="email"
           inputMode="email"
           autoComplete="email"
           autoFocus
-          placeholder={t('login.emailLabel')}
+          placeholder={t("login.emailLabel")}
           value={email}
           error={error ?? undefined}
           onChange={(event) => {
@@ -86,9 +87,9 @@ export default function ForgotPasswordPage() {
           isDisabled={busy}
           className={hx.btnPrimary}
         >
-          {t('forgot.action')}
+          {t("forgot.action")}
         </Button>
-      </form>
-    </AccountScreen>
+      </Form>
+    </AuthScreen>
   );
 }

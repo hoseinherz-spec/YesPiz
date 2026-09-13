@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { AppFrame } from '@/components/AppFrame';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -15,22 +17,22 @@ export default function PrivacyPage() {
   const { t } = useApp();
 
   return (
-    <AppFrame>
+    <AppFrame className="reference-screen">
       <ScreenHeader title={t('privacy.title')} backHref="/settings/" />
       <article className="pb-[max(40px,env(safe-area-inset-bottom))]">
         {SECTIONS.map(([title, body]) => (
           <section key={title} className="mb-9">
-            <h1 className="text-[26px] font-bold tracking-[-0.02em] text-foreground">
+            <AppText as="h1" className="text-[26px] font-bold tracking-[-0.02em] text-foreground">
               {t(title)}
-            </h1>
-            <p className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
+            </AppText>
+            <AppText as="p" className="mt-3 text-[15px] leading-[1.65] text-text-secondary">
               {t(body)}
-            </p>
+            </AppText>
           </section>
         ))}
-        <p className="border-t border-border pt-6 text-sm text-muted">
+        <AppText as="p" className="border-t border-border pt-6 text-sm text-muted">
           {t('privacy.updated')}
-        </p>
+        </AppText>
       </article>
     </AppFrame>
   );

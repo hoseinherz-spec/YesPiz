@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Button, Card, Typography } from '@heroui/react';
 import { useState } from 'react';
@@ -111,9 +113,9 @@ export default function PartnerPage() {
                   <Typography type="h6" className={hx.title}>
                     {t('partner.orderNum', { id: order.id })}
                   </Typography>
-                  <span className="rounded-full bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] px-2.5 py-1 text-[11px] font-bold text-accent">
+                  <AppText as="span" className="rounded-full bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] px-2.5 py-1 text-[11px] font-bold text-accent">
                     {t('partner.minLeft', { n: order.left })}
-                  </span>
+                  </AppText>
                 </div>
                 <Typography type="body-sm" className="text-[13px] text-text-secondary">
                   {order.items}

@@ -5,7 +5,6 @@
   --radius: 0.75rem;
   --field-radius: 0.75rem;
 
-  --font-poppins: var(--font-poppins-family), sans-serif;
   --font-sans: var(--font-poppins);
   --font-serif: var(--font-poppins);
   --font-mono: var(--font-poppins);
@@ -323,3 +322,35 @@ body {
     );
   background-size: 4rem 4rem;
 }
+
+/* Reserve the right scroll runway before hydration, including reduced motion. */
+.pizza-animation {
+  height: 380vh;
+}
+
+@media (max-width: 767px) {
+  .pizza-animation {
+    height: 260vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pizza-animation {
+    height: 100svh;
+  }
+}
+
+
+/* Consistent keyboard navigation and readable headings across landing sections. */
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 4px;
+}
+:where(h1, h2, h3) { text-wrap: balance; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* Lime remains the brand accent; text uses a readable olive on pale surfaces. */
+.landing-accent-copy { color: #526300; }
+.dark .landing-accent-copy { color: #cbfb04; }

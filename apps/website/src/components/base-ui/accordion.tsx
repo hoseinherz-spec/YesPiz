@@ -4,8 +4,6 @@ import * as React from "react";
 import { Accordion as HeroAccordion } from "@heroui/react";
 import { ChevronDown } from "@repo/icons";
 
-import { cn } from "@/lib/utils";
-
 type AccordionProps = React.ComponentProps<typeof HeroAccordion> & {
   type?: "single" | "multiple";
   collapsible?: boolean;

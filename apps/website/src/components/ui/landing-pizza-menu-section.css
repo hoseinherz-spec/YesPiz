@@ -105,7 +105,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  transition: transform 0.1s ease-out;
 }
 
 .landing-pizza-menu__floaters-bg {
@@ -294,7 +293,7 @@
   height: min(80vh, 640px);
   transform: translate(-50%, -50%) rotate(12deg);
   transform-style: preserve-3d;
-  will-change: transform, filter;
+  will-change: transform;
   pointer-events: none;
 }
 
@@ -343,7 +342,7 @@
   align-items: center;
   gap: 1.5rem;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: background-color 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   width: 135px;
   position: relative;
   backdrop-filter: blur(10px);
@@ -495,5 +494,62 @@
 
   .landing-pizza-menu__floater--4 {
     display: none;
+  }
+}
+
+.landing-pizza-menu[data-animation-active="false"] .landing-pizza-menu__center {
+  animation-play-state: paused;
+}
+
+.landing-pizza-menu[data-animation-active="false"] .landing-pizza-menu__product,
+.landing-pizza-menu[data-animation-active="false"]
+  .landing-pizza-menu__floater {
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-pizza-menu .landing-pizza-menu__center {
+    opacity: 1;
+    animation: none;
+  }
+  .landing-pizza-menu *,
+  .landing-pizza-menu *::before,
+  .landing-pizza-menu *::after {
+    transition: none !important;
+  }
+}
+
+/* Let the mobile showcase flow naturally instead of overlapping copy and cards. */
+@media (max-width: 1200px) {
+  .landing-pizza-menu {
+    height: auto;
+    min-height: 100svh;
+  }
+  .landing-pizza-menu__content {
+    height: auto;
+    gap: 2rem;
+    overflow: visible;
+  }
+  .landing-pizza-menu__center {
+    position: relative;
+    inset: auto;
+    flex: none;
+    width: 100%;
+    height: min(85vw, 420px);
+  }
+  .landing-pizza-menu__product {
+    top: 50%;
+    width: min(82vw, 400px);
+    height: min(82vw, 400px);
+  }
+  .landing-pizza-menu__floaters,
+  .landing-pizza-menu__floaters-bg {
+    display: none;
+  }
+  .landing-pizza-menu__right {
+    margin-top: 2rem;
+  }
+  .landing-pizza-menu__carousel {
+    align-items: center;
   }
 }

@@ -2,7 +2,7 @@
   "name": "yespizz",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "build": "npm run build --workspace=@repo/i18n && npm run build --workspaces --if-present",
     "dev": "turbo run dev",
     "dev:website": "turbo run dev --filter=website",
     "dev:mobile": "turbo run dev --filter=mobile",
@@ -18,17 +18,19 @@
     "courier:aab": "npm run android:aab --workspace=courier-mobile",
     "courier:ios": "npm run ios:export --workspace=courier-mobile",
     "start": "turbo run start",
-    "lint": "turbo run lint",
+    "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
-    "test": "turbo run test",
+    "check-types": "npm run check-types --workspaces --if-present",
+    "test": "npm run test --workspace=api -- --runInBand --watchman=false && npm run test:forms --workspace=@repo/ui",
+    "test:e2e:features": "playwright test --config=playwright.features.config.ts",
     "seed:api": "npm run seed --workspace=api",
     "test:e2e": "playwright test",
     "test:e2e:admin": "playwright test --config=playwright.admin.config.ts",
     "postinstall": "node scripts/native-compat.cjs",
     "test:stripe-sandbox": "npm run build --workspace=@repo/i18n && npm run test:stripe-sandbox --workspace=api",
     "test:stripe-browser": "playwright test --config=playwright.stripe.config.ts",
-    "stripe:listen": "node scripts/stripe-webhook.cjs"
+    "stripe:listen": "node scripts/stripe-webhook.cjs",
+    "test:e2e:review": "node e2e/run-role-review.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

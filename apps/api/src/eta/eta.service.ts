@@ -49,7 +49,8 @@ export class EtaService {
     );
 
     const hour = new Date().getHours();
-    const rushFactor = hour >= 11 && hour <= 14 ? 1.15 : hour >= 17 && hour <= 21 ? 1.2 : 1;
+    const rushFactor =
+      hour >= 11 && hour <= 14 ? 1.15 : hour >= 17 && hour <= 21 ? 1.2 : 1;
 
     const queueDepth = opts?.queueDepth ?? 0;
     const queueExtra = Math.min(12, queueDepth * 3);
@@ -70,11 +71,17 @@ export class EtaService {
     const window: EtaWindow = {
       etaPrepMin: Math.max(5, prepMid - pad),
       etaPrepMax: prepMid + pad,
-      etaDeliveryMin: Math.max(8, deliveryMid - pad),
-      etaDeliveryMax: deliveryMid + pad,
+      etaDeliveryMin:
+        Math.max(5, prepMid - pad) + Math.max(8, deliveryMid - pad),
+      etaDeliveryMax: prepMid + deliveryMid + pad * 2,
       etaComputedAt: new Date(),
     };
 
+    if (!order.promisedDeliveryAt) {
+      order.promisedDeliveryAt = new Date(
+        window.etaComputedAt.getTime() + window.etaDeliveryMax * 60_000,
+      );
+    }
     order.etaPrepMin = window.etaPrepMin;
     order.etaPrepMax = window.etaPrepMax;
     order.etaDeliveryMin = window.etaDeliveryMin;

@@ -1,9 +1,14 @@
+import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsArray,
+  ArrayMaxSize,
+  ValidateNested,
+  Matches,
   IsBoolean,
   IsDateString,
   IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Max,
@@ -87,11 +92,16 @@ export class UpdateProviderDto {
   @Max(5)
   rating?: number;
 
-  @ApiPropertyOptional({ description: "Max concurrent open orders" })
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 1,
+    description: "Max concurrent open orders; null removes the limit",
+  })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  acceptCap?: number;
+  acceptCap?: number | null;
 }
 
 export class ProviderSelfUpdateDto {
@@ -105,11 +115,16 @@ export class ProviderSelfUpdateDto {
   @IsString()
   logoUrl?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    minimum: 1,
+    description: "Max concurrent open orders; null removes the limit",
+  })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(1)
-  acceptCap?: number;
+  acceptCap?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -123,7 +138,10 @@ export class ProviderSelfUpdateDto {
 }
 
 export class EightySixDto {
-  @ApiProperty({ type: [String], description: "Menu item ids to mark unavailable" })
+  @ApiProperty({
+    type: [String],
+    description: "Menu item ids to mark unavailable",
+  })
   @IsArray()
   @IsString({ each: true })
   menuItemIds!: string[];
@@ -147,4 +165,23 @@ export class PrepOverrideDto {
   @Min(1)
   @Max(120)
   prepOverrideMinutes!: number;
+}
+
+export class OpeningPeriodDto {
+  @IsInt() @Min(0) @Max(6) day!: number;
+  @IsString() @Matches(/^(?:[01]\d|2[0-3]):[0-5]\d$/) opens!: string;
+  @IsString() @Matches(/^(?:(?:[01]\d|2[0-3]):[0-5]\d|24:00)$/) closes!: string;
+}
+export class OpeningHoursDto {
+  @IsBoolean() hoursEnabled!: boolean;
+  @IsString() timezone!: string;
+  @IsArray()
+  @ArrayMaxSize(28)
+  @ValidateNested({ each: true })
+  @Type(() => OpeningPeriodDto)
+  openingHours!: OpeningPeriodDto[];
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  closedDates!: string[];
 }

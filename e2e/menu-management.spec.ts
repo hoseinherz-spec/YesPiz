@@ -24,9 +24,24 @@ test("admin creates, publishes, edits and hides a menu item; responsive menu wor
     .getByLabel("Category name", { exact: true })
     .fill("Seasonal pizzas");
   await page.getByRole("button", { name: "Add category", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Save category", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add category", exact: true }),
+  ).toBeEnabled();
   await page
-    .getByRole("combobox", { name: "Category", exact: true })
-    .selectOption({ label: "Seasonal pizzas" });
+    .getByRole("combobox", { name: /Category/ })
+    .evaluate((element) =>
+      element.scrollIntoView({ block: "center", behavior: "instant" }),
+    );
+  await page.getByRole("combobox", { name: /Category/ }).fill("Seasonal");
+
+  await page.getByRole("combobox", { name: /Category/ }).press("ArrowDown");
+  await page.getByRole("combobox", { name: /Category/ }).press("Enter");
+  await expect(page.getByRole("combobox", { name: /Category/ })).toHaveValue(
+    "Seasonal pizzas",
+  );
   await page.getByLabel("Name", { exact: true }).fill("Summer pizza");
   await page.getByLabel("Price (€)", { exact: true }).fill("12.50");
   await page.getByRole("button", { name: "Add item", exact: true }).click();
@@ -38,11 +53,9 @@ test("admin creates, publishes, edits and hides a menu item; responsive menu wor
     .poll(async () => (await menu()).items[0]?.name)
     .toBe("Summer pizza");
   await page.getByRole("button", { name: "Edit item", exact: true }).click();
-  const edit = page
-    .locator("form")
-    .filter({
-      has: page.getByRole("button", { name: "Save item", exact: true }),
-    });
+  const edit = page.locator("form").filter({
+    has: page.getByRole("button", { name: "Save item", exact: true }),
+  });
   await edit
     .getByLabel("Item name", { exact: true })
     .fill("Summer pizza deluxe");

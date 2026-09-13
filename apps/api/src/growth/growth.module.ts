@@ -1,0 +1,382 @@
+import {
+  Coupon,
+  CouponSchema,
+  CreateCouponDto,
+  CouponStatusDto,
+  couponDiscount,
+} from "./coupon";
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Injectable,
+  Module,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import {
+  InjectModel,
+  MongooseModule,
+  Prop,
+  Schema,
+  SchemaFactory,
+} from "@nestjs/mongoose";
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsString,
+  Matches,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from "class-validator";
+import { HydratedDocument, Model } from "mongoose";
+import {
+  CurrentUser,
+  type JwtPayloadUser,
+} from "../common/decorators/current-user.decorator";
+import { Roles } from "../common/decorators/roles.decorator";
+import { OrderStatus, UserRole } from "../common/enums";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import {
+  Order,
+  OrderDocument,
+  OrderSchema,
+} from "../orders/schemas/order.schema";
+@Schema({ timestamps: true, collection: "growth_campaigns" })
+export class GrowthCampaign {
+  @Prop({ required: true, unique: true }) code!: string;
+  @Prop({ required: true }) name!: string;
+  @Prop({ required: true }) channel!: string;
+  @Prop({ required: true }) audience!: string;
+  @Prop({ required: true }) startAt!: Date;
+  @Prop({ required: true }) endAt!: Date;
+  @Prop({ required: true }) budgetCents!: number;
+  @Prop({ default: 0 }) spendCents!: number;
+  @Prop({ default: "planned" }) status!: "planned" | "active" | "completed";
+  @Prop({ required: true }) createdBy!: string;
+  @Prop({
+    type: [
+      {
+        _id: false,
+        at: Date,
+        actor: String,
+        status: String,
+        spendCents: Number,
+      },
+    ],
+    default: [],
+  })
+  history!: { at: Date; actor: string; status: string; spendCents: number }[];
+}
+const GrowthCampaignSchema = SchemaFactory.createForClass(GrowthCampaign);
+@Schema({ timestamps: true, collection: "operations_tasks" })
+export class OperationsTask {
+  @Prop({ required: true }) title!: string;
+  @Prop({ required: true }) area!: string;
+  @Prop({ required: true }) dueAt!: Date;
+  @Prop({ default: "todo" }) status!: "todo" | "doing" | "done";
+  @Prop({ required: true }) createdBy!: string;
+  @Prop() ownerId?: string;
+  @Prop({ default: 0 }) revision!: number;
+  @Prop({
+    type: [{ _id: false, at: Date, actor: String, status: String }],
+    default: [],
+  })
+  history!: { at: Date; actor: string; status: string }[];
+}
+const OperationsTaskSchema = SchemaFactory.createForClass(OperationsTask);
+class CreateCampaignDto {
+  @IsString() @Matches(/^[a-z0-9-]{3,40}$/) code!: string;
+  @IsString() @MinLength(3) @MaxLength(120) name!: string;
+  @IsIn(["local", "search", "social", "referral", "business", "retention"])
+  channel!: string;
+  @IsIn(["new", "returning", "lapsed", "business"]) audience!: string;
+  @IsDateString() startAt!: string;
+  @IsDateString() endAt!: string;
+  @IsInt() @Min(0) @Max(100000000) budgetCents!: number;
+}
+class UpdateCampaignDto {
+  @IsIn(["planned", "active", "completed"]) status!:
+    "planned" | "active" | "completed";
+  @IsInt() @Min(0) @Max(100000000) spendCents!: number;
+}
+class CreateTaskDto {
+  @IsString() @MinLength(5) @MaxLength(200) title!: string;
+  @IsIn(["operations", "quality", "finance", "marketing", "partners"])
+  area!: string;
+  @IsDateString() dueAt!: string;
+}
+class UpdateTaskDto {
+  @IsInt() @Min(0) revision!: number;
+  @IsIn(["todo", "doing", "done"]) status!: "todo" | "doing" | "done";
+}
+@Injectable()
+export class GrowthService {
+  constructor(
+    @InjectModel(Coupon.name)
+    private readonly coupons: Model<HydratedDocument<Coupon>>,
+    @InjectModel(GrowthCampaign.name)
+    private readonly campaigns: Model<HydratedDocument<GrowthCampaign>>,
+    @InjectModel(OperationsTask.name)
+    private readonly tasks: Model<HydratedDocument<OperationsTask>>,
+    @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
+  ) {}
+  async discount(code: string | undefined, subtotal: number) {
+    if (!code) return 0;
+    const coupon = await this.coupons.findOne({ code }).exec();
+    if (!coupon) throw new BadRequestException("Discount code not found.");
+    return couponDiscount(coupon, subtotal);
+  }
+  async listCoupons() {
+    return this.coupons.find().sort({ createdAt: -1 }).limit(200).exec();
+  }
+  async createCoupon(dto: CreateCouponDto, actor: string) {
+    if (
+      (dto.kind === "percent" && dto.value > 100) ||
+      new Date(dto.endAt) <= new Date(dto.startAt)
+    )
+      throw new BadRequestException(
+        "Choose a valid percentage and date range.",
+      );
+    try {
+      return await this.coupons.create({ ...dto, createdBy: actor });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000)
+        throw new ConflictException("Discount code already exists.");
+      throw error;
+    }
+  }
+  async couponStatus(id: string, active: boolean) {
+    const coupon = await this.coupons
+      .findByIdAndUpdate(id, { $set: { active } }, { new: true })
+      .exec();
+    if (!coupon) throw new BadRequestException("Discount code not found.");
+    return coupon;
+  }
+  async campaignSource(code?: string) {
+    if (!code) return undefined;
+    const now = new Date();
+    const campaign = await this.campaigns
+      .findOne({
+        code,
+        status: "active",
+        startAt: { $lte: now },
+        endAt: { $gt: now },
+      })
+      .select("code")
+      .exec();
+    return campaign?.code;
+  }
+  async createCampaign(dto: CreateCampaignDto, actor: string) {
+    if (
+      dto.name.trim().length < 3 ||
+      new Date(dto.endAt) <= new Date(dto.startAt)
+    )
+      throw new BadRequestException(
+        "Choose a name and an end date after the start.",
+      );
+    try {
+      return await this.campaigns.create({
+        ...dto,
+        name: dto.name.trim(),
+        createdBy: actor,
+      });
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000)
+        throw new ConflictException("Campaign code already exists.");
+      throw error;
+    }
+  }
+  async updateCampaign(id: string, dto: UpdateCampaignDto, actor: string) {
+    const doc = await this.campaigns
+      .findByIdAndUpdate(
+        id,
+        { $set: dto, $push: { history: { at: new Date(), actor, ...dto } } },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new BadRequestException("Campaign not found.");
+    return doc;
+  }
+  async dashboard() {
+    const [campaigns, attribution, customers] = await Promise.all([
+      this.campaigns.find().sort({ createdAt: -1 }).limit(100).exec(),
+      this.orders.aggregate([
+        {
+          $match: {
+            campaignCode: { $exists: true },
+            status: OrderStatus.COMPLETED,
+            isTestOrder: { $ne: true },
+          },
+        },
+        {
+          $group: {
+            _id: "$campaignCode",
+            orders: { $sum: 1 },
+            orderValueCents: { $sum: "$totalCents" },
+            customers: { $addToSet: "$customerId" },
+          },
+        },
+        {
+          $project: {
+            orders: 1,
+            orderValueCents: 1,
+            customers: { $size: "$customers" },
+          },
+        },
+      ]),
+      this.orders.aggregate([
+        {
+          $match: { status: OrderStatus.COMPLETED, isTestOrder: { $ne: true } },
+        },
+        {
+          $group: {
+            _id: "$customerId",
+            orders: { $sum: 1 },
+            lastOrderAt: { $max: "$completedAt" },
+            totalCents: { $sum: "$totalCents" },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            customers: { $sum: 1 },
+            repeatCustomers: {
+              $sum: { $cond: [{ $gte: ["$orders", 2] }, 1, 0] },
+            },
+            lapsedCustomers: {
+              $sum: {
+                $cond: [
+                  {
+                    $lt: ["$lastOrderAt", new Date(Date.now() - 30 * 86400000)],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+    return {
+      campaigns,
+      attribution,
+      customers: customers[0] ?? {
+        customers: 0,
+        repeatCustomers: 0,
+        lapsedCustomers: 0,
+      },
+    };
+  }
+  listTasks() {
+    return this.tasks.find().sort({ dueAt: 1 }).limit(300).exec();
+  }
+  createTask(dto: CreateTaskDto, actor: string) {
+    if (dto.title.trim().length < 5)
+      throw new BadRequestException("Describe the task.");
+    return this.tasks.create({
+      ...dto,
+      title: dto.title.trim(),
+      createdBy: actor,
+      history: [{ at: new Date(), actor, status: "todo" }],
+    });
+  }
+  async updateTask(id: string, dto: UpdateTaskDto, actor: string) {
+    const doc = await this.tasks
+      .findOneAndUpdate(
+        {
+          _id: id,
+          revision: dto.revision,
+          $or: [{ ownerId: { $exists: false } }, { ownerId: actor }],
+        },
+        {
+          $set: { status: dto.status, ownerId: actor },
+          $inc: { revision: 1 },
+          $push: { history: { at: new Date(), actor, status: dto.status } },
+        },
+        { new: true },
+      )
+      .exec();
+    if (!doc)
+      throw new ConflictException(
+        "This task changed or belongs to another operator. Refresh the board.",
+      );
+    return doc;
+  }
+}
+@Controller("growth")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
+class GrowthController {
+  constructor(private readonly growth: GrowthService) {}
+  @Get("coupons") coupons() {
+    return this.growth.listCoupons();
+  }
+  @Post("coupons") createCoupon(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: CreateCouponDto,
+  ) {
+    return this.growth.createCoupon(dto, user.userId);
+  }
+  @Patch("coupons/:id") couponStatus(
+    @Param("id") id: string,
+    @Body() dto: CouponStatusDto,
+  ) {
+    return this.growth.couponStatus(id, dto.active);
+  }
+  @Get() dashboard() {
+    return this.growth.dashboard();
+  }
+  @Post("campaigns") create(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: CreateCampaignDto,
+  ) {
+    return this.growth.createCampaign(dto, user.userId);
+  }
+  @Patch("campaigns/:id") update(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+    @Body() dto: UpdateCampaignDto,
+  ) {
+    return this.growth.updateCampaign(id, dto, user.userId);
+  }
+  @Get("tasks") tasks() {
+    return this.growth.listTasks();
+  }
+  @Post("tasks") task(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: CreateTaskDto,
+  ) {
+    return this.growth.createTask(dto, user.userId);
+  }
+  @Patch("tasks/:id") updateTask(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+    @Body() dto: UpdateTaskDto,
+  ) {
+    return this.growth.updateTask(id, dto, user.userId);
+  }
+}
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Coupon.name, schema: CouponSchema },
+      { name: GrowthCampaign.name, schema: GrowthCampaignSchema },
+      { name: OperationsTask.name, schema: OperationsTaskSchema },
+      { name: Order.name, schema: OrderSchema },
+    ]),
+  ],
+  controllers: [GrowthController],
+  providers: [GrowthService],
+  exports: [GrowthService],
+})
+export class GrowthModule {}

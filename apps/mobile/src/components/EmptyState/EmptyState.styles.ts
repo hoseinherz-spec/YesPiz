@@ -1,14 +1,15 @@
-import { tv } from 'tailwind-variants';
+import { tv } from "tailwind-variants";
 
-import { hx } from '@/lib/heroui-classes';
+import { hx } from "@/lib/heroui-classes";
 
 export const emptyState = tv({
   slots: {
-    root: 'flex flex-1 flex-col items-center justify-center px-6 py-16 text-center',
-    iconWrap: 'mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-card text-muted',
+    root: "flex flex-1 flex-col items-center justify-center px-4 py-12 text-center",
+    iconWrap:
+      "empty-state-icon flex size-16 items-center justify-center rounded-[22px] text-accent",
     title: hx.h3,
-    body: `${hx.bodySm} mt-2 max-w-xs`,
-    actionWrap: 'mt-6 w-full max-w-xs',
+    body: `${hx.bodySm} mt-3 max-w-[28ch] text-pretty leading-6`,
+    actionWrap: "mt-6 w-full max-w-xs",
     action: hx.btnPrimary,
   },
 });

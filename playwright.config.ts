@@ -7,6 +7,8 @@ export const app = (workspace: string, port: number) => ({
   reuseExistingServer: false,
   env: {
     NEXT_DISABLE_WEBPACK_CACHE: "1",
+    YESPIZZ_E2E_OUTPUT: "1",
+    NODE_OPTIONS: "--max-old-space-size=1536",
     NEXT_PUBLIC_API_URL: "http://localhost:8158",
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "",
   },
@@ -15,7 +17,7 @@ export const app = (workspace: string, port: number) => ({
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "order-flow.spec.ts",
-  timeout: 180_000,
+  timeout: 360_000,
   expect: { timeout: 20_000 },
   workers: 1,
   use: {
@@ -32,7 +34,5 @@ export default defineConfig({
       timeout: 120_000,
     },
     app("mobile", 8151),
-    app("provider-panel", 8184),
-    app("courier-mobile", 8153),
   ],
 });

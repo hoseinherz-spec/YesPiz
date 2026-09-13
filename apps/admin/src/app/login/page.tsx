@@ -1,21 +1,22 @@
-'use client';
+"use client";
+import { Form, Input } from "@repo/ui/forms";
 
-import { accountClient, ApiError } from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
-import { getAdminToken, setAdminToken } from '@/lib/auth';
+import { accountClient, ApiError } from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { getAdminToken, setAdminToken } from "@/lib/auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@yespizz.local');
-  const [password, setPassword] = useState('Admin123!');
+  const [email, setEmail] = useState("admin@yespizz.local");
+  const [password, setPassword] = useState("Admin123!");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (getAdminToken()) {
-      router.replace('/menu');
+      router.replace("/menu");
     }
   }, [router]);
 
@@ -24,15 +25,15 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await accountClient.loginAsRole('admin', {
-        method: 'password',
+      const res = await accountClient.loginAsRole("admin", {
+        method: "password",
         email,
         password,
       });
       setAdminToken(res.accessToken);
-      router.replace('/menu');
+      router.replace("/menu");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Login failed');
+      setError(err instanceof ApiError ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -46,34 +47,34 @@ export default function AdminLoginPage() {
             <Typography type="h1" className="text-2xl font-semibold">
               Admin login
             </Typography>
-            <p className="text-muted mt-1 text-sm">Yespizz operations console</p>
+            <p className="text-muted mt-1 text-sm">
+              Yespizz operations console
+            </p>
           </div>
-          <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-            <label className="flex flex-col gap-1 text-sm">
-              Email
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="border-border bg-background rounded-md border px-3 py-2"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Password
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="border-border bg-background rounded-md border px-3 py-2"
-              />
-            </label>
-            {error ? <p className="text-sm text-danger">{error}</p> : null}
+          <Form className="flex flex-col gap-3" onSubmit={onSubmit}>
+            <Input
+              label={<>Email</>}
+              wrapperClassName="flex flex-col gap-1 text-sm"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border-border bg-background rounded-md border px-3 py-2"
+            />
+            <Input
+              label={<>Password</>}
+              wrapperClassName="flex flex-col gap-1 text-sm"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border-border bg-background rounded-md border px-3 py-2"
+            />
+            {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
             <Button type="submit" variant="primary" isDisabled={loading}>
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
-          </form>
+          </Form>
         </Card.Content>
       </Card>
     </main>

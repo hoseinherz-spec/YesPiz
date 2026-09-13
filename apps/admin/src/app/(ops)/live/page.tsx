@@ -2,7 +2,7 @@
 
 import { ApiError, ordersClient, type AtRiskDashboardResponse } from '@repo/api';
 import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireAdminToken } from '@/lib/auth';
 import { formatCents } from '@/lib/ids';
 import { useLoadOnMount } from '@/lib/load-on-mount';
@@ -12,23 +12,34 @@ export default function LiveOpsPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshing = useRef(false);
+  const [updatedAt, setUpdatedAt] = useState("");
   const load = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
     setLoading(true);
     setError(null);
     try {
       const token = requireAdminToken();
       const dashboard = await ordersClient.listAtRisk({ accessToken: token });
       setData(dashboard);
+      setUpdatedAt(new Date().toLocaleTimeString());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load live ops');
     } finally {
       setLoading(false);
+      refreshing.current = false;
     }
   }, []);
 
   useLoadOnMount(() => {
     void load();
   });
+
+  useEffect(() => {
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 15000);
+    return () => clearInterval(timer);
+  }, [load]);
 
   const summary = data?.summary;
 
@@ -40,7 +51,7 @@ export default function LiveOpsPage() {
             Live ops
           </Typography>
           <p className="text-muted text-sm">
-            At-risk orders: exceptions, open incidents, delayed ETA
+            At-risk orders: exceptions, open incidents, delayed ETA{updatedAt ? ` · Updated ${updatedAt}` : ""}
           </p>
         </div>
         <Button variant="secondary" size="sm" onPress={load}>

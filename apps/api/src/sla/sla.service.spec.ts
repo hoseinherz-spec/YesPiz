@@ -2,7 +2,7 @@ import { getModelToken } from "@nestjs/mongoose";
 import { Test, TestingModule } from "@nestjs/testing";
 import { OrderStatus } from "../common/enums";
 import { Order } from "../orders/schemas/order.schema";
-import { User } from "../account/schemas/user.schema";
+import { WalletService } from "../wallet/wallet.module";
 import { AppConfigService } from "../app-config/app-config.service";
 import { SlaService } from "./sla.service";
 
@@ -18,7 +18,7 @@ describe("SlaService", () => {
   beforeEach(async () => {
     findOrderById = jest.fn();
     findOneAndUpdate = jest.fn();
-    updateUser = jest.fn().mockReturnValue({ exec: () => Promise.resolve({}) });
+    updateUser = jest.fn().mockResolvedValue(500);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,8 +40,8 @@ describe("SlaService", () => {
           },
         },
         {
-          provide: getModelToken(User.name),
-          useValue: { findByIdAndUpdate: updateUser },
+          provide: WalletService,
+          useValue: { change: updateUser },
         },
         {
           provide: AppConfigService,
@@ -85,7 +85,12 @@ describe("SlaService", () => {
     const first = await service.evaluateOrder(orderId);
     expect(first.compensated).toBe(true);
     expect(first.compensationCents).toBe(500);
-    expect(updateUser).toHaveBeenCalledWith(customerId, { $inc: { creditCents: 500 } });
+    expect(updateUser).toHaveBeenCalledWith(
+      customerId,
+      `sla:${orderId}`,
+      500,
+      orderId,
+    );
   });
 
   it("is idempotent when compensatedAt already set", async () => {

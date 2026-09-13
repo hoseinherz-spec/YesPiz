@@ -1,3 +1,6 @@
+import { ReferralsModule } from "./referrals/referrals.module";
+import { FinanceModule } from "./finance/finance.module";
+import { CareModule } from "./care/care.module";
 import { CommunicationsModule } from "./communications/communications.module";
 import { DeliveryModule } from "./delivery/delivery.module";
 import { MediaModule } from "./media/media.module";
@@ -29,6 +32,7 @@ import { SlaModule } from "./sla/sla.module";
 
 @Module({
   imports: [
+    ReferralsModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
@@ -47,6 +51,8 @@ import { SlaModule } from "./sla/sla.module";
           "mongodb://127.0.0.1:27017/yespizz",
       }),
     }),
+    CareModule,
+    FinanceModule,
     MediaModule,
     CommunicationsModule,
     DeliveryModule,

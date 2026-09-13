@@ -1,0 +1,64 @@
+/* Keep these millisecond tokens in sync with the Motion adapter's fallbacks. */
+:root {
+  --app-motion-fast: 140ms;
+  --app-motion-control: 220ms;
+  --app-motion-page: 360ms;
+  --app-motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --default-transition-duration: var(--app-motion-control);
+  --default-transition-timing-function: var(--app-motion-ease);
+}
+
+.app-selection-item { position: relative; isolation: isolate; }
+.app-selection-background {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: -1;
+}
+.app-selection-content {
+  display: flex;
+  flex-direction: inherit;
+  align-items: inherit;
+  justify-content: inherit;
+  gap: inherit;
+}
+
+.app-progress {
+  transform-origin: left center;
+  transition: transform var(--app-motion-page) var(--app-motion-ease);
+}
+:dir(rtl) .app-progress { transform-origin: right center; }
+
+/* HeroUI keeps its keyboard, focus, gesture and dismissal behavior. */
+.button, .switch, .checkbox, .radio, .tabs__tab, .app-selection-item {
+  transition-duration: var(--app-motion-control);
+  transition-timing-function: var(--app-motion-ease);
+}
+
+.drawer__dialog {
+  --drawer-enter-duration: var(--app-motion-page);
+  --drawer-exit-duration: var(--app-motion-page);
+  --drawer-enter-ease: var(--app-motion-ease);
+  --drawer-exit-ease: var(--app-motion-ease);
+}
+.drawer__backdrop {
+  transition-duration: var(--app-motion-control);
+  transition-timing-function: var(--app-motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --app-motion-fast: 0ms;
+    --app-motion-control: 0ms;
+    --app-motion-page: 0ms;
+  }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+  }
+}

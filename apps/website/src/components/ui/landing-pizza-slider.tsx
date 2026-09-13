@@ -52,7 +52,7 @@ const ingredientVariants = {
     rotate: direction * 25,
     filter: "blur(8px)",
   }),
-  visible: (_direction: number) => ({
+  visible: () => ({
     opacity: 1,
     scale: 1,
     x: 0,

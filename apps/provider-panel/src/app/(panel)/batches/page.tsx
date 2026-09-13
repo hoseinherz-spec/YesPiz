@@ -1,4 +1,5 @@
 "use client";
+import { FormAction, FormScope, Input, Select } from "@repo/ui/forms";
 
 import {
   ApiError,
@@ -161,149 +162,165 @@ export default function BatchesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <div>
-        <Typography type="h1" className="text-2xl font-semibold">
-          Batches
-        </Typography>
-        <p className="text-muted text-sm">
-          Suggest, create, and reduce batches
-        </p>
-      </div>
-
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-
-      <Card className="p-4">
-        <Card.Content className="flex flex-col gap-3 p-0">
-          <Typography type="h3" className="font-medium">
-            Suggest batch
-          </Typography>
-          <p className="text-muted text-sm">
-            Pulls ready-for-pickup orders up to max batch size.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              isDisabled={busy || !providerId}
-              onPress={suggest}
-            >
-              Suggest
-            </Button>
-            <Button
-              variant="primary"
-              isDisabled={busy || !suggestion?.suggestedOrderIds.length}
-              onPress={createFromSuggestion}
-            >
-              Create from suggestion
-            </Button>
+    <FormScope>
+      {
+        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          <div>
+            <Typography type="h1" className="text-2xl font-semibold">
+              Batches
+            </Typography>
+            <p className="text-muted text-sm">
+              Suggest, create, and reduce batches
+            </p>
           </div>
-          {suggestion ? (
-            <div className="text-sm">
-              <p>
-                Suggested {suggestion.suggestedOrderIds.length} / max{" "}
-                {suggestion.maxBatchSize}
-              </p>
-              <ul className="mt-1 list-disc pl-5">
-                {suggestion.suggestedOrderIds.map((id) => (
-                  <li key={id}>{id}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </Card.Content>
-      </Card>
 
-      <div className="flex flex-col gap-3">
-        {batches.map((batch) => {
-          const id = entityId(batch);
-          const orderIds = (batch.orderIds ?? []).map((oid) => String(oid));
-          return (
-            <Card key={id} className="p-4">
-              <Card.Content className="flex flex-col gap-2 p-0">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <Typography type="h3" className="font-medium">
-                    {batch.status}
-                  </Typography>
-                  <span className="text-muted text-xs">
-                    weight {batch.totalPrepWeight}
-                  </span>
-                </div>
-                <p className="text-muted text-xs">Batch {id}</p>
-                {batch.courierId ? (
-                  <p className="text-sm">Courier: {String(batch.courierId)}</p>
-                ) : null}
-                <ul className="space-y-1 text-sm">
-                  {orderIds.map((orderId) => (
-                    <li key={orderId}>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={(keepByBatch[id] ?? []).includes(orderId)}
-                          onChange={() => toggleKeep(id, orderId)}
-                        />
-                        {orderId}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+          <Card className="p-4">
+            <Card.Content className="flex flex-col gap-3 p-0">
+              <Typography type="h3" className="font-medium">
+                Suggest batch
+              </Typography>
+              <p className="text-muted text-sm">
+                Pulls ready-for-pickup orders up to max batch size.
+              </p>
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  size="sm"
                   variant="secondary"
-                  isDisabled={busy || batch.status !== "open"}
-                  onPress={() => reduceBatch(id)}
+                  isDisabled={busy || !providerId}
+                  onPress={suggest}
                 >
-                  Reduce to checked
+                  Suggest
                 </Button>
-                {batch.status === "open" && !batch.courierId ? (
-                  <div className="flex flex-col gap-2 pt-2">
-                    <label className="flex flex-col gap-1 text-sm">
-                      <span className="text-muted">Assign courier</span>
-                      <select
-                        aria-label="Assign courier"
-                        value={courierByBatch[id] ?? ""}
-                        onChange={(e) =>
-                          setCourierByBatch((prev) => ({
-                            ...prev,
-                            [id]: e.target.value,
-                          }))
-                        }
-                        className="border-border bg-background rounded-md border px-3 py-2"
-                      >
-                        <option value="">Choose an on-duty courier</option>
-                        {couriers.map((courier) => (
-                          <option key={courier.userId} value={courier.userId}>
-                            {courier.name}
-                            {courier.vehicleType
-                              ? ` · ${courier.vehicleType}`
-                              : ""}
-                          </option>
-                        ))}
-                      </select>
-                      {!couriers.length ? (
-                        <span>
-                          No couriers on duty. Ask a courier to start a shift,
-                          then refresh.
-                        </span>
-                      ) : null}
-                    </label>
+                <Button
+                  variant="primary"
+                  isDisabled={busy || !suggestion?.suggestedOrderIds.length}
+                  onPress={createFromSuggestion}
+                >
+                  Create from suggestion
+                </Button>
+              </div>
+              {suggestion ? (
+                <div className="text-sm">
+                  <p>
+                    Suggested {suggestion.suggestedOrderIds.length} / max{" "}
+                    {suggestion.maxBatchSize}
+                  </p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {suggestion.suggestedOrderIds.map((id) => (
+                      <li key={id}>{id}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </Card.Content>
+          </Card>
+
+          <div className="flex flex-col gap-3">
+            {batches.map((batch) => {
+              const id = entityId(batch);
+              const orderIds = (batch.orderIds ?? []).map((oid) => String(oid));
+              return (
+                <Card key={id} className="p-4">
+                  <Card.Content className="flex flex-col gap-2 p-0">
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <Typography type="h3" className="font-medium">
+                        {batch.status}
+                      </Typography>
+                      <span className="text-muted text-xs">
+                        weight {batch.totalPrepWeight}
+                      </span>
+                    </div>
+                    <p className="text-muted text-xs">Batch {id}</p>
+                    {batch.courierId ? (
+                      <p className="text-sm">
+                        Courier: {String(batch.courierId)}
+                      </p>
+                    ) : null}
+                    <ul className="space-y-1 text-sm">
+                      {orderIds.map((orderId) => (
+                        <li key={orderId}>
+                          <Input
+                            label={<>{orderId}</>}
+                            wrapperClassName="flex items-center gap-2"
+                            type="checkbox"
+                            checked={(keepByBatch[id] ?? []).includes(orderId)}
+                            onChange={() => toggleKeep(id, orderId)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
                     <Button
                       size="sm"
-                      variant="primary"
-                      isDisabled={busy}
-                      onPress={() => assignCourier(id)}
+                      variant="secondary"
+                      isDisabled={busy || batch.status !== "open"}
+                      onPress={() => reduceBatch(id)}
                     >
-                      Assign courier
+                      Reduce to checked
                     </Button>
-                  </div>
-                ) : null}
-              </Card.Content>
-            </Card>
-          );
-        })}
-        {!batches.length ? (
-          <p className="text-muted text-sm">No batches yet</p>
-        ) : null}
-      </div>
-    </div>
+                    {batch.status === "open" && !batch.courierId ? (
+                      <FormScope>
+                        <div className="flex flex-col gap-2 pt-2">
+                          <Select
+                            searchable
+                            label={
+                              <>
+                                <span className="text-muted">
+                                  Assign courier
+                                </span>
+                                {!couriers.length ? (
+                                  <span>
+                                    No couriers on duty. Ask a courier to start
+                                    a shift, then refresh.
+                                  </span>
+                                ) : null}
+                              </>
+                            }
+                            wrapperClassName="flex flex-col gap-1 text-sm"
+                            aria-label="Assign courier"
+                            value={courierByBatch[id] ?? ""}
+                            onChange={(e) =>
+                              setCourierByBatch((prev) => ({
+                                ...prev,
+                                [id]: e.target.value,
+                              }))
+                            }
+                            className="border-border bg-background rounded-md border px-3 py-2"
+                          >
+                            <option value="">Choose an on-duty courier</option>
+                            {couriers.map((courier) => (
+                              <option
+                                key={courier.userId}
+                                value={courier.userId}
+                              >
+                                {courier.name}
+                                {courier.vehicleType
+                                  ? ` · ${courier.vehicleType}`
+                                  : ""}
+                              </option>
+                            ))}
+                          </Select>
+                          <FormAction
+                            size="sm"
+                            variant="primary"
+                            isDisabled={busy}
+                            onPress={() => assignCourier(id)}
+                          >
+                            Assign courier
+                          </FormAction>
+                        </div>
+                      </FormScope>
+                    ) : null}
+                  </Card.Content>
+                </Card>
+              );
+            })}
+            {!batches.length ? (
+              <p className="text-muted text-sm">No batches yet</p>
+            ) : null}
+          </div>
+        </div>
+      }
+    </FormScope>
   );
 }

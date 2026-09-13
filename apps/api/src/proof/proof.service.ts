@@ -210,6 +210,7 @@ export class ProofService {
     });
     await proof.save();
 
+    order.deliveredAt = now;
     order.status = OrderStatus.DELIVERED;
     order.proofId = proof._id as Types.ObjectId;
     await order.save();

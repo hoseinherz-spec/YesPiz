@@ -1,4 +1,8 @@
 "use client";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+
+import { AppText } from "@/components/Text";
+
 
 import { Button, Card, Separator, Typography } from "@heroui/react";
 import { ShoppingBag, Trash2 } from "@repo/icons";
@@ -9,7 +13,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { MobileActionBar } from "@/components/MobileActionBar";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Stepper } from "@/components/Stepper";
-import { formatPrice } from "@/constants/pizzas";
 import { useApp } from "@/context/AppContext";
 import { useCart } from "@/context/CartContext";
 import { PriceRow } from "@/features/cart/components/PriceRow";
@@ -20,9 +23,10 @@ import { hx } from "@/lib/heroui-classes";
 
 export default function CartPage() {
   const router = useRouter();
-  const { t } = useApp();
+  const { t, language } = useApp();
   const {
     items,
+    menuVersion,
     count,
     subtotal,
     discount,
@@ -34,10 +38,11 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <AppFrame>
+      <AppFrame className="reference-screen">
         <ScreenHeader title={t("cart.title")} backHref="/home/" />
         <EmptyState
           icon={<ShoppingBag size={28} />}
+          image="/images/pizza-margherita.png"
           title={t("cart.empty")}
           body={t("cart.emptyBody")}
           actionLabel={t("common.browseMenu")}
@@ -60,13 +65,10 @@ export default function CartPage() {
 
         <div className="mt-5 flex flex-col gap-3">
           {items.map((item) => (
-            <Card
-              key={item.lineId}
-              className="rounded-[28px] border-0 bg-surface-secondary p-3 shadow-none"
-            >
+            <Card key={item.lineId} className="data-surface rounded-[28px] p-4">
               <Card.Content className="p-0">
                 <div className="flex gap-3">
-                  <div className="size-[96px] shrink-0 overflow-hidden rounded-[22px] bg-card">
+                  <div className="size-[76px] shrink-0 overflow-hidden rounded-[20px] bg-background">
                     <ProductImage
                       src={item.image}
                       alt={item.name}
@@ -79,7 +81,7 @@ export default function CartPage() {
                       <div className="min-w-0">
                         <Typography
                           type="h6"
-                          className={cn(hx.title, "truncate")}
+                          className={cn(hx.title, "text-balance leading-snug")}
                         >
                           {item.name}
                         </Typography>
@@ -87,7 +89,9 @@ export default function CartPage() {
                           type="body-xs"
                           className={cn(hx.caption, "mt-1 line-clamp-2")}
                         >
-                          {t(`size.${item.size}`)}
+                          {item.selectionLabels?.length
+                            ? item.selectionLabels.join(" · ")
+                            : t(`size.${item.size}`)}
                           {item.extras.length
                             ? ` · ${item.extras.map((extra) => t(`extra.${extra}`)).join(", ")}`
                             : ""}
@@ -103,9 +107,12 @@ export default function CartPage() {
                         <Trash2 size={16} color="var(--danger)" />
                       </Button>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-2">
-                      <Typography type="h6" className={hx.title}>
-                        {formatPrice(item.unitPrice * item.quantity)}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <Typography
+                        type="h6"
+                        className={cn(hx.title, "tabular-nums")}
+                      >
+                        <AnimatedNumber currency value={item.unitPrice * item.quantity} />
                       </Typography>
                       <Stepper
                         value={item.quantity}
@@ -125,42 +132,44 @@ export default function CartPage() {
           <PartnerBadge />
         </div>
 
-        <Card className="mt-5 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
+        <Card className="data-surface mt-5 rounded-[28px] p-5">
           <Card.Content className="p-0">
             <PriceRow
               label={t("common.subtotal")}
-              value={formatPrice(subtotal)}
+              value={<AnimatedNumber currency value={subtotal} />}
             />
             {discount > 0 ? (
               <PriceRow
                 label={t("common.discount")}
-                value={`−${formatPrice(discount)}`}
+                value={<AnimatedNumber currency value={-discount} />}
                 accent
               />
             ) : null}
             <PriceRow
               label={t("common.delivery")}
-              value={formatPrice(deliveryFee)}
+              value={<AnimatedNumber currency value={deliveryFee} />}
             />
             <Separator className="my-4 bg-border" />
             <PriceRow
               label={t("common.total")}
-              value={formatPrice(total)}
+              value={<AnimatedNumber currency value={total} />}
               bold
             />
           </Card.Content>
         </Card>
       </div>
 
+      {menuVersion === 0 && <AppText as="p" role="status" className="mt-4 text-sm text-muted">{language === "de" ? "Dein Warenkorb ist gespeichert. Öffne die aktuelle Karte, sobald du wieder online bist, um Preise zu bestätigen und zu bestellen." : "Your cart is saved. Open the live menu when connected to confirm prices and checkout."}</AppText>}
       <MobileActionBar
+        isDisabled={menuVersion === 0}
         onPress={() => router.push("/checkout/")}
         icon={<ShoppingBag size={20} />}
         label={
           <span className="flex items-center justify-center gap-2">
-            <span>{t("cart.checkout")}</span>
-            <span className="text-[13px] font-semibold text-muted">
-              {formatPrice(total)}
-            </span>
+            <AppText as="span">{t("cart.checkout")}</AppText>
+            <AppText as="span" className="text-[13px] font-semibold text-muted">
+              <AnimatedNumber currency value={total} />
+            </AppText>
           </span>
         }
       />

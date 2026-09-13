@@ -1,4 +1,4 @@
-import { Poppins } from 'next/font/google';
+import { poppins } from '@repo/theme/fonts';
 import { NextIntlClientProvider } from '@repo/i18n';
 import { getLocale } from '@repo/i18n/server';
 import type { ReactNode } from 'react';
@@ -6,13 +6,6 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { createSiteMetadata, createSiteViewport } from '@/lib/seo';
 import { Providers } from './providers';
 import './globals.css';
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '900'],
-  variable: '--font-poppins-family',
-  display: 'swap',
-});
 
 export const metadata = createSiteMetadata();
 export const viewport = createSiteViewport();

@@ -1,23 +1,12 @@
 "use client";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-import {
-  Button,
-  Card,
-  Input,
-  Label,
-  Separator,
-  Switch,
-  TextField,
-  Typography,
-} from "@heroui/react";
-import {
-  Banknote,
-  Briefcase,
-  CreditCard,
-  Home,
-  MapPin,
-  ShoppingBag,
-} from "@repo/icons";
+import { AppText } from "@/components/Text";
+
+import { FormScope, RadioField, Input, SwitchField } from "@repo/ui/forms";
+
+import { Button, Card, Separator, Typography } from "@heroui/react";
+import { MapPin, ShoppingBag } from "@repo/icons";
 import { paymentsClient } from "@repo/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -25,13 +14,13 @@ import { useEffect, useMemo, useState } from "react";
 import { AppFrame } from "@/components/AppFrame";
 import { MobileActionBar } from "@/components/MobileActionBar";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { formatPrice } from "@/constants/pizzas";
 import { useApp } from "@/context/AppContext";
 import { useCart } from "@/context/CartContext";
 import { PartnerBadge } from "@/features/partner/components/PartnerBadge";
 import { cashBlockedReason } from "@/lib/cash-policy";
 import {
   readCheckoutPrefs,
+  scheduledAtFromChoice,
   readPaymentMethod,
   writeCheckoutPrefs,
   type CheckoutSchedule,
@@ -39,7 +28,7 @@ import {
 import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
 
-const TIMES: CheckoutSchedule[] = ["asap"];
+const TIMES: CheckoutSchedule[] = ["asap", "45", "1hour", "later"];
 
 function addressTitle(t: (key: string) => string, label: string) {
   const key = `address.${label.toLowerCase()}`;
@@ -51,6 +40,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const {
     t,
+    language,
     addresses,
     selectedAddressId,
     setSelectedAddressId,
@@ -132,6 +122,7 @@ export default function CheckoutPage() {
     writeCheckoutPrefs(
       {
         schedule: time,
+        scheduledAt: scheduledAtFromChoice(time),
         leaveAtDoor,
         deliveryEntrance: entrance.trim() || undefined,
         deliveryFloor: floor.trim() || undefined,
@@ -147,283 +138,234 @@ export default function CheckoutPage() {
   const inputClass = cn(hx.field, "!h-[56px] !rounded-[18px]");
 
   return (
-    <AppFrame className="!pb-36">
-      <ScreenHeader
-        title={t("checkout.title")}
-        subtitle={t("checkout.subtitle")}
-        backHref="/cart/"
-      />
+    <FormScope>
+      <AppFrame className="!pb-36">
+        <ScreenHeader
+          title={t("checkout.title")}
+          subtitle={t("checkout.subtitle")}
+          backHref="/cart/"
+        />
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <Typography type="h3" className={hx.h3}>
-            {t("checkout.address")}
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <Typography type="h3" className={hx.h3}>
+              {t("checkout.address")}
+            </Typography>
+            <Button
+              variant="ghost"
+              onPress={() => router.push("/addresses/new/?from=checkout")}
+              className="h-auto min-w-0 px-0 text-[13px] font-semibold text-foreground"
+            >
+              {t("settings.addAddress")}
+            </Button>
+          </div>
+          {addresses.length > 0 ? (
+            <RadioField
+              name="deliveryAddress"
+              label={t("checkout.address")}
+              required={authed}
+              value={selectedAddressId ?? ""}
+              onChange={setSelectedAddressId}
+              options={addresses.map((addr) => ({
+                id: addr.id,
+                label: (
+                  <span>
+                    <AppText as="strong">{addressTitle(t, addr.label)}</AppText>
+                    <AppText as="span" className="block text-xs text-muted">
+                      {addr.detail}
+                    </AppText>
+                  </span>
+                ),
+              }))}
+            />
+          ) : (
+            <AppText as="p" className="rounded-3xl border border-dashed border-border p-4">
+              {t("checkout.noAddress")}
+            </AppText>
+          )}
+        </section>
+
+        <section className="mt-7">
+          <Typography type="h3" className={cn(hx.h3, "mb-3")}>
+            {t("checkout.dropoffDetails")}
           </Typography>
-          <Button
-            variant="ghost"
-            onPress={() => router.push("/addresses/new/?from=checkout")}
-            className="h-auto min-w-0 px-0 text-[13px] font-semibold text-foreground"
-          >
-            {t("settings.addAddress")}
-          </Button>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          {addresses.map((addr) => {
-            const active = selectedAddressId === addr.id;
-            const Icon = addr.label.toLowerCase() === "work" ? Briefcase : Home;
-            return (
-              <Button
-                key={addr.id}
-                variant="secondary"
-                onPress={() => setSelectedAddressId(addr.id)}
-                className={cn(
-                  "h-auto min-h-[74px] w-full justify-start gap-3 rounded-[24px] border px-3 py-3 text-left shadow-none",
-                  active
-                    ? "border-foreground bg-surface-secondary"
-                    : "border-border bg-card",
-                )}
-              >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <Icon size={19} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[16px] font-bold text-foreground">
-                    {addressTitle(t, addr.label)}
-                  </span>
-                  <span className="mt-0.5 block truncate text-[12px] font-medium text-muted">
-                    {addr.detail}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    "size-6 shrink-0 rounded-full border-2 p-1",
-                    active ? "border-foreground" : "border-border",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "block size-full rounded-full",
-                      active && "bg-foreground",
-                    )}
-                  />
-                </span>
-              </Button>
-            );
-          })}
-          {addresses.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-border bg-card p-4">
-              <Typography type="body-sm" className={hx.bodySm}>
-                {t("checkout.noAddress")}
-              </Typography>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <Typography type="h3" className={cn(hx.h3, "mb-3")}>
-          {t("checkout.dropoffDetails")}
-        </Typography>
-        <div className="grid grid-cols-2 gap-3">
-          <TextField className={fieldClass} name="entrance">
-            <Label className="mb-1.5 block text-[12px] font-semibold text-muted">
-              {t("checkout.entrance")}
-            </Label>
+          <div className="grid grid-cols-2 gap-3">
             <Input
+              wrapperClassName={fieldClass}
+              name="entrance"
+              label={<>{t("checkout.entrance")}</>}
+              maxLength={500}
               value={entrance}
               onChange={(e) => setEntrance(e.target.value)}
               className={inputClass}
             />
-          </TextField>
-          <TextField className={fieldClass} name="floor">
-            <Label className="mb-1.5 block text-[12px] font-semibold text-muted">
-              {t("checkout.floor")}
-            </Label>
             <Input
+              wrapperClassName={fieldClass}
+              name="floor"
+              label={<>{t("checkout.floor")}</>}
+              maxLength={500}
               value={floor}
               onChange={(e) => setFloor(e.target.value)}
               className={inputClass}
             />
-          </TextField>
-          <TextField className={fieldClass} name="unit">
-            <Label className="mb-1.5 block text-[12px] font-semibold text-muted">
-              {t("checkout.unit")}
-            </Label>
             <Input
+              wrapperClassName={fieldClass}
+              name="unit"
+              label={<>{t("checkout.unit")}</>}
+              maxLength={500}
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               className={inputClass}
             />
-          </TextField>
-          <TextField className={fieldClass} name="doorCode">
-            <Label className="mb-1.5 block text-[12px] font-semibold text-muted">
-              {t("checkout.doorCode")}
-            </Label>
             <Input
+              wrapperClassName={fieldClass}
+              name="doorCode"
+              label={<>{t("checkout.doorCode")}</>}
+              maxLength={500}
               value={doorCode}
               onChange={(e) => setDoorCode(e.target.value)}
               className={inputClass}
             />
-          </TextField>
-        </div>
-        <TextField className={cn(fieldClass, "mt-3")} name="instructions">
-          <Label className="mb-1.5 block text-[12px] font-semibold text-muted">
-            {t("checkout.instructions")}
-          </Label>
+          </div>
           <Input
+            wrapperClassName={cn(fieldClass, "mt-3")}
+            name="instructions"
+            label={<>{t("checkout.instructions")}</>}
+            maxLength={500}
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             className={inputClass}
           />
-        </TextField>
-      </section>
+        </section>
 
-      <section className="mt-7">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <Typography type="h3" className={hx.h3}>
-            {t("checkout.payment")}
-          </Typography>
-        </div>
-        <div className="flex flex-col gap-2.5">
-          {(
-            [
-              ["card", CreditCard, t("payment.card"), t("payment.cardDetail")],
-              ["cash", Banknote, t("payment.cash"), t("payment.cashDetail")],
-            ] as const
-          ).map(([id, Icon, title, detail]) => {
-            const active = selectedPayment === id;
-            const disabled = id === "cash" && cashDisabled;
-            return (
-              <Button
-                key={id}
-                variant="secondary"
-                isDisabled={disabled}
-                onPress={() => setPayment(id)}
-                className={cn(
-                  "h-auto min-h-[74px] w-full justify-start gap-3 rounded-[24px] border px-3 py-3 text-left shadow-none",
-                  active
-                    ? "border-foreground bg-surface-secondary"
-                    : "border-border bg-card",
-                  disabled && "opacity-50",
-                )}
-              >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-[16px] bg-card text-foreground">
-                  <Icon size={20} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[16px] font-bold text-foreground">
-                    {title}
-                  </span>
-                  <span className="block text-[12px] font-medium text-muted">
-                    {detail}
-                  </span>
-                  {id === "cash" && cashReasonLabel ? (
-                    <span className="mt-1 block text-[11px] font-semibold text-warning">
-                      {cashReasonLabel}
-                    </span>
-                  ) : null}
-                </span>
-                <span
-                  className={cn(
-                    "size-6 shrink-0 rounded-full border-2 p-1",
-                    active ? "border-foreground" : "border-border",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "block size-full rounded-full",
-                      active && "bg-foreground",
+        <section className="mt-7">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <Typography type="h3" className={hx.h3}>
+              {t("checkout.payment")}
+            </Typography>
+          </div>
+          <RadioField
+            name="paymentMethod"
+            label={t("checkout.payment")}
+            required
+            value={selectedPayment}
+            onChange={(v) => setPayment(v as typeof selectedPayment)}
+            options={[
+              { id: "card", label: t("payment.card") },
+              {
+                id: "cash",
+                label: (
+                  <>
+                    {t("payment.cash")}{" "}
+                    {cashReasonLabel && (
+                      <AppText as="span" className="text-xs text-warning">
+                        {cashReasonLabel}
+                      </AppText>
                     )}
-                  />
-                </span>
-              </Button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-7">
-        <Typography type="h3" className={cn(hx.h3, "mb-3")}>
-          {t("checkout.time")}
-        </Typography>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {TIMES.map((key) => (
-            <Button
-              key={key}
-              variant={time === key ? "primary" : "secondary"}
-              className={hx.filterChip(time === key)}
-              onPress={() => setTime(key)}
-            >
-              {t(`time.${key}`)}
-            </Button>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-between rounded-[24px] bg-surface-secondary px-4 py-3.5">
-          <span className="flex items-center gap-2">
-            <MapPin size={18} />
-            <span className="text-[14px] font-semibold text-foreground">
-              {t("checkout.leaveAtDoor")}
-            </span>
-          </span>
-          <Switch
-            aria-label={t("checkout.leaveAtDoor")}
-            isSelected={leaveAtDoor}
-            onChange={setLeaveAtDoor}
+                  </>
+                ),
+                disabled: cashDisabled,
+              },
+            ]}
           />
-        </div>
-      </section>
+        </section>
 
-      <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
-        <Card.Content className="p-0">
-          <div className="flex items-center justify-between text-[14px] text-muted">
-            <span>{t("common.subtotal")}</span>
-            <span>{formatPrice(subtotal)}</span>
-          </div>
-          {discount > 0 ? (
-            <div className="mt-3 flex items-center justify-between text-[14px] text-success">
-              <span>{t("common.discount")}</span>
-              <span>−{formatPrice(discount)}</span>
-            </div>
-          ) : null}
-          <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
-            <span>{t("common.delivery")}</span>
-            <span>{formatPrice(deliveryFee)}</span>
-          </div>
-          <Separator className="my-4 bg-border" />
-          <div className="flex items-end justify-between">
-            <span className="text-[16px] font-semibold text-muted">
-              {t("common.total")}
-            </span>
-            <span className="text-[21px] font-bold text-foreground">
-              {formatPrice(total)}
-            </span>
-          </div>
-          <Typography
-            type="body-xs"
-            className={cn(hx.caption, "mt-1 text-right")}
-          >
-            {count} {count === 1 ? t("common.item") : t("common.items")}
+        <section className="mt-7">
+          <Typography type="h3" className={cn(hx.h3, "mb-3")}>
+            {language === "de" ? "Bestellung starten" : "Start this order"}
           </Typography>
-        </Card.Content>
-      </Card>
+          <AppText as="p" className="mb-4 text-sm leading-6 text-muted">
+            {language === "de"
+              ? "Die gewählte Zeit ist der Bestellstart, nicht die Ankunft. Zubereitung und Lieferung folgen danach."
+              : "This is the order start time, not arrival. Preparation and delivery follow afterwards."}
+          </AppText>
+          <RadioField
+            name="startTime"
+            label={
+              language === "de" ? "Bestellung starten" : "Start this order"
+            }
+            required
+            value={time}
+            onChange={(v) => setTime(v as CheckoutSchedule)}
+            options={TIMES.map((key) => ({
+              id: key,
+              label:
+                key === "later"
+                  ? language === "de"
+                    ? "In 2 Stunden"
+                    : "In 2 hours"
+                  : t(`time.${key}`),
+            }))}
+          />
+          <div className="mt-3 flex items-center justify-between rounded-[24px] bg-surface-secondary px-4 py-3.5">
+            <span className="flex items-center gap-2">
+              <MapPin size={18} />
+              <AppText as="span" className="text-[14px] font-semibold text-foreground">
+                {t("checkout.leaveAtDoor")}
+              </AppText>
+            </span>
+            <SwitchField
+              label={
+                <AppText as="span" className="sr-only">{t("checkout.leaveAtDoor")}</AppText>
+              }
+              value={leaveAtDoor}
+              onChange={setLeaveAtDoor}
+            />
+          </div>
+        </section>
 
-      <div className="mt-5 flex items-start gap-2 pb-4">
-        <PartnerBadge compact />
-        <Typography type="body-xs" className={hx.caption}>
-          {t("checkout.partnerNote")}
-        </Typography>
-      </div>
+        <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
+          <Card.Content className="p-0">
+            <div className="flex items-center justify-between text-[14px] text-muted">
+              <AppText as="span">{t("common.subtotal")}</AppText>
+              <AppText as="span"><AnimatedNumber currency value={subtotal} /></AppText>
+            </div>
+            {discount > 0 ? (
+              <div className="mt-3 flex items-center justify-between text-[14px] text-success">
+                <AppText as="span">{t("common.discount")}</AppText>
+                <AppText as="span">−<AnimatedNumber currency value={discount} /></AppText>
+              </div>
+            ) : null}
+            <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
+              <AppText as="span">{t("common.delivery")}</AppText>
+              <AppText as="span"><AnimatedNumber currency value={deliveryFee} /></AppText>
+            </div>
+            <Separator className="my-4 bg-border" />
+            <div className="flex items-end justify-between">
+              <AppText as="span" className="text-[16px] font-semibold text-muted">
+                {t("common.total")}
+              </AppText>
+              <AppText as="span" className="text-[21px] font-bold text-foreground">
+                <AnimatedNumber currency value={total} />
+              </AppText>
+            </div>
+            <Typography
+              type="body-xs"
+              className={cn(hx.caption, "mt-1 text-right")}
+            >
+              <AnimatedNumber value={count} /> {count === 1 ? t("common.item") : t("common.items")}
+            </Typography>
+          </Card.Content>
+        </Card>
 
-      <MobileActionBar
-        onPress={continueToPayment}
-        icon={<ShoppingBag size={20} />}
-        isDisabled={count === 0 || (authed && !selectedAddressId)}
-        label={
-          <span>
-            {t("checkout.continuePayment")} · {formatPrice(total)}
-          </span>
-        }
-      />
-    </AppFrame>
+        <div className="mt-5 flex items-start gap-2 pb-4">
+          <PartnerBadge compact />
+          <Typography type="body-xs" className={hx.caption}>
+            {t("checkout.partnerNote")}
+          </Typography>
+        </div>
+
+        <MobileActionBar
+          onPress={continueToPayment}
+          icon={<ShoppingBag size={20} />}
+          isDisabled={count === 0 || (authed && !selectedAddressId)}
+          label={
+            <AppText as="span">
+              {t("checkout.continuePayment")} · <AnimatedNumber currency value={total} />
+            </AppText>
+          }
+        />
+      </AppFrame>
+    </FormScope>
   );
 }

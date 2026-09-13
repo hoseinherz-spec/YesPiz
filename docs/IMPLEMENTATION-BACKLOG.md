@@ -557,13 +557,16 @@ changed/unavailable items and current price, and require final confirmation.
 Minimal slice: `POST /orders/reorder/:orderId` preview (no auto-order), `@repo/api`
 client method, unavailable-item unit test.
 
-### [ ] RETENTION-002 — Scheduled orders, loyalty, and subscriptions
+### [x] RETENTION-002A — Scheduled order starts
+
+Checkout persists a future start time; payment holds the order in `SCHEDULED`, and the dispatcher releases due paid orders. Covered by dispatch unit tests and `care-business.e2e-spec.ts` (validation, persistence and cancellation). A start time does not promise a fixed delivery slot.
+
+### [ ] RETENTION-002B — Loyalty and subscriptions
 
 Do this only after P0 reliability is measured and stable. Group orders, split pay,
 ads, and predictive ML ETA remain explicitly out of scope for the MVP.
 
-**Deferred until P0 reliability measured** — no schema stub or loyalty UI in this
-pass; revisit after MOBILE-001/002 and PLATFORM-001 metrics are green.
+Requested for follow-up implementation. Define loyalty reward/expiry rules and subscription price, billing period, benefits and cancellation behavior before enabling customer enrollment. No loyalty/subscription implementation is claimed here.
 
 ---
 
@@ -579,4 +582,3 @@ When starting work, Cursor should:
    completion.
 6. Report changed files, migrations/configuration, test evidence, and remaining risks.
 7. Change `[ ]` to `[x]` only after every acceptance criterion is verified.
-

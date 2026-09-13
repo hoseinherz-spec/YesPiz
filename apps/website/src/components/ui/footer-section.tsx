@@ -32,39 +32,24 @@ export interface FooterSectionProps {
   className?: string;
 }
 
+const appUrl = (path: string) => `${APP_WEB_URL.replace(/\/$/, "")}${path}`;
 const defaultColumns: FooterSectionColumn[] = [
   {
     title: f.columns.product,
     links: [
       { label: f.links.menu, href: "#menu" },
       { label: f.links.app, href: "#download" },
-      { label: f.links.pricing, href: "#pricing" },
-      { label: f.links.tracking, href: "#tracking" },
+      { label: "Our promise", href: "#promise" },
+      { label: "Questions & answers", href: "#faq" },
     ],
   },
   {
-    title: f.columns.company,
+    title: "Your Yespizz",
     links: [
-      { label: f.links.about, href: "#about" },
-      { label: f.links.blog, href: "#blog" },
-      { label: f.links.careers, href: "#careers" },
-      { label: f.links.contact, href: "#contact" },
-    ],
-  },
-  {
-    title: f.connect,
-    links: [
-      { label: "Twitter", href: "#" },
-      { label: "Instagram", href: "#" },
-      { label: "LinkedIn", href: "#" },
-    ],
-  },
-  {
-    title: f.columns.legal,
-    links: [
-      { label: f.links.privacy, href: "#privacy" },
-      { label: f.links.terms, href: "#terms" },
-      { label: f.links.imprint, href: "#imprint" },
+      { label: "Your orders", href: appUrl("/orders/") },
+      { label: "Get help", href: appUrl("/help/") },
+      { label: "Become a partner", href: appUrl("/partner/") },
+      { label: "Privacy settings", href: appUrl("/settings/privacy/") },
     ],
   },
 ];
@@ -92,11 +77,10 @@ const navStagger: Variants = {
 };
 
 const riseItem: Variants = {
-  hidden: { opacity: 0, y: 18, filter: "blur(6px)" },
+  hidden: { opacity: 0, y: 18 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: { type: "spring", duration: 0.6, bounce: 0 },
   },
 };
@@ -116,21 +100,19 @@ const linkItem: Variants = {
 };
 
 const heroBrandVariant: Variants = {
-  hidden: { opacity: 0, y: 40, filter: "blur(12px)" },
+  hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: { type: "spring", duration: 1.1, bounce: 0 },
   },
 };
 
 const ctaVariant: Variants = {
-  hidden: { opacity: 0, y: 10, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: { type: "spring", duration: 0.5, bounce: 0 },
   },
 };
@@ -199,7 +181,7 @@ export function FooterSection({
           <motion.nav
             variants={navStagger}
             aria-label="Footer navigation"
-            className="grid w-full max-w-[540px] grid-cols-2 gap-y-8 sm:grid-cols-4"
+            className="grid w-full max-w-[540px] grid-cols-2 gap-x-8 gap-y-8"
           >
             {columns.map((col) => (
               <motion.div key={col.title} variants={riseItem}>

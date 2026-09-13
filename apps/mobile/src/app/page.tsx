@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Typography } from '@heroui/react';
 import { useRouter } from 'next/navigation';
@@ -24,9 +26,9 @@ export default function SplashPage() {
       <div className="absolute top-[-12vh] right-[-35vw] size-[78vw] max-h-[370px] max-w-[370px] rounded-full bg-accent/10 blur-3xl" />
       <div className="relative flex flex-col items-center">
         <div className="mb-5 flex size-24 items-center justify-center rounded-full border border-border bg-card">
-          <span className="text-[48px]" aria-hidden="true">
+          <AppText as="span" className="text-[48px]" aria-hidden="true">
             🍕
-          </span>
+          </AppText>
         </div>
         <Typography
           type="h1"

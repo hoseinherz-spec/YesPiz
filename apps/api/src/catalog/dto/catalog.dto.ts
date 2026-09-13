@@ -1,7 +1,15 @@
+import type { PizzaPresentation } from "../presentation";
+import type { PizzaCustomization } from "../customization";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  IsDateString,
+  IsObject,
+  IsMongoId,
+  IsIn,
   IsArray,
+  ArrayMaxSize,
+  MaxLength,
   IsBoolean,
   IsInt,
   IsNumber,
@@ -41,6 +49,34 @@ export class RecipeIngredientDto {
 }
 
 export class CreateMenuItemDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsMongoId({ each: true })
+  additionalCategoryIds?: string[];
+  @IsOptional() @IsObject() presentation?: PizzaPresentation;
+  @IsOptional()
+  @IsObject()
+  customization?: PizzaCustomization;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  ingredients?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  allergens?: string[];
+
   @ApiProperty()
   @IsString()
   categoryId!: string;
@@ -117,6 +153,48 @@ export class CreateMenuItemDto {
 }
 
 export class UpdateMenuItemDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsMongoId({ each: true })
+  additionalCategoryIds?: string[];
+  @IsOptional() @IsObject() presentation?: PizzaPresentation;
+  @IsOptional()
+  @IsMongoId()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsObject()
+  customization?: PizzaCustomization;
+
+  @IsOptional()
+  @IsInt()
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsIn(["pizza", "unclassified"])
+  productType?: "pizza" | "unclassified";
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  ingredients?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  allergens?: string[];
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -182,4 +260,14 @@ export class UpdateMenuItemDto {
   @IsArray()
   @IsString({ each: true })
   checklistTemplate?: string[];
+}
+
+export class UpdateCategoryDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
+  @IsOptional() @IsInt() sortOrder?: number;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+export class ScheduleMenuDto {
+  @IsOptional() @IsDateString() scheduledPublishAt?: string;
 }

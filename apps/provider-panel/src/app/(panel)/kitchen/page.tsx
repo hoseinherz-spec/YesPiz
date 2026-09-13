@@ -1,4 +1,6 @@
 "use client";
+import { FormAction, FormScope, Input } from "@repo/ui/forms";
+
 import { QrCode } from "@repo/api/components/qr-code";
 import { ProofUpload } from "@repo/api/components/proof-upload";
 
@@ -285,240 +287,271 @@ export default function KitchenPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Typography type="h1" className="text-2xl font-semibold">
-            Active kitchen
-          </Typography>
-          <p className="text-muted text-sm">
-            Confirm each quality check explicitly before handoff
-          </p>
-        </div>
-        <Button size="sm" variant="secondary" onPress={load}>
-          Refresh
-        </Button>
-      </div>
-
-      {quality ? (
-        <Card className="p-4">
-          <Card.Content className="flex flex-col gap-1 p-0 text-sm">
-            <Typography type="h3" className="font-medium">
-              Quality score
-            </Typography>
-            <p>
-              Score {quality.qualityScore} · complaints {quality.complaintCount}{" "}
-              · delays {quality.delayCount} · errors {quality.errorCount}
-            </p>
-            {quality.autoSuspended ? (
-              <p className="text-danger">
-                Suspended
-                {quality.suspendReason ? `: ${quality.suspendReason}` : ""}
+    <FormScope>
+      {
+        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Typography type="h1" className="text-2xl font-semibold">
+                Active kitchen
+              </Typography>
+              <p className="text-muted text-sm">
+                Confirm each quality check explicitly before handoff
               </p>
-            ) : null}
-          </Card.Content>
-        </Card>
-      ) : null}
+            </div>
+            <Button size="sm" variant="secondary" onPress={load}>
+              Refresh
+            </Button>
+          </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-
-      {!orders.length ? (
-        <Card className="p-4">
-          <Card.Content className="text-muted p-0 text-sm">
-            No active kitchen orders
-          </Card.Content>
-        </Card>
-      ) : null}
-
-      {orders.map((order) => {
-        const id = entityId(order);
-        const items = checklistByOrderId[id] ?? [];
-        const q = qualityByOrder[id];
-        const preparing = order.status === "PREPARING";
-
-        return (
-          <Card key={id} className="p-4">
-            <Card.Content className="flex flex-col gap-2 p-0">
-              <div className="flex flex-wrap justify-between gap-2">
+          {quality ? (
+            <Card className="p-4">
+              <Card.Content className="flex flex-col gap-1 p-0 text-sm">
                 <Typography type="h3" className="font-medium">
-                  {order.status}
+                  Handoff standards
                 </Typography>
-                <span className="text-sm">{formatCents(order.totalCents)}</span>
-              </div>
-              <p className="text-muted text-xs">Order {id}</p>
-              <ul className="text-sm">
-                {(order.lines ?? []).map((line, idx) => (
-                  <li key={`${id}-${idx}`}>
-                    {line.quantity}× {line.name} · {line.size ?? "medium"}
-                    {line.extras?.length ? ` · ${line.extras.join(", ")}` : ""}
-                  </li>
-                ))}
-              </ul>
-
-              {order.status === "ASSIGNED_TO_COURIER" ? (
-                <div className="rounded-md border border-border p-3">
-                  <p>
-                    Read this pickup code to the assigned courier after checking
-                    the seal.
+                <p>
+                  Complete the pizza preparation and packaging checks for every
+                  order.
+                </p>
+                {quality.autoSuspended ? (
+                  <p className="text-danger">
+                    Suspended — contact Yespizz operations to review the next
+                    steps.
                   </p>
-                  {pickupCodes[id] ? (
-                    <strong className="text-2xl tracking-widest">
-                      <QrCode value={pickupCodes[id]} />
-                      {pickupCodes[id]}
-                    </strong>
-                  ) : (
-                    <Button
-                      onPress={async () => {
-                        try {
-                          const codes = await proofClient.getPickupCodes(id, {
-                            accessToken: requireProviderToken(),
-                          });
-                          setPickupCodes((prev) => ({
-                            ...prev,
-                            [id]: codes.pickupCode,
-                          }));
-                        } catch (err) {
-                          setError(
-                            err instanceof Error
-                              ? err.message
-                              : "Unable to load pickup code",
-                          );
-                        }
-                      }}
-                    >
-                      Show pickup code
-                    </Button>
-                  )}
-                </div>
-              ) : null}
-              {preparing ? (
-                <div className="border-border flex flex-col gap-3 rounded-md border p-3">
-                  <Typography type="h3" className="text-sm font-medium">
-                    Quality checklist
-                  </Typography>
-                  {q?.checklistDone ? (
-                    <p className="text-muted text-sm">Checklist submitted</p>
-                  ) : (
-                    <>
-                      <ul className="space-y-2 text-sm">
-                        {items.map((item) => (
-                          <li key={item}>
-                            <label className="flex items-start gap-2">
-                              <input
-                                type="checkbox"
-                                checked={checkedByOrder[id]?.[item] === true}
-                                onChange={() => toggleCheck(id, item)}
-                              />
-                              <span>{item}</span>
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        isDisabled={busyId === id || !allChecked(id)}
-                        onPress={() => submitChecklist(id)}
-                      >
-                        Submit checklist
-                      </Button>
-                    </>
-                  )}
+                ) : null}
+              </Card.Content>
+            </Card>
+          ) : null}
 
-                  <div className="flex flex-col gap-2">
-                    <Typography type="h3" className="text-sm font-medium">
-                      Numbered seal
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+          {!orders.length ? (
+            <Card className="p-4">
+              <Card.Content className="text-muted p-0 text-sm">
+                No active kitchen orders
+              </Card.Content>
+            </Card>
+          ) : null}
+
+          {orders.map((order) => {
+            const id = entityId(order);
+            const items = checklistByOrderId[id] ?? [];
+            const q = qualityByOrder[id];
+            const preparing = order.status === "PREPARING";
+
+            return (
+              <Card key={id} className="p-4">
+                <Card.Content className="flex flex-col gap-2 p-0">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <Typography type="h3" className="font-medium">
+                      {order.status}
                     </Typography>
-                    {q?.sealDone ? (
-                      <p className="text-muted text-sm">
-                        Seal recorded{order.sealId ? `: ${order.sealId}` : ""}
+                    <span className="text-sm">
+                      {formatCents(order.totalCents)}
+                    </span>
+                  </div>
+                  <p className="text-muted text-xs">Order {id}</p>
+                  <ul className="text-sm">
+                    {(order.lines ?? []).map((line, idx) => (
+                      <li key={`${id}-${idx}`}>
+                        {line.quantity}× {line.name} ·{" "}
+                        {line.selectionLabels?.length
+                          ? line.selectionLabels.join(" · ")
+                          : (line.size ?? "medium")}
+                        {line.extras?.length
+                          ? ` · ${line.extras.join(", ")}`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {order.status === "ASSIGNED_TO_COURIER" ? (
+                    <div className="rounded-md border border-border p-3">
+                      <p>
+                        Read this pickup code to the assigned courier after
+                        checking the seal.
                       </p>
-                    ) : (
-                      <>
-                        <input
-                          aria-label="Seal ID"
-                          placeholder="Seal ID on package"
-                          value={sealByOrder[id] ?? ""}
-                          onChange={(e) =>
-                            setSealByOrder((prev) => ({
-                              ...prev,
-                              [id]: e.target.value,
-                            }))
-                          }
-                          className="border-border bg-background rounded-md border px-3 py-2 text-sm"
-                        />
+                      {pickupCodes[id] ? (
+                        <strong className="text-2xl tracking-widest">
+                          <QrCode value={pickupCodes[id]} />
+                          {pickupCodes[id]}
+                        </strong>
+                      ) : (
                         <Button
-                          size="sm"
-                          variant="secondary"
-                          isDisabled={busyId === id || !q?.checklistDone}
-                          onPress={() => submitSeal(id)}
+                          onPress={async () => {
+                            try {
+                              const codes = await proofClient.getPickupCodes(
+                                id,
+                                {
+                                  accessToken: requireProviderToken(),
+                                },
+                              );
+                              setPickupCodes((prev) => ({
+                                ...prev,
+                                [id]: codes.pickupCode,
+                              }));
+                            } catch (err) {
+                              setError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Unable to load pickup code",
+                              );
+                            }
+                          }}
                         >
-                          Submit seal
+                          Show pickup code
                         </Button>
-                      </>
+                      )}
+                    </div>
+                  ) : null}
+                  {preparing ? (
+                    <FormScope>
+                      <div className="border-border flex flex-col gap-3 rounded-md border p-3">
+                        <Typography type="h3" className="text-sm font-medium">
+                          Quality checklist
+                        </Typography>
+                        {q?.checklistDone ? (
+                          <p className="text-muted text-sm">
+                            Checklist submitted
+                          </p>
+                        ) : (
+                          <>
+                            <ul className="space-y-2 text-sm">
+                              {items.map((item) => (
+                                <li key={item}>
+                                  <Input
+                                    label={
+                                      <>
+                                        <span>{item}</span>
+                                      </>
+                                    }
+                                    wrapperClassName="flex items-start gap-2"
+                                    type="checkbox"
+                                    checked={
+                                      checkedByOrder[id]?.[item] === true
+                                    }
+                                    onChange={() => toggleCheck(id, item)}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                            <FormAction
+                              size="sm"
+                              variant="secondary"
+                              isDisabled={busyId === id || !allChecked(id)}
+                              onPress={() => submitChecklist(id)}
+                            >
+                              Submit checklist
+                            </FormAction>
+                          </>
+                        )}
+
+                        <FormScope>
+                          <div className="flex flex-col gap-2">
+                            <Typography
+                              type="h3"
+                              className="text-sm font-medium"
+                            >
+                              Numbered seal
+                            </Typography>
+                            {q?.sealDone ? (
+                              <p className="text-muted text-sm">
+                                Seal recorded
+                                {order.sealId ? `: ${order.sealId}` : ""}
+                              </p>
+                            ) : (
+                              <>
+                                <Input
+                                  aria-label="Seal ID"
+                                  placeholder="Seal ID on package"
+                                  value={sealByOrder[id] ?? ""}
+                                  onChange={(e) =>
+                                    setSealByOrder((prev) => ({
+                                      ...prev,
+                                      [id]: e.target.value,
+                                    }))
+                                  }
+                                  className="border-border bg-background rounded-md border px-3 py-2 text-sm"
+                                />
+                                <FormAction
+                                  size="sm"
+                                  variant="secondary"
+                                  isDisabled={
+                                    busyId === id || !q?.checklistDone
+                                  }
+                                  onPress={() => submitSeal(id)}
+                                >
+                                  Submit seal
+                                </FormAction>
+                              </>
+                            )}
+                          </div>
+                        </FormScope>
+
+                        <div className="flex flex-col gap-2">
+                          <Typography type="h3" className="text-sm font-medium">
+                            Ready photo (when required)
+                          </Typography>
+                          {q?.photoDone ? (
+                            <p className="text-muted text-sm">Photo saved</p>
+                          ) : (
+                            <>
+                              <ProofUpload
+                                orderId={id}
+                                accessToken={requireProviderToken()}
+                                purpose="ready"
+                                onUploaded={(reference) =>
+                                  setPhotoByOrder((prev) => ({
+                                    ...prev,
+                                    [id]: reference,
+                                  }))
+                                }
+                              />
+                              <FormAction
+                                size="sm"
+                                variant="secondary"
+                                isDisabled={busyId === id}
+                                onPress={() => submitPhoto(id)}
+                              >
+                                Submit ready photo
+                              </FormAction>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </FormScope>
+                  ) : null}
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {ACTIONS.filter((a) => a.from.includes(order.status)).map(
+                      (action) => (
+                        <Button
+                          key={action.status}
+                          size="sm"
+                          variant={
+                            action.status === "EXCEPTION_REPORTED"
+                              ? "secondary"
+                              : "primary"
+                          }
+                          isDisabled={
+                            busyId === id ||
+                            (action.status === "READY_FOR_PICKUP" &&
+                              (!q?.checklistDone || !q?.sealDone))
+                          }
+                          onPress={() => updateStatus(id, action.status)}
+                        >
+                          {action.label}
+                        </Button>
+                      ),
                     )}
                   </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Typography type="h3" className="text-sm font-medium">
-                      Ready photo (when required)
-                    </Typography>
-                    {q?.photoDone ? (
-                      <p className="text-muted text-sm">Photo saved</p>
-                    ) : (
-                      <>
-                        <ProofUpload
-                          orderId={id}
-                          accessToken={requireProviderToken()}
-                          purpose="ready"
-                          onUploaded={(reference) =>
-                            setPhotoByOrder((prev) => ({
-                              ...prev,
-                              [id]: reference,
-                            }))
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          isDisabled={busyId === id}
-                          onPress={() => submitPhoto(id)}
-                        >
-                          Submit ready photo
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {ACTIONS.filter((a) => a.from.includes(order.status)).map(
-                  (action) => (
-                    <Button
-                      key={action.status}
-                      size="sm"
-                      variant={
-                        action.status === "EXCEPTION_REPORTED"
-                          ? "secondary"
-                          : "primary"
-                      }
-                      isDisabled={
-                        busyId === id ||
-                        (action.status === "READY_FOR_PICKUP" &&
-                          (!q?.checklistDone || !q?.sealDone))
-                      }
-                      onPress={() => updateStatus(id, action.status)}
-                    >
-                      {action.label}
-                    </Button>
-                  ),
-                )}
-              </div>
-            </Card.Content>
-          </Card>
-        );
-      })}
-    </div>
+                </Card.Content>
+              </Card>
+            );
+          })}
+        </div>
+      }
+    </FormScope>
   );
 }

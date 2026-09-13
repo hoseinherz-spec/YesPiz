@@ -1,71 +1,72 @@
-'use client';
+"use client";
+import { PageHero } from "@repo/ui/mobile-page-transition";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-import { Button, Card, Typography } from '@heroui/react';
-import { Heart, Plus } from '@repo/icons';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 
-import { Rating } from '@/components/Rating';
-import { pizzaTagline } from '@/constants/i18n';
-import { formatPrice, resolveProductImage } from '@/constants/pizzas';
-import { useApp } from '@/context/AppContext';
+import { Button, Card, Typography } from "@heroui/react";
+import { Heart, Plus } from "@repo/icons";
+import Link from "next/link";
 
-import { ProductImage } from '../ProductImage/ProductImage';
-import { productCard } from './ProductCard.styles';
-import type { ProductCardProps } from './ProductCard.types';
+import { pizzaTagline } from "@/constants/i18n";
+import { resolveProductImage } from "@/constants/pizzas";
+import { useApp } from "@/context/AppContext";
+
+import { ProductImage } from "../ProductImage/ProductImage";
+import { productCard } from "./ProductCard.styles";
+import type { ProductCardProps } from "./ProductCard.types";
 
 export function ProductCard({
   pizza,
-  variant = 'grid',
+  variant = "grid",
   subtitle,
   meta,
 }: ProductCardProps) {
-  const router = useRouter();
   const { language, isFavorite, toggleFavorite } = useApp();
-  const [spinning, setSpinning] = useState(false);
   const image = resolveProductImage(pizza);
-  const fav = isFavorite(pizza.id);
+  const fav = isFavorite(pizza.pizzaId ?? pizza.id);
   const tagline = subtitle ?? pizzaTagline(pizza, language);
-  const styles = productCard({ variant, spinning });
+  const styles = productCard({ variant });
 
-  const go = () => {
-    setSpinning(true);
-    window.setTimeout(() => {
-      router.push(`/pizza/?id=${encodeURIComponent(pizza.id)}`);
-    }, 420);
-  };
+  const href = `/pizza/?id=${encodeURIComponent(pizza.id)}`;
 
   const onFavoritePress = () => {
-    toggleFavorite(pizza.id);
+    toggleFavorite(pizza.pizzaId ?? pizza.id);
   };
 
-  if (variant === 'row') {
+  if (variant === "row") {
     return (
       <Card className={styles.card()}>
-        <Button
-          variant="ghost"
+        <Link
+          href={href}
           aria-label={pizza.name}
-          onPress={go}
           className={styles.hitArea()}
         />
         <Card.Content className={styles.content()}>
           <div className={styles.imageWrap()}>
-            <ProductImage src={image} alt={pizza.name} className={styles.image()} />
+            <PageHero id={pizza.id}>
+              <ProductImage
+                src={image}
+                alt={pizza.name}
+                className={styles.image()}
+              />
+            </PageHero>
             <Button
               isIconOnly
               variant="ghost"
-              aria-label={fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`}
+              aria-label={
+                fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
+              }
               onPress={() => onFavoritePress()}
               className={styles.favorite()}
             >
               <Heart
-                size={14}
-                fill={fav ? 'var(--danger)' : 'transparent'}
-                color={fav ? 'var(--danger)' : '#fff'}
+                size={18}
+                fill={fav ? "var(--danger)" : "transparent"}
+                color={fav ? "var(--danger)" : "#fff"}
               />
             </Button>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 pointer-events-none">
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-3.5 pointer-events-none">
             <div>
               <Typography type="h6" className={styles.title()}>
                 {pizza.name}
@@ -75,17 +76,9 @@ export function ProductCard({
               </Typography>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Rating value={pizza.rating} />
-                {meta ? (
-                  <Typography type="body-xs" className={styles.meta()}>
-                    {meta}
-                  </Typography>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center justify-between gap-2">
                 <Typography type="body-sm" className={styles.price()}>
-                  {formatPrice(pizza.price)}
+                  <AnimatedNumber currency value={pizza.price} />
                 </Typography>
                 <span className={styles.addButton()} aria-hidden="true">
                   <Plus size={16} />
@@ -100,31 +93,28 @@ export function ProductCard({
 
   return (
     <Card className={styles.card()}>
-      <Button
-        variant="ghost"
-        aria-label={pizza.name}
-        onPress={go}
-        className={styles.hitArea()}
-      />
-      <div
-        className={styles.imageWrap()}
-        style={{
-          background:
-            'radial-gradient(circle at 50% 60%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 60%), var(--surface)',
-        }}
-      >
-        <ProductImage src={image} alt={pizza.name} className={styles.image()} />
+      <Link href={href} aria-label={pizza.name} className={styles.hitArea()} />
+      <div className={styles.imageWrap()}>
+        <PageHero id={pizza.id}>
+          <ProductImage
+            src={image}
+            alt={pizza.name}
+            className={styles.image()}
+          />
+        </PageHero>
         <Button
           isIconOnly
           variant="ghost"
-          aria-label={fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`}
+          aria-label={
+            fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
+          }
           onPress={() => onFavoritePress()}
           className={styles.favorite()}
         >
           <Heart
-            size={14}
-            fill={fav ? 'var(--danger)' : 'transparent'}
-            color={fav ? 'var(--danger)' : '#fff'}
+            size={18}
+            fill={fav ? "var(--danger)" : "transparent"}
+            color={fav ? "var(--danger)" : "#fff"}
           />
         </Button>
       </div>
@@ -132,16 +122,14 @@ export function ProductCard({
         <Typography type="h6" className={styles.title()}>
           {pizza.name}
         </Typography>
-        <div className="mt-auto flex items-center justify-between">
-          <Rating value={pizza.rating} />
-          <div className="flex items-center gap-1.5">
+        <Typography type="body-xs" className={styles.subtitle()}>{meta ?? tagline}</Typography>
+        <div className="mt-1 flex items-center justify-between gap-2">
             <Typography type="body-sm" className={styles.price()}>
-              {formatPrice(pizza.price)}
+              <AnimatedNumber currency value={pizza.price} />
             </Typography>
             <span className={styles.addButton()} aria-hidden="true">
-              <Plus size={14} />
+              <Plus size={18} />
             </span>
-          </div>
         </div>
       </Card.Content>
     </Card>

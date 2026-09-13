@@ -18,7 +18,7 @@ jobs:
       - run: npm run build --workspace=@repo/i18n
       - run: npm run lint
       - run: npm run check-types
-      - run: npm run test --workspace=api -- --runInBand --watchman=false
+      - run: npm test
   integration:
     runs-on: ubuntu-latest
     steps:
@@ -39,6 +39,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run test:e2e:admin
+      - run: npm run test:e2e:features
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -50,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [api, mobile, courier-mobile, provider-panel, admin]
+        app: [api, mobile, courier-mobile, provider-panel, admin, website]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

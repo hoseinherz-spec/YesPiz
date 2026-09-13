@@ -1,3 +1,4 @@
+import { GrowthModule } from "../growth/growth.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AccountModule } from "../account/account.module";
@@ -16,13 +17,11 @@ import {
   DeliveryAddressSchema,
 } from "./schemas/address.schema";
 import { Order, OrderSchema } from "./schemas/order.schema";
-import {
-  Incident,
-  IncidentSchema,
-} from "../incidents/schemas/incident.schema";
+import { Incident, IncidentSchema } from "../incidents/schemas/incident.schema";
 
 @Module({
   imports: [
+    GrowthModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: DeliveryAddress.name, schema: DeliveryAddressSchema },

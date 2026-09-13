@@ -1,8 +1,10 @@
+import { WalletService } from "../wallet/wallet.module";
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
+  Optional,
   OnModuleInit,
   Logger,
   NotFoundException,
@@ -39,6 +41,7 @@ export class PaymentsService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly appConfig: AppConfigService,
     private readonly redis: RedisService,
+    @Optional() private readonly wallet?: WalletService,
   ) {
     const key = this.config.get<string>("STRIPE_SECRET_KEY");
     if (
@@ -123,7 +126,7 @@ export class PaymentsService implements OnModuleInit {
       throw new ForbiddenException("errors.forbidden");
     }
     const method = dto.method ?? order.paymentMethod;
-    if (method !== order.paymentMethod || method === PaymentMethod.WALLET) {
+    if (method !== order.paymentMethod) {
       throw new BadRequestException(
         "Payment method does not match this order.",
       );
@@ -135,6 +138,7 @@ export class PaymentsService implements OnModuleInit {
       if (existing.method !== method)
         throw new BadRequestException("Payment method cannot be changed.");
       if (
+        existing.method === PaymentMethod.CARD &&
         !existing.mock &&
         existing.providerRef &&
         this.stripe &&
@@ -172,7 +176,10 @@ export class PaymentsService implements OnModuleInit {
         const dispatch = await this.dispatch.startDispatch(order.id);
         return {
           payment: existing,
-          orderStatus: OrderStatus.PENDING_OFFERS,
+          orderStatus:
+            order.scheduledAt && order.scheduledAt.getTime() > Date.now()
+              ? OrderStatus.SCHEDULED
+              : OrderStatus.PENDING_OFFERS,
           dispatch,
           mock: existing.mock,
         };
@@ -186,6 +193,37 @@ export class PaymentsService implements OnModuleInit {
     }
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new BadRequestException("errors.badRequest");
+    }
+    if (method === PaymentMethod.WALLET) {
+      if (!this.wallet)
+        throw new BadRequestException("Yespizz credit is unavailable.");
+      await this.wallet.change(
+        userId,
+        `payment:${order.id}`,
+        -order.totalCents,
+        order.id,
+      );
+      const payment = await this.payments.create({
+        orderId: order._id,
+        customerId: order.customerId,
+        method,
+        status: PaymentStatus.CAPTURED,
+        amountCents: order.totalCents,
+        mock: false,
+        providerRef: `wallet:${order.id}`,
+      });
+      order.paymentStatus = PaymentStatus.CAPTURED;
+      await order.save();
+      const dispatch = await this.dispatch.startDispatch(order.id);
+      return {
+        payment,
+        orderStatus:
+          order.scheduledAt && order.scheduledAt.getTime() > Date.now()
+            ? OrderStatus.SCHEDULED
+            : OrderStatus.PENDING_OFFERS,
+        dispatch,
+        mock: false,
+      };
     }
     if (method === PaymentMethod.CASH) {
       const avail = await this.cashAvailability(userId);
@@ -209,7 +247,10 @@ export class PaymentsService implements OnModuleInit {
       const dispatchResult = await this.dispatch.startDispatch(order.id);
       return {
         payment,
-        orderStatus: OrderStatus.PENDING_OFFERS,
+        orderStatus:
+          order.scheduledAt && order.scheduledAt.getTime() > Date.now()
+            ? OrderStatus.SCHEDULED
+            : OrderStatus.PENDING_OFFERS,
         dispatch: dispatchResult,
       };
     }
@@ -243,7 +284,10 @@ export class PaymentsService implements OnModuleInit {
     const dispatchResult = await this.dispatch.startDispatch(order.id);
     return {
       payment,
-      orderStatus: OrderStatus.PENDING_OFFERS,
+      orderStatus:
+        order.scheduledAt && order.scheduledAt.getTime() > Date.now()
+          ? OrderStatus.SCHEDULED
+          : OrderStatus.PENDING_OFFERS,
       dispatch: dispatchResult,
       mock: true,
     };
@@ -254,7 +298,7 @@ export class PaymentsService implements OnModuleInit {
       {
         amount: order.totalCents,
         currency: "eur",
-        payment_method_types: ["card"],
+        payment_method_types: ["card", "klarna"],
         capture_method: "automatic",
         metadata: {
           orderId: order.id,
@@ -398,9 +442,11 @@ export class PaymentsService implements OnModuleInit {
           throw new NotFoundException("errors.notFound");
         if (order.status !== OrderStatus.CANCELLED) {
           if (
-            ![OrderStatus.PENDING_PAYMENT, OrderStatus.PENDING_OFFERS].includes(
-              order.status,
-            )
+            ![
+              OrderStatus.PENDING_PAYMENT,
+              OrderStatus.PENDING_OFFERS,
+              OrderStatus.SCHEDULED,
+            ].includes(order.status)
           )
             throw new BadRequestException(
               "Preparation has started. Contact support to cancel.",
@@ -481,12 +527,25 @@ export class PaymentsService implements OnModuleInit {
   private async refundCancelled(order: OrderDocument) {
     const payment = await this.payments.findOne({ orderId: order._id }).exec();
     if (!payment) {
+      if (order.paymentMethod === PaymentMethod.WALLET)
+        await this.wallet?.refundPurchase(String(order.customerId), order.id);
       order.paymentStatus = PaymentStatus.CANCELLED;
       await order.save();
       return;
     }
     try {
-      if (payment.method === PaymentMethod.CASH) {
+      if (payment.method === PaymentMethod.WALLET) {
+        if (!this.wallet) throw new Error("Credit service unavailable.");
+        await this.wallet.change(
+          String(order.customerId),
+          `refund:${order.id}`,
+          payment.amountCents,
+          order.id,
+        );
+        payment.status = PaymentStatus.REFUNDED;
+        payment.refundStatus = "succeeded";
+        payment.refundedAt = new Date();
+      } else if (payment.method === PaymentMethod.CASH) {
         payment.status = PaymentStatus.CANCELLED;
       } else if (payment.mock) {
         if (this.config.get<string>("NODE_ENV") === "production")

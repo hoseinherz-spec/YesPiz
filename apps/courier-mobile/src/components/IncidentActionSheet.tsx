@@ -1,4 +1,5 @@
 "use client";
+import { FormScope, FormAction } from "@repo/ui/forms";
 import { ProofUpload } from "@repo/api/components/proof-upload";
 import { requireCourierToken } from "@/lib/auth";
 
@@ -9,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ErrorBanner, ProofField } from "@/components/ProofUi";
 import { formatApiError } from "@/lib/api-errors";
 import { cn } from "@/lib/cn";
-import { getCurrentPosition, GeoError } from "@/lib/geolocation";
+import { getCurrentPosition } from "@/lib/geolocation";
 import { hx } from "@/lib/heroui-classes";
 
 export const INCIDENT_KINDS: {
@@ -53,7 +54,7 @@ export const INCIDENT_KINDS: {
   {
     kind: "sos",
     label: "SOS",
-    description: "Emergency — location is shared immediately with dispatch.",
+    description: "Emergency — alert operations with your available location.",
   },
 ];
 
@@ -80,7 +81,7 @@ function workflowSteps(incident: Incident): string[] {
   return wf.steps ?? [];
 }
 
-function workflowMeta(incident: Incident): string | null {
+function workflowMeta(incident: Incident, now: number): string | null {
   const wf = incident.workflow as {
     currentStep?: string;
     waitUntil?: string;
@@ -90,8 +91,18 @@ function workflowMeta(incident: Incident): string | null {
   const parts: string[] = [];
   if (wf.currentStep)
     parts.push(`Step: ${wf.currentStep.replaceAll("_", " ")}`);
-  if (wf.waitUntil)
-    parts.push(`Wait until ${new Date(wf.waitUntil).toLocaleTimeString()}`);
+  if (wf.waitUntil) {
+    const remaining = Math.max(
+      0,
+      Math.ceil((new Date(wf.waitUntil).getTime() - now) / 1000),
+    );
+    if (Number.isFinite(remaining))
+      parts.push(
+        remaining > 0
+          ? `Wait ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} remaining`
+          : "Wait finished — retry customer contact and contact operations for next steps",
+      );
+  }
   if (wf.debtCents != null)
     parts.push(`Debt: €${(wf.debtCents / 100).toFixed(2)}`);
   if (wf.sos) parts.push("SOS — reported to operations");
@@ -108,6 +119,12 @@ export function IncidentActionSheet({
   const [selected, setSelected] = useState<
     (typeof INCIDENT_KINDS)[number] | null
   >(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [open]);
   const [notes, setNotes] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -126,6 +143,7 @@ export function IncidentActionSheet({
   }, []);
 
   function closeSheet() {
+    if (busy) return;
     reset();
     onClose();
   }
@@ -150,15 +168,16 @@ export function IncidentActionSheet({
     setBusy(true);
     setError(null);
     try {
-      let longitude = coords?.longitude;
-      let latitude = coords?.latitude;
-      if (selected.kind === "sos") {
-        const pos = await getCurrentPosition({ timeoutMs: 15_000 });
-        longitude = pos.longitude;
-        latitude = pos.latitude;
-        setCoords(pos);
-      }
+      // Use the location already requested when the sheet opened. A pending
+      // permission prompt must not delay sending an emergency report.
+      const longitude = coords?.longitude;
+      const latitude = coords?.latitude;
       const noteParts = [notes.trim()];
+      if (selected.kind === "sos" && (longitude == null || latitude == null)) {
+        noteParts.push(
+          "GPS unavailable. Operations: confirm the courier location directly.",
+        );
+      }
       if (selected.needsPhoto && photoUrl.trim()) {
         noteParts.push(`photo:${photoUrl.trim()}`);
       }
@@ -168,10 +187,10 @@ export function IncidentActionSheet({
         longitude,
         latitude,
       });
-      closeSheet();
+      reset();
+      onClose();
     } catch (err) {
-      if (err instanceof GeoError) setError(err.message);
-      else setError(formatApiError(err, "Could not report incident"));
+      setError(formatApiError(err, "Could not report incident"));
     } finally {
       setBusy(false);
     }
@@ -179,15 +198,21 @@ export function IncidentActionSheet({
 
   if (!open) return null;
 
-  const orderIncidents = existing.filter((i) => String(i.orderId) === orderId);
+  const orderIncidents = existing.filter(
+    (i) =>
+      String(i.orderId) === orderId &&
+      i.status !== "resolved" &&
+      i.status !== "cancelled",
+  );
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40">
-      <button
+      <Button
+        variant="ghost"
         type="button"
         aria-label="Close incident sheet"
         className="min-h-0 flex-1"
-        onClick={closeSheet}
+        onPress={closeSheet}
       />
       <div className={cn(hx.sheet, "max-h-[85dvh] overflow-y-auto")}>
         <Typography type="h3" className={hx.title}>
@@ -201,8 +226,8 @@ export function IncidentActionSheet({
           <div className="mt-4 rounded-[18px] border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
             <strong>Emergency SOS</strong>
             <p className="mt-1">
-              Your live location will be sent to dispatch immediately. Stay safe
-              and follow emergency instructions from operations.
+              Send SOS to alert operations. Your location will be included when
+              available; GPS failure will not block your report.
             </p>
             {coords ? (
               <p className="mt-2 font-mono text-xs">
@@ -216,77 +241,81 @@ export function IncidentActionSheet({
           <ul className="mt-4 flex flex-col gap-2">
             {INCIDENT_KINDS.map((item) => (
               <li key={item.kind}>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className={cn(
                     hx.card,
                     "w-full text-left transition-opacity hover:opacity-90",
                   )}
-                  onClick={() => setSelected(item)}
+                  onPress={() => setSelected(item)}
                 >
                   <span className={hx.title}>{item.label}</span>
                   <p className={cn(hx.caption, "mt-1")}>{item.description}</p>
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="mt-4 flex flex-col gap-4">
-            <p className={hx.bodySm}>{selected.description}</p>
-            <ProofField
-              label="Notes"
-              value={notes}
-              onChange={setNotes}
-              placeholder="What happened?"
-            />
-            {selected.needsPhoto ? (
-              <ProofUpload
-                orderId={orderId}
-                accessToken={requireCourierToken()}
-                purpose="incident"
-                onUploaded={setPhotoUrl}
+          <FormScope>
+            <div className="mt-4 flex flex-col gap-4">
+              <p className={hx.bodySm}>{selected.description}</p>
+              <ProofField
+                label="Notes"
+                maxLength={2000}
+                value={notes}
+                onChange={setNotes}
+                placeholder="What happened?"
               />
-            ) : null}
-            {coords ? (
-              <p className={hx.caption}>
-                Location: {coords.latitude.toFixed(5)},{" "}
-                {coords.longitude.toFixed(5)}
-              </p>
-            ) : (
-              <p className={hx.caption}>
-                Fetching location… allow GPS if prompted.
-              </p>
-            )}
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="primary"
-                fullWidth
-                isDisabled={busy || (selected.needsPhoto && !photoUrl.trim())}
-                onPress={() => void submit()}
-                className={cn(
-                  selected.kind === "sos"
-                    ? "bg-danger text-white"
-                    : hx.btnPrimary,
-                  "h-14 text-base",
-                )}
-              >
-                {busy
-                  ? "Reporting…"
-                  : selected.kind === "sos"
-                    ? "Send SOS"
-                    : "Submit report"}
-              </Button>
-              <Button
-                variant="secondary"
-                fullWidth
-                isDisabled={busy}
-                onPress={() => setSelected(null)}
-                className={cn(hx.btnSecondary, "h-12 text-base")}
-              >
-                Back
-              </Button>
+              {selected.needsPhoto ? (
+                <ProofUpload
+                  orderId={orderId}
+                  accessToken={requireCourierToken()}
+                  purpose="incident"
+                  onUploaded={setPhotoUrl}
+                />
+              ) : null}
+              {coords ? (
+                <p className={hx.caption}>
+                  Location: {coords.latitude.toFixed(5)},{" "}
+                  {coords.longitude.toFixed(5)}
+                </p>
+              ) : (
+                <p className={hx.caption}>
+                  Fetching location… allow GPS if prompted.
+                </p>
+              )}
+              <div className="flex flex-col gap-2">
+                <FormAction
+                  variant="primary"
+                  fullWidth
+                  isDisabled={busy || (selected.needsPhoto && !photoUrl.trim())}
+                  onPress={() => void submit()}
+                  className={cn(
+                    selected.kind === "sos"
+                      ? "bg-danger text-white"
+                      : hx.btnPrimary,
+                    "h-14 text-base",
+                  )}
+                >
+                  {busy
+                    ? "Reporting…"
+                    : selected.kind === "sos"
+                      ? "Send SOS"
+                      : "Submit report"}
+                </FormAction>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  isDisabled={busy}
+                  onPress={() => setSelected(null)}
+                  className={cn(hx.btnSecondary, "h-12 text-base")}
+                >
+                  Back
+                </Button>
+              </div>
             </div>
-          </div>
+          </FormScope>
         )}
 
         {orderIncidents.length ? (
@@ -306,9 +335,9 @@ export function IncidentActionSheet({
                   {inc.notes ? (
                     <p className={cn(hx.bodySm, "mt-1")}>{inc.notes}</p>
                   ) : null}
-                  {workflowMeta(inc) ? (
+                  {workflowMeta(inc, now) ? (
                     <p className={cn(hx.caption, "mt-1")}>
-                      {workflowMeta(inc)}
+                      {workflowMeta(inc, now)}
                     </p>
                   ) : null}
                   <ul className="mt-2 list-inside list-disc text-xs text-muted">

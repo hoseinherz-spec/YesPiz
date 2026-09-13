@@ -108,6 +108,45 @@ describe("DispatchService", () => {
     redis = module.get(RedisService);
   });
 
+  it("holds a scheduled order without contacting kitchens", async () => {
+    const order = {
+      id: new Types.ObjectId().toString(),
+      status: OrderStatus.PENDING_PAYMENT,
+      scheduledAt: new Date(Date.now() + 3600000),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    findOrderById.mockReturnValue({ exec: async () => order });
+    expect(await service.startDispatch(order.id)).toMatchObject({
+      status: OrderStatus.SCHEDULED,
+      offerCount: 0,
+    });
+    expect(order.status).toBe(OrderStatus.SCHEDULED);
+    expect(findNearby).not.toHaveBeenCalled();
+  });
+  it("releases due schedules once and does not revive cancelled orders", async () => {
+    const order = {
+      id: new Types.ObjectId().toString(),
+      customerId: new Types.ObjectId(),
+      status: OrderStatus.SCHEDULED,
+      scheduledAt: new Date(Date.now() - 1000),
+      lines: [],
+      offers: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    findOrders.mockReturnValue({
+      limit: () => ({ exec: async () => [order] }),
+    });
+    findOrderById.mockReturnValue({ exec: async () => order });
+    await service.releaseScheduledOrders();
+    expect(findNearby).toHaveBeenCalledTimes(1);
+    expect(order.status).toBe(OrderStatus.ADMIN_REVIEW); // No kitchens: surface to operations, never silently drop payment.
+    await service.releaseScheduledOrders();
+    expect(findNearby).toHaveBeenCalledTimes(1);
+    order.status = OrderStatus.CANCELLED;
+    await service.releaseScheduledOrders();
+    expect(findNearby).toHaveBeenCalledTimes(1);
+  });
+
   describe("rankProviders", () => {
     it("scores w1·rating + w2·proximity + w3·queueEmptiness and sorts desc", () => {
       const lng = 11.5755;
@@ -188,6 +227,7 @@ describe("DispatchService", () => {
       const order = {
         id: orderId,
         customerId: new Types.ObjectId(),
+        lines: [{ menuItemId: new Types.ObjectId() }],
         status: OrderStatus.PENDING_OFFERS,
         providerId: undefined as Types.ObjectId | undefined,
         offers: [

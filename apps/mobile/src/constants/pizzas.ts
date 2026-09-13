@@ -15,15 +15,14 @@ export type ExtraOption = {
 };
 
 export type Pizza = ProductMedia & {
+  pizzaId?: string;
   id: string;
   name: string;
   tagline: string;
   description: string;
   price: number;
-  rating: number;
-  reviews: number;
-  prepTime: number;
   ingredients: string[];
+  allergens?: string[];
 };
 
 export const heroImage = '/images/hero-pizza.png';
@@ -36,9 +35,6 @@ export const PIZZAS: Pizza[] = [
     description:
       'San Marzano tomato, fior di latte and fresh basil on a 48-hour fermented sourdough base.',
     price: 9.9,
-    rating: 4.8,
-    reviews: 1240,
-    prepTime: 18,
     ingredients: ['San Marzano Tomato', 'Fior di Latte', 'Fresh Basil', 'Olive Oil'],
     imageUrl: null,
     image: '/images/pizza-margherita.png',
@@ -50,9 +46,6 @@ export const PIZZAS: Pizza[] = [
     description:
       'Stacked with crispy pepperoni cups, melted mozzarella and a touch of chili honey.',
     price: 11.9,
-    rating: 4.9,
-    reviews: 2110,
-    prepTime: 20,
     ingredients: ['Tomato', 'Mozzarella', 'Pepperoni Cups', 'Chili Honey'],
     image: '/images/pizza-pepperoni.png',
   },
@@ -62,9 +55,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Bold & savory',
     description: 'Thin-sliced Italian salami, mozzarella and oregano over a rich tomato base.',
     price: 11.5,
-    rating: 4.7,
-    reviews: 870,
-    prepTime: 19,
     ingredients: ['Tomato', 'Mozzarella', 'Italian Salami', 'Oregano'],
     image: '/images/pizza-salami.png',
   },
@@ -74,9 +64,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Smoky & sweet',
     description: 'Grilled chicken, red onion and smoky BBQ drizzle on bubbling mozzarella.',
     price: 13.9,
-    rating: 4.8,
-    reviews: 1530,
-    prepTime: 22,
     ingredients: ['BBQ Sauce', 'Mozzarella', 'Grilled Chicken', 'Red Onion'],
     image: '/images/pizza-bbq-chicken.png',
   },
@@ -86,9 +73,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Four cheese indulgence',
     description: 'Mozzarella, gorgonzola, parmesan and fontina melted to golden perfection.',
     price: 13.5,
-    rating: 4.7,
-    reviews: 990,
-    prepTime: 21,
     ingredients: ['Mozzarella', 'Gorgonzola', 'Parmesan', 'Fontina'],
     image: '/images/pizza-quattro-formaggi.png',
   },
@@ -98,9 +82,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Turn up the heat',
     description: "Spicy salami, chili flakes and 'nduja for a fiery, full-flavored bite.",
     price: 12.9,
-    rating: 4.8,
-    reviews: 1320,
-    prepTime: 20,
     ingredients: ['Tomato', 'Mozzarella', 'Spicy Salami', 'Chili Flakes'],
     image: '/images/pizza-diavola.png',
   },
@@ -110,9 +91,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Fresh from the coast',
     description: 'Line-caught tuna, red onion and capers over a bright tomato base.',
     price: 12.5,
-    rating: 4.5,
-    reviews: 640,
-    prepTime: 19,
     ingredients: ['Tomato', 'Mozzarella', 'Tuna', 'Red Onion'],
     image: '/images/pizza-tonno.png',
   },
@@ -122,9 +100,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Garden fresh',
     description: 'Roasted peppers, zucchini, eggplant and cherry tomatoes, lightly charred.',
     price: 11.9,
-    rating: 4.6,
-    reviews: 780,
-    prepTime: 20,
     ingredients: ['Tomato', 'Mozzarella', 'Peppers', 'Zucchini', 'Eggplant'],
     image: '/images/pizza-vegetariana.png',
   },
@@ -134,9 +109,6 @@ export const PIZZAS: Pizza[] = [
     tagline: 'Earthy & rich',
     description: 'Sauteed mushrooms, mozzarella and parsley with a hint of garlic.',
     price: 11.5,
-    rating: 4.6,
-    reviews: 710,
-    prepTime: 19,
     ingredients: ['Tomato', 'Mozzarella', 'Mushrooms', 'Parsley'],
     image: '/images/pizza-funghi.png',
   },
@@ -147,9 +119,6 @@ export const PIZZAS: Pizza[] = [
     description:
       'San Marzano base, creamy burrata, prosciutto di Parma, wild arugula and shaved truffle.',
     price: 15.9,
-    rating: 5.0,
-    reviews: 2480,
-    prepTime: 24,
     ingredients: ['San Marzano', 'Burrata', 'Prosciutto', 'Arugula', 'Truffle'],
     image: '/images/pizza-yespiz-special.png',
   },

@@ -29,7 +29,7 @@ export const landingContent = {
     menu: "Menu",
     howItWorks: "How it works",
     pricing: "Pricing",
-    reviews: "Reviews",
+    reviews: "Our promise",
     contact: "Contact us",
     download: "Download App",
     availableFree: "Available for free",
@@ -68,15 +68,15 @@ export const landingContent = {
   },
   stats: {
     eyebrow: "Built for Vienna",
-    title: "Numbers that",
-    titleAccent: "taste good",
+    title: "Pizza, with",
+    titleAccent: "care at every step",
     subtitle:
       "From the first slice to your doorstep — fast pizza delivery, artisan quality, and consistency across Vienna.",
     items: [
-      { value: "35", suffix: "min", label: "Average delivery" },
-      { value: "40", suffix: "+", label: "Pizza varieties" },
-      { value: "4.8", suffix: "", label: "App store rating" },
-      { value: "12", suffix: "", label: "Vienna districts" },
+      { value: "01", suffix: "", label: "Choose your pizza" },
+      { value: "02", suffix: "", label: "Follow your order" },
+      { value: "03", suffix: "", label: "Enjoy your pizza" },
+      { value: "04", suffix: "", label: "Share private feedback" },
     ],
   },
   features: {

@@ -12,6 +12,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { AccountService } from "./account.service";
 import { RestoreCashDto } from "./dto/admin-cash.dto";
 import {
+  SocialLoginDto,
   AcceptInviteDto,
   BootstrapAdminDto,
   ConfirmOtpDto,
@@ -51,6 +52,12 @@ export class AccountController {
   @Post("auth/login")
   login(@Body() dto: LoginDto) {
     return this.account.login(dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("auth/social")
+  social(@Body() dto: SocialLoginDto) {
+    return this.account.socialLogin(dto);
   }
 
   @Post("auth/bootstrap-admin")

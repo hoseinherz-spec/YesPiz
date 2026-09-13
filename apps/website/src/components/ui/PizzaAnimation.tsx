@@ -21,8 +21,6 @@ const FRAME_BASE = "/assets/pizza-animation";
  * - `SCROLL_HEIGHT_VH` — taller = slower overall sequence
  */
 const SCRUB = 1.15;
-const SCROLL_HEIGHT_VH = 520;
-const SCROLL_HEIGHT_VH_MOBILE = 460;
 /**
  * Top offset so the frame clears the fixed floating header
  * (header pt + bar height ≈ 96–112px).
@@ -62,14 +60,14 @@ function roundedRectPath(
 
 function drawFrame(
   ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
+  img: ImageBitmap,
   canvas: HTMLCanvasElement,
   radiusDevicePx: number,
 ) {
   const cw = canvas.width;
   const ch = canvas.height;
-  const iw = img.naturalWidth || img.width;
-  const ih = img.naturalHeight || img.height;
+  const iw = img.width;
+  const ih = img.height;
   if (!iw || !ih || !cw || !ch) return;
 
   const scale = Math.max(cw / iw, ch / ih);
@@ -88,41 +86,42 @@ function drawFrame(
   ctx.restore();
 }
 
-function preloadFrames(
+async function preloadFrames(
   onProgress: (loaded: number, total: number) => void,
-): Promise<HTMLImageElement[]> {
-  const images: HTMLImageElement[] = new Array(FRAME_COUNT);
+  signal: AbortSignal,
+  staticOnly: boolean,
+): Promise<ImageBitmap[]> {
+  const count = staticOnly ? 1 : FRAME_COUNT;
+  const images: ImageBitmap[] = new Array(count);
+  const width = window.matchMedia("(max-width: 767px)").matches ? 640 : 960;
+  let next = 0;
   let loaded = 0;
-
-  return new Promise((resolve, reject) => {
-    let failed = 0;
-
-    for (let i = 0; i < FRAME_COUNT; i++) {
-      const img = new Image();
-      img.decoding = "async";
-      img.src = frameSrc(i);
-
-      const done = () => {
-        loaded += 1;
-        onProgress(loaded, FRAME_COUNT);
-        if (loaded === FRAME_COUNT) {
-          if (failed > 0) {
-            reject(new Error(`Failed to load ${failed} pizza animation frames`));
-          } else {
-            resolve(images);
-          }
+  let failure: unknown;
+  // Limit concurrent downloads/decodes; keep resized bitmaps, not full HD images.
+  await Promise.all(
+    Array.from({ length: Math.min(4, count) }, async () => {
+      try {
+        while (next < count && !signal.aborted && !failure) {
+          const index = next++;
+          const response = await fetch(frameSrc(index), { signal });
+          if (!response.ok) throw new Error("Could not load pizza animation");
+          const bitmap = await createImageBitmap(await response.blob(), {
+            resizeWidth: width,
+            resizeQuality: "high",
+          });
+          images[index] = bitmap;
+          if (!signal.aborted) onProgress(++loaded, count);
         }
-      };
-
-      img.onload = done;
-      img.onerror = () => {
-        failed += 1;
-        done();
-      };
-
-      images[i] = img;
-    }
-  });
+      } catch (error) {
+        failure = error;
+      }
+    }),
+  );
+  if (signal.aborted || failure) {
+    images.forEach((image) => image.close());
+    throw failure ?? new DOMException("Aborted", "AbortError");
+  }
+  return images;
 }
 
 type PizzaAnimationProps = {
@@ -151,18 +150,20 @@ export function PizzaAnimation({
   const frameRef = useRef<HTMLDivElement>(null);
   const copyColRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const framesRef = useRef<HTMLImageElement[]>([]);
+  const framesRef = useRef<ImageBitmap[]>([]);
   const frameIndexRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const needsDrawRef = useRef(true);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const dprRef = useRef(1);
   const radiusProgressRef = useRef(1);
+  const resizeRafRef = useRef<number | null>(null);
+  const [staticOnly, setStaticOnly] = useState(false);
+  const [hasSequence, setHasSequence] = useState(true);
 
   const [ready, setReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [runwayVh, setRunwayVh] = useState(SCROLL_HEIGHT_VH);
 
   const progressLabel = useMemo(
     () => `${Math.min(100, Math.round(loadProgress * 100))}%`,
@@ -188,12 +189,14 @@ export function PizzaAnimation({
       if (!ctx) return;
       ctxRef.current = ctx;
 
-      const idx = Math.max(0, Math.min(FRAME_COUNT - 1, frameIndexRef.current));
+      const idx = Math.max(
+        0,
+        Math.min(frames.length - 1, frameIndexRef.current),
+      );
       const img = frames[idx];
-      if (!img?.complete) return;
+      if (!img) return;
 
-      const radius =
-        FRAME_RADIUS * dprRef.current * radiusProgressRef.current;
+      const radius = FRAME_RADIUS * dprRef.current * radiusProgressRef.current;
       drawFrame(ctx, img, canvas, radius);
     });
   }, []);
@@ -203,10 +206,7 @@ export function PizzaAnimation({
     const frame = frameRef.current;
     if (!canvas || !frame) return;
 
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
-    setRunwayVh(isMobile ? SCROLL_HEIGHT_VH_MOBILE : SCROLL_HEIGHT_VH);
-
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = Math.min(1.5, Math.max(1, window.devicePixelRatio || 1));
     dprRef.current = dpr;
     const { clientWidth: w, clientHeight: h } = frame;
     if (w < 2 || h < 2) return;
@@ -225,29 +225,69 @@ export function PizzaAnimation({
   }, [scheduleDraw]);
 
   useEffect(() => {
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    preloadFrames((loaded, total) => {
-      if (!cancelled) setLoadProgress(loaded / total);
-    })
-      .then((frames) => {
-        if (cancelled) return;
-        framesRef.current = frames;
-        setReady(true);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setLoadError(err.message || "Failed to load frames");
-      });
-
+    const controller = new AbortController();
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => setStaticOnly(motion.matches);
+    updateMotion();
+    motion.addEventListener("change", updateMotion);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        preloadFrames(
+          (loaded, total) => {
+            setLoadProgress(loaded / total);
+          },
+          controller.signal,
+          motion.matches,
+        )
+          .then((frames) => {
+            if (controller.signal.aborted) {
+              frames.forEach((frame) => frame.close());
+              return;
+            }
+            framesRef.current = frames;
+            setHasSequence(frames.length > 1);
+            setReady(true);
+          })
+          .catch((error: Error) => {
+            if (!controller.signal.aborted) {
+              setLoadError(error.message);
+              setReady(true);
+            }
+          });
+      },
+      { rootMargin: "600px" },
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => {
-      cancelled = true;
+      observer.disconnect();
+      controller.abort();
+      motion.removeEventListener("change", updateMotion);
+      framesRef.current.forEach((frame) => frame.close());
+      framesRef.current = [];
     };
   }, []);
+
+  // ResizeObserver batches geometry changes after layout, instead of forcing
+  // synchronous layout twice per GSAP update.
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const observer = new ResizeObserver(() => {
+      if (resizeRafRef.current !== null) return;
+      resizeRafRef.current = requestAnimationFrame(() => {
+        resizeRafRef.current = null;
+        resizeCanvas();
+      });
+    });
+    observer.observe(frame);
+    return () => {
+      observer.disconnect();
+      if (resizeRafRef.current !== null)
+        cancelAnimationFrame(resizeRafRef.current);
+    };
+  }, [resizeCanvas]);
 
   useEffect(() => {
     if (!ready) return;
@@ -256,7 +296,6 @@ export function PizzaAnimation({
 
     const onResize = () => {
       resizeCanvas();
-      ScrollTrigger.refresh();
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -265,7 +304,7 @@ export function PizzaAnimation({
   useEffect(() => {
     if (!ready) return;
     ScrollTrigger.refresh();
-  }, [ready, runwayVh]);
+  }, [ready, staticOnly, hasSequence]);
 
   useGSAP(
     () => {
@@ -297,27 +336,16 @@ export function PizzaAnimation({
       });
       radiusProgressRef.current = 1;
 
-      const applyDockedLayout = () => {
-        if (isMobile()) {
-          gsap.set(mediaCol, { width: "100%", height: "58%" });
-          gsap.set(frame, {
-            top: FRAME_TOP,
-            left: FRAME_INSET,
-            right: FRAME_INSET,
-            bottom: FRAME_INSET,
-            borderRadius: FRAME_RADIUS,
-          });
-        } else {
-          gsap.set(mediaCol, { width: "50%", height: "100%" });
-          gsap.set(frame, {
-            top: FRAME_TOP,
-            left: FRAME_INSET,
-            right: FRAME_INSET,
-            bottom: FRAME_INSET,
-            borderRadius: FRAME_RADIUS,
-          });
-        }
-      };
+      if (staticOnly || framesRef.current.length === 1 || loadError) {
+        gsap.set(mediaCol, {
+          width: isMobile() ? "100%" : "50%",
+          height: isMobile() ? "58%" : "100%",
+        });
+        gsap.set(copyCol, { autoAlpha: 1, x: 0, y: 0 });
+        frameIndexRef.current = 0;
+        resizeCanvas();
+        return;
+      }
 
       const tl = gsap.timeline({
         defaults: { ease: "none" },
@@ -359,22 +387,6 @@ export function PizzaAnimation({
           height: () => (isMobile() ? "58%" : "100%"),
           duration: 0.24,
           ease: "power2.inOut",
-          onUpdate: () => resizeCanvas(),
-        },
-        0.28,
-      );
-
-      tl.to(
-        frame,
-        {
-          top: FRAME_TOP,
-          left: FRAME_INSET,
-          right: FRAME_INSET,
-          bottom: FRAME_INSET,
-          borderRadius: FRAME_RADIUS,
-          duration: 0.24,
-          ease: "power2.inOut",
-          onUpdate: () => resizeCanvas(),
         },
         0.28,
       );
@@ -409,7 +421,7 @@ export function PizzaAnimation({
         0.52,
       );
 
-      requestAnimationFrame(() => {
+      const refreshFrame = requestAnimationFrame(() => {
         resizeCanvas();
         scheduleDraw();
         ScrollTrigger.refresh();
@@ -418,10 +430,14 @@ export function PizzaAnimation({
       return () => {
         tl.scrollTrigger?.kill();
         tl.kill();
-        applyDockedLayout();
+        cancelAnimationFrame(refreshFrame);
       };
     },
-    { dependencies: [ready, resizeCanvas, scheduleDraw], scope: sectionRef },
+    {
+      dependencies: [ready, staticOnly, loadError, resizeCanvas, scheduleDraw],
+      revertOnUpdate: true,
+      scope: sectionRef,
+    },
   );
 
   useEffect(() => {
@@ -435,7 +451,9 @@ export function PizzaAnimation({
       ref={sectionRef}
       id="craft"
       className={cn("pizza-animation relative w-full bg-white", className)}
-      style={{ height: `${runwayVh}vh` }}
+      style={{
+        height: staticOnly || !hasSequence || loadError ? "100svh" : undefined,
+      }}
       aria-label="Pizza packing animation"
     >
       <div
@@ -454,6 +472,9 @@ export function PizzaAnimation({
               bottom: FRAME_INSET,
               borderRadius: FRAME_RADIUS,
               transform: "translateZ(0)",
+              backgroundImage: loadError ? `url(${frameSrc(0)})` : undefined,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
             }}
           >
             <canvas
@@ -503,7 +524,9 @@ export function PizzaAnimation({
                   style={{ width: progressLabel }}
                 />
               </div>
-              <p className="mt-3 font-mono text-xs text-muted">{progressLabel}</p>
+              <p className="mt-3 font-mono text-xs text-muted">
+                {progressLabel}
+              </p>
             </>
           )}
         </div>

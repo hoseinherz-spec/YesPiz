@@ -1,4 +1,5 @@
 "use client";
+import { FormScope, FormAction } from "@repo/ui/forms";
 import { OrderChat } from "@repo/api/components/order-chat";
 import { ScanCode } from "@/components/ScanCode";
 import { ProofUpload } from "@repo/api/components/proof-upload";
@@ -92,14 +93,14 @@ export function OrderProofFlow({
     setBusy(true);
     setError(null);
     try {
-      const coords = await getCurrentPosition();
+      // Custody proof must use the current stop, never a cached previous location.
+      const coords = await getCurrentPosition({ maximumAgeMs: 0 });
       const result = await action(coords);
       await load();
       return result;
     } catch (err) {
       if (err instanceof GeoError) setError(err.message);
       else setError(formatApiError(err));
-      throw err;
     } finally {
       setBusy(false);
     }
@@ -349,42 +350,47 @@ export function OrderProofFlow({
       <StatusStep status={status} />
 
       {status === "ASSIGNED_TO_COURIER" ? (
-        <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
-          <Typography type="h3" className={hx.title}>
-            Pickup at kitchen
-          </Typography>
-          <p className={hx.bodySm}>
-            Enter the pickup QR/OTP from the counter, confirm the numbered seal,
-            and capture your location.
-          </p>
-          {view?.sealId ? (
-            <p className={hx.caption}>Expected seal: {view.sealId}</p>
-          ) : null}
-          <ScanCode onScan={setPickupCode} />
-          <ProofField
-            label="Pickup code"
-            value={pickupCode}
-            onChange={setPickupCode}
-            placeholder="6-digit code"
-            inputMode="numeric"
-            hint="Manual entry OK — Capacitor QR scanner can replace this later."
-          />
-          <ProofField
-            label="Seal ID"
-            value={sealId}
-            onChange={setSealId}
-            placeholder="Seal number on bag"
-          />
-          <Button
-            variant="primary"
-            fullWidth
-            isDisabled={busy || !pickupCode.trim()}
-            onPress={() => void handlePickup()}
-            className={cn(hx.btnPrimary, "h-14 text-base")}
-          >
-            Confirm pickup
-          </Button>
-        </section>
+        <FormScope>
+          <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
+            <Typography type="h3" className={hx.title}>
+              Pickup at kitchen
+            </Typography>
+            <p className={hx.bodySm}>
+              Enter the pickup QR/OTP from the counter, confirm the numbered
+              seal, and capture your location.
+            </p>
+            {view?.sealId ? (
+              <p className={hx.caption}>Expected seal: {view.sealId}</p>
+            ) : null}
+            <ScanCode onScan={setPickupCode} />
+            <ProofField
+              label="Pickup code"
+              required
+              pattern="[0-9]{6}"
+              value={pickupCode}
+              onChange={setPickupCode}
+              placeholder="6-digit code"
+              inputMode="numeric"
+              hint="Manual entry OK — Capacitor QR scanner can replace this later."
+            />
+            <ProofField
+              label="Seal ID"
+              maxLength={100}
+              value={sealId}
+              onChange={setSealId}
+              placeholder="Seal number on bag"
+            />
+            <FormAction
+              variant="primary"
+              fullWidth
+              isDisabled={busy || !pickupCode.trim()}
+              onPress={() => void handlePickup()}
+              className={cn(hx.btnPrimary, "h-14 text-base")}
+            >
+              Confirm pickup
+            </FormAction>
+          </section>
+        </FormScope>
       ) : null}
 
       {status === "PICKED_UP" ? (
@@ -409,71 +415,80 @@ export function OrderProofFlow({
         <OrderChat orderId={orderId} accessToken={requireCourierToken()} />
       )}
       {status === "ON_THE_WAY" ? (
-        <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
-          <Typography type="h3" className={hx.title}>
-            Deliver to customer
-          </Typography>
-          <p className={hx.bodySm}>
-            Enter the customer PIN or capture proof of delivery.
-          </p>
-          {view?.hasDoorPin ? (
-            <ProofField
-              label="Door PIN"
-              value={doorPin}
-              onChange={setDoorPin}
-              placeholder="4-digit PIN"
-              inputMode="numeric"
+        <FormScope>
+          <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
+            <Typography type="h3" className={hx.title}>
+              Deliver to customer
+            </Typography>
+            <p className={hx.bodySm}>
+              Enter the customer PIN or capture proof of delivery.
+            </p>
+            {view?.hasDoorPin ? (
+              <ProofField
+                label="Door PIN"
+                pattern="[0-9]{4}"
+                value={doorPin}
+                onChange={setDoorPin}
+                placeholder="4-digit PIN"
+                inputMode="numeric"
+              />
+            ) : null}
+            <ProofUpload
+              orderId={orderId}
+              accessToken={requireCourierToken()}
+              purpose="signature"
+              onUploaded={setSignatureUrl}
             />
-          ) : null}
-          <ProofUpload
-            orderId={orderId}
-            accessToken={requireCourierToken()}
-            purpose="signature"
-            onUploaded={setSignatureUrl}
-          />
-          <ProofUpload
-            orderId={orderId}
-            accessToken={requireCourierToken()}
-            purpose="dropoff"
-            onUploaded={setPhotoUrl}
-          />
-          <Button
-            variant="primary"
-            fullWidth
-            isDisabled={busy}
-            onPress={() => void handleDeliver()}
-            className={cn(hx.btnPrimary, "h-14 text-base")}
-          >
-            Confirm delivery
-          </Button>
-        </section>
+            <ProofUpload
+              orderId={orderId}
+              accessToken={requireCourierToken()}
+              purpose="dropoff"
+              onUploaded={setPhotoUrl}
+            />
+            <FormAction
+              variant="primary"
+              fullWidth
+              isDisabled={busy}
+              onPress={() => void handleDeliver()}
+              className={cn(hx.btnPrimary, "h-14 text-base")}
+            >
+              Confirm delivery
+            </FormAction>
+          </section>
+        </FormScope>
       ) : null}
 
       {needsCashReceipt ? (
-        <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
-          <Typography type="h3" className={hx.title}>
-            Cash receipt
-          </Typography>
-          <p className={hx.bodySm}>
-            Record cash collected before completing this order.
-          </p>
-          <ProofField
-            label="Amount received (€)"
-            value={cashEuros}
-            onChange={setCashEuros}
-            placeholder="e.g. 24.99"
-            inputMode="decimal"
-          />
-          <Button
-            variant="primary"
-            fullWidth
-            isDisabled={busy || !cashEuros.trim()}
-            onPress={() => void handleCashReceipt()}
-            className={cn(hx.btnPrimary, "h-14 text-base")}
-          >
-            Record cash receipt
-          </Button>
-        </section>
+        <FormScope>
+          <section className={cn(hx.card, "mt-4 flex flex-col gap-3")}>
+            <Typography type="h3" className={hx.title}>
+              Cash receipt
+            </Typography>
+            <p className={hx.bodySm}>
+              Record cash collected before completing this order.
+            </p>
+            <ProofField
+              label="Amount received (€)"
+              required
+              type="number"
+              min={0}
+              step="0.01"
+              value={cashEuros}
+              onChange={setCashEuros}
+              placeholder="e.g. 24.99"
+              inputMode="decimal"
+            />
+            <FormAction
+              variant="primary"
+              fullWidth
+              isDisabled={busy || !cashEuros.trim()}
+              onPress={() => void handleCashReceipt()}
+              className={cn(hx.btnPrimary, "h-14 text-base")}
+            >
+              Record cash receipt
+            </FormAction>
+          </section>
+        </FormScope>
       ) : null}
 
       {canComplete ? (

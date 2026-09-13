@@ -1,22 +1,25 @@
-'use client';
+"use client";
+import { AppText } from "@/components/Text";
 
-import { Button } from '@heroui/react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { Form } from "@repo/ui/forms";
+
+import { SocialLogin } from "@/components/SocialLogin";
+import { Button } from "@heroui/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import {
   AccountField,
   AccountHero,
   AccountNotice,
-  AccountScreen,
   PasswordField,
-} from '@/components/AccountScreen';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/cn';
-import { hx } from '@/lib/heroui-classes';
+} from "@/components/AccountScreen";
+import { useApp } from "@/context/AppContext";
+import { AuthScreen } from "@/components/AuthScreen";
+import { hx } from "@/lib/heroui-classes";
 
-type LoginMethod = 'password' | 'otp';
+type LoginMethod = "password" | "otp";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,29 +32,32 @@ export default function LoginPage() {
     authError,
     clearAuthError,
   } = useApp();
-  const [method, setMethod] = useState<LoginMethod>('password');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [method, setMethod] = useState<LoginMethod>("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const completeLogin = () => {
     const next =
-      typeof window === 'undefined'
+      typeof window === "undefined"
         ? null
-        : new URLSearchParams(window.location.search).get('next');
-    router.replace(next?.startsWith('/') ? next : '/home/');
+        : new URLSearchParams(window.location.search).get("next");
+    router.replace(
+      next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
+        ? next
+        : "/home/",
+    );
   };
 
   const submitPassword = async () => {
     clearAuthError();
     setValidation(null);
-    if (!email.trim() || !email.includes('@') || password.length < 8) {
+    if (!email.trim() || !email.includes("@") || password.length < 8) {
       setValidation(
-        !email.includes('@') ? t('login.emailLabel') : t('signup.passwordHint'),
+        !email.includes("@") ? t("login.emailLabel") : t("signup.passwordHint"),
       );
       return;
     }
@@ -67,7 +73,7 @@ export default function LoginPage() {
     clearAuthError();
     setValidation(null);
     if (!phone.trim()) {
-      setValidation(t('login.phone'));
+      setValidation(t("login.phone"));
       return;
     }
     try {
@@ -77,7 +83,7 @@ export default function LoginPage() {
         return;
       }
       if (code.trim().length < 4) {
-        setValidation(t('login.code'));
+        setValidation(t("login.code"));
         return;
       }
       await loginWithOtp(phone.trim(), code.trim());
@@ -88,14 +94,17 @@ export default function LoginPage() {
   };
 
   return (
-    <AccountScreen title={t('login.signIn')} backHref="/onboarding/">
-      <AccountHero title={t('login.welcome')} description={t('login.subtitle')} />
+    <AuthScreen variant="welcome" title={t("login.signIn")} backHref="/onboarding/">
+      <AccountHero
+        title={t("login.welcome")}
+        description={t("login.subtitle")}
+      />
 
       <div className="mb-7 grid grid-cols-2 rounded-full bg-card p-1">
-        {(['password', 'otp'] as const).map((value) => (
+        {(["password", "otp"] as const).map((value) => (
           <Button
             key={value}
-            variant={method === value ? 'primary' : 'ghost'}
+            variant={method === value ? "primary" : "ghost"}
             onPress={() => {
               setMethod(value);
               setValidation(null);
@@ -103,7 +112,7 @@ export default function LoginPage() {
             }}
             className="h-12 rounded-full font-semibold"
           >
-            {t(value === 'password' ? 'login.tabPassword' : 'login.tabOtp')}
+            {t(value === "password" ? "login.tabPassword" : "login.tabOtp")}
           </Button>
         ))}
       </div>
@@ -111,10 +120,9 @@ export default function LoginPage() {
       {authError || validation ? (
         <AccountNotice tone="danger">{authError ?? validation}</AccountNotice>
       ) : null}
-      {notice ? <AccountNotice>{notice}</AccountNotice> : null}
 
-      {method === 'password' ? (
-        <form
+      {method === "password" ? (
+        <Form
           className="mt-4 grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
@@ -122,42 +130,42 @@ export default function LoginPage() {
           }}
         >
           <AccountField
-            label={t('login.emailLabel')}
+            label={t("login.emailLabel")}
             name="email"
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder={t('login.emailLabel')}
+            placeholder={t("login.emailLabel")}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
           <PasswordField
-            label={t('login.password')}
+            label={t("login.password")}
             name="password"
             autoComplete="current-password"
-            placeholder={t('login.password')}
+            placeholder={t("login.password")}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
           <Button
             variant="ghost"
-            onPress={() => router.push('/forgot-password/')}
-            className="h-auto justify-end self-end px-1 py-1 font-semibold text-danger"
+            onPress={() => router.push("/forgot-password/")}
+            className="h-auto justify-end self-end px-1 py-1 font-semibold text-foreground"
           >
-            {t('login.forgot')}
+            {t("login.forgot")}
           </Button>
           <Button
-            type="button"
+            type="submit"
             variant="primary"
             isPending={authLoading}
-            onPress={() => void submitPassword()}
+
             className={hx.btnPrimary}
           >
-            {t('login.signIn')}
+            {t("login.signIn")}
           </Button>
-        </form>
+        </Form>
       ) : (
-        <form
+        <Form
           className="mt-4 grid gap-5"
           onSubmit={(event) => {
             event.preventDefault();
@@ -165,72 +173,62 @@ export default function LoginPage() {
           }}
         >
           <AccountField
-            label={t('login.phone')}
+            label={t("login.phone")}
             name="phone"
+            required
+            pattern="\+?[0-9 ()-]{7,20}"
             type="tel"
             inputMode="tel"
             autoComplete="tel"
-            placeholder={t('login.phonePlaceholder')}
+            placeholder={t("login.phonePlaceholder")}
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
           {otpSent ? (
             <>
               <AccountField
-                label={t('login.code')}
+                label={t("login.code")}
                 name="code"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
-                placeholder={t('login.codePlaceholder')}
+                placeholder={t("login.codePlaceholder")}
                 value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+                onChange={(event) =>
+                  setCode(event.target.value.replace(/\D/g, ""))
+                }
               />
-              <p className="text-sm text-muted">{t('login.otpHint')}</p>
+              <AppText as="p" className="text-sm text-muted">{t("login.otpHint")}</AppText>
             </>
           ) : null}
           <Button
-            type="button"
+            type="submit"
             variant="primary"
             isPending={authLoading}
-            onPress={() => void submitOtp()}
+
             className={hx.btnPrimary}
           >
-            {t(otpSent ? 'login.confirmOtp' : 'login.sendOtp')}
+            {t(otpSent ? "login.confirmOtp" : "login.sendOtp")}
           </Button>
-        </form>
+        </Form>
       )}
 
-      <p className="mt-6 text-center text-sm font-medium text-muted">
-        {t('login.noAccount')}{' '}
+      <AppText as="p" className="mt-6 text-center text-sm font-medium text-muted">
+        {t("login.noAccount")}{" "}
         <Link href="/signup/" className="font-bold text-foreground">
-          {t('login.signupLink')}
+          {t("login.signupLink")}
         </Link>
-      </p>
+      </AppText>
 
       <div className="mt-auto pt-10">
         <div className="flex items-center gap-3 text-muted">
           <span className="h-px flex-1 bg-border" />
-          <span className="text-sm font-semibold">{t('login.orUse')}</span>
+          <AppText as="span" className="text-sm font-semibold">{t("login.orUse")}</AppText>
           <span className="h-px flex-1 bg-border" />
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          {['Google', 'Apple'].map((provider) => (
-            <Button
-              key={provider}
-              variant="secondary"
-              onPress={() => {
-                setNotice(t('login.socialUnavailable', { provider }));
-                setValidation(null);
-              }}
-              className={cn(hx.btnSecondary, 'h-16 rounded-2xl')}
-            >
-              {provider}
-            </Button>
-          ))}
-        </div>
+        <SocialLogin onSuccess={completeLogin} />
       </div>
-    </AccountScreen>
+    </AuthScreen>
   );
 }

@@ -2,6 +2,8 @@
 
 import { ApiQueryProvider } from '@repo/api';
 import { ThemeProvider } from '@repo/theme';
+import { MobilePageTransition } from "@repo/ui/mobile-page-transition";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from 'react';
 
 import { AppProvider } from '@/context/AppContext';
@@ -12,11 +14,14 @@ type ProvidersProps = {
 };
 
 export function Providers({ children }: ProvidersProps) {
+  const pathname = usePathname();
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <ApiQueryProvider>
         <AppProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <MobilePageTransition pathname={pathname} app="customer">{children}</MobilePageTransition>
+          </CartProvider>
         </AppProvider>
       </ApiQueryProvider>
     </ThemeProvider>

@@ -1,16 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { Poppins } from 'next/font/google';
+import { poppins } from '@repo/theme/fonts';
 import { NextIntlClientProvider, defaultLocale, getMessages } from '@repo/i18n';
 import type { ReactNode } from 'react';
 
 import { Providers } from './providers';
 import './globals.css';
-
-const poppins = Poppins({
-  variable: '--font-poppins',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-});
+import '@repo/ui/mobile-transitions.css';
 
 export const metadata: Metadata = {
   title: 'YesPiz Driver',

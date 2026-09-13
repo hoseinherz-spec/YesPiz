@@ -29,7 +29,7 @@ export class QualityController {
     private readonly providers: ProvidersService,
   ) {}
 
-  @Roles(UserRole.ADMIN, UserRole.PROVIDER)
+  @Roles(UserRole.ADMIN)
   @Get("providers/:id")
   getProvider(@Param("id") id: string) {
     return this.quality.getProviderQuality(id);
@@ -39,7 +39,11 @@ export class QualityController {
   @Get("me")
   async getSelf(@CurrentUser() user: JwtPayloadUser) {
     const provider = await this.providers.getSelf(user.userId);
-    return this.quality.getProviderQuality(provider.id);
+    return {
+      id: provider.id,
+      acceptingOrders: provider.acceptingOrders,
+      autoSuspended: provider.autoSuspended,
+    };
   }
 
   @Roles(UserRole.PROVIDER)

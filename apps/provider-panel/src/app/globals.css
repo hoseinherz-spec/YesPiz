@@ -2,6 +2,7 @@
 @import "@heroui/styles";
 @import "@repo/theme/styles.css";
 @source "../../../../packages/api/src/components";
+@source "../../../../packages/ui/src";
 @import "@repo/theme/panel.css";
 
 body {

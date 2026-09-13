@@ -1,21 +1,21 @@
-'use client';
+"use client";
+import { AppText } from "@/components/Text";
 
-import { Switch } from '@heroui/react';
 
-import type { ThemeSwitchProps } from './ThemeSwitch.types';
+import { SwitchField } from "@repo/ui/forms";
+
+import type { ThemeSwitchProps } from "./ThemeSwitch.types";
 
 export function ThemeSwitch({
   isSelected,
   onChange,
-  'aria-label': ariaLabel,
+  "aria-label": ariaLabel,
 }: ThemeSwitchProps) {
   return (
-    <Switch isSelected={isSelected} onChange={onChange} aria-label={ariaLabel}>
-      <Switch.Content>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-      </Switch.Content>
-    </Switch>
+    <SwitchField
+      value={isSelected}
+      onChange={onChange}
+      label={<AppText as="span" className="sr-only">{ariaLabel}</AppText>}
+    />
   );
 }

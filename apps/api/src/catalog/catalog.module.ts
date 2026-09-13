@@ -1,3 +1,4 @@
+import { Provider, ProviderSchema } from "../providers/schemas/provider.schema";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { CatalogController } from "./catalog.controller";
@@ -14,6 +15,7 @@ import {
 @Module({
   imports: [
     MongooseModule.forFeature([
+      { name: Provider.name, schema: ProviderSchema },
       { name: MenuVersion.name, schema: MenuVersionSchema },
       { name: Category.name, schema: CategorySchema },
       { name: MenuItem.name, schema: MenuItemSchema },

@@ -1,4 +1,5 @@
 "use client";
+import { FormAction, FormScope, Input } from "@repo/ui/forms";
 
 import {
   ApiError,
@@ -179,144 +180,158 @@ export default function OffersPage() {
   void tick;
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Typography type="h1" className="text-2xl font-semibold">
-            Offers inbox
-          </Typography>
-          <p className="text-muted text-sm">
-            Wave dispatch — declare readiness and prep time; server picks the
-            winner
-          </p>
-        </div>
-        <Button size="sm" variant="secondary" onPress={load}>
-          Refresh
-        </Button>
-      </div>
+    <FormScope>
+      {
+        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Typography type="h1" className="text-2xl font-semibold">
+                Offers inbox
+              </Typography>
+              <p className="text-muted text-sm">
+                Wave dispatch — declare readiness and prep time; server picks
+                the winner
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" onPress={load}>
+              Refresh
+            </Button>
+          </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
 
-      {recentOutcomes.length ? (
-        <Card className="p-4">
-          <Card.Content className="flex flex-col gap-2 p-0">
-            <Typography type="h3" className="text-sm font-medium">
-              Recent wave outcomes
-            </Typography>
-            <ul className="text-muted space-y-1 text-xs">
-              {recentOutcomes.map((o) => (
-                <li key={`${o.orderId}-${o.at}`}>
-                  {o.label} · order {o.orderId.slice(-8)}
-                </li>
-              ))}
-            </ul>
-          </Card.Content>
-        </Card>
-      ) : null}
-
-      {!offers.length ? (
-        <Card className="p-4">
-          <Card.Content className="text-muted p-0 text-sm">
-            No pending offers
-          </Card.Content>
-        </Card>
-      ) : null}
-
-      {offers.map((offer) => {
-        const wave = waveByOrder[offer.orderId];
-        const responded = Boolean(offer.respondedAt ?? wave?.respondedAt);
-        const countdown = formatCountdown(secondsLeft(offer.expiresAt));
-        const outcomeLabel =
-          wave?.outcome === "won"
-            ? "You won — check Kitchen"
-            : wave?.outcome === "lost"
-              ? "Lost — another kitchen selected"
-              : wave?.outcome === "rejected"
-                ? "You declined"
-                : responded
-                  ? `Waiting (${wave?.awaitingResponses ?? "…"} kitchens left)`
-                  : null;
-
-        return (
-          <Card key={offer.orderId} className="p-4">
-            <Card.Content className="flex flex-col gap-2 p-0">
-              <div className="flex flex-wrap justify-between gap-2">
-                <Typography type="h3" className="font-medium">
-                  {formatCents(offer.totalCents)}
+          {recentOutcomes.length ? (
+            <Card className="p-4">
+              <Card.Content className="flex flex-col gap-2 p-0">
+                <Typography type="h3" className="text-sm font-medium">
+                  Recent wave outcomes
                 </Typography>
-                <span className="text-muted text-xs">
-                  score {offer.score?.toFixed?.(2) ?? offer.score ?? "—"}
-                </span>
-              </div>
-              <p className="text-muted text-xs">Order {offer.orderId}</p>
-              <div className="flex flex-wrap gap-3 text-xs">
-                <span>Bid window: {countdown}</span>
-                {offer.wave ? (
-                  <span className="text-muted">Wave offer</span>
-                ) : null}
-              </div>
-              {outcomeLabel ? (
-                <p className="text-sm font-medium">{outcomeLabel}</p>
-              ) : null}
-              <ul className="text-sm">
-                {offer.lines.map((line, idx) => (
-                  <li key={`${offer.orderId}-${idx}`}>
-                    {line.quantity}× {line.name} · {line.size ?? "medium"}
-                    {line.extras?.length ? ` · ${line.extras.join(", ")}` : ""}
-                  </li>
-                ))}
-              </ul>
-              {!responded ? (
-                <>
-                  <label className="flex flex-col gap-1 text-sm">
-                    <span className="text-muted">
-                      Quoted prep (minutes, min 5)
-                    </span>
-                    <input
-                      type="number"
-                      min={5}
-                      step={1}
-                      value={prepByOrder[offer.orderId] ?? "20"}
-                      onChange={(e) =>
-                        setPrepByOrder((prev) => ({
-                          ...prev,
-                          [offer.orderId]: e.target.value,
-                        }))
-                      }
-                      className="border-border bg-background max-w-[8rem] rounded-md border px-3 py-2"
-                    />
-                  </label>
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      isDisabled={busyId === offer.orderId}
-                      onPress={() => respondReady(offer.orderId)}
-                    >
-                      Declare ready
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      isDisabled={busyId === offer.orderId}
-                      onPress={() => respondReject(offer.orderId)}
-                    >
-                      Decline
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-muted text-sm">
-                  Response recorded
-                  {offer.quotedPrepMinutes != null
-                    ? ` · ${offer.quotedPrepMinutes} min prep quoted`
-                    : ""}
-                </p>
-              )}
-            </Card.Content>
-          </Card>
-        );
-      })}
-    </div>
+                <ul className="text-muted space-y-1 text-xs">
+                  {recentOutcomes.map((o) => (
+                    <li key={`${o.orderId}-${o.at}`}>
+                      {o.label} · order {o.orderId.slice(-8)}
+                    </li>
+                  ))}
+                </ul>
+              </Card.Content>
+            </Card>
+          ) : null}
+
+          {!offers.length ? (
+            <Card className="p-4">
+              <Card.Content className="text-muted p-0 text-sm">
+                No pending offers
+              </Card.Content>
+            </Card>
+          ) : null}
+
+          {offers.map((offer) => {
+            const wave = waveByOrder[offer.orderId];
+            const responded = Boolean(offer.respondedAt ?? wave?.respondedAt);
+            const countdown = formatCountdown(secondsLeft(offer.expiresAt));
+            const outcomeLabel =
+              wave?.outcome === "won"
+                ? "You won — check Kitchen"
+                : wave?.outcome === "lost"
+                  ? "Lost — another kitchen selected"
+                  : wave?.outcome === "rejected"
+                    ? "You declined"
+                    : responded
+                      ? `Waiting (${wave?.awaitingResponses ?? "…"} kitchens left)`
+                      : null;
+
+            return (
+              <Card key={offer.orderId} className="p-4">
+                <FormScope>
+                  <Card.Content className="flex flex-col gap-2 p-0">
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <Typography type="h3" className="font-medium">
+                        {formatCents(offer.totalCents)}
+                      </Typography>
+                      <span className="text-muted text-xs">
+                        score {offer.score?.toFixed?.(2) ?? offer.score ?? "—"}
+                      </span>
+                    </div>
+                    <p className="text-muted text-xs">Order {offer.orderId}</p>
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <span>Bid window: {countdown}</span>
+                      {offer.wave ? (
+                        <span className="text-muted">Wave offer</span>
+                      ) : null}
+                    </div>
+                    {outcomeLabel ? (
+                      <p className="text-sm font-medium">{outcomeLabel}</p>
+                    ) : null}
+                    <ul className="text-sm">
+                      {offer.lines.map((line, idx) => (
+                        <li key={`${offer.orderId}-${idx}`}>
+                          {line.quantity}× {line.name} ·{" "}
+                          {line.selectionLabels?.length
+                            ? line.selectionLabels.join(" · ")
+                            : (line.size ?? "medium")}
+                          {line.extras?.length
+                            ? ` · ${line.extras.join(", ")}`
+                            : ""}
+                        </li>
+                      ))}
+                    </ul>
+                    {!responded ? (
+                      <>
+                        <Input
+                          label={
+                            <>
+                              <span className="text-muted">
+                                Quoted prep (minutes, min 5)
+                              </span>
+                            </>
+                          }
+                          wrapperClassName="flex flex-col gap-1 text-sm"
+                          type="number"
+                          min={5}
+                          step={1}
+                          value={prepByOrder[offer.orderId] ?? "20"}
+                          onChange={(e) =>
+                            setPrepByOrder((prev) => ({
+                              ...prev,
+                              [offer.orderId]: e.target.value,
+                            }))
+                          }
+                          className="border-border bg-background max-w-[8rem] rounded-md border px-3 py-2"
+                        />
+                        <div className="flex gap-2 pt-1">
+                          <FormAction
+                            variant="primary"
+                            size="sm"
+                            isDisabled={busyId === offer.orderId}
+                            onPress={() => respondReady(offer.orderId)}
+                          >
+                            Declare ready
+                          </FormAction>
+                          <FormAction
+                            variant="secondary"
+                            size="sm"
+                            isDisabled={busyId === offer.orderId}
+                            onPress={() => respondReject(offer.orderId)}
+                          >
+                            Decline
+                          </FormAction>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-muted text-sm">
+                        Response recorded
+                        {offer.quotedPrepMinutes != null
+                          ? ` · ${offer.quotedPrepMinutes} min prep quoted`
+                          : ""}
+                      </p>
+                    )}
+                  </Card.Content>
+                </FormScope>
+              </Card>
+            );
+          })}
+        </div>
+      }
+    </FormScope>
   );
 }

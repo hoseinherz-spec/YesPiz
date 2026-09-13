@@ -6,6 +6,15 @@ export type ProviderDocument = HydratedDocument<Provider>;
 
 @Schema({ timestamps: true, collection: "providers" })
 export class Provider {
+  @Prop({ default: false }) hoursEnabled!: boolean;
+  @Prop({ default: "Europe/Vienna" }) timezone!: string;
+  @Prop({
+    type: [{ _id: false, day: Number, opens: String, closes: String }],
+    default: [],
+  })
+  openingHours!: { day: number; opens: string; closes: string }[];
+  @Prop({ type: [String], default: [] }) closedDates!: string[];
+
   @Prop({
     type: MongoSchema.Types.ObjectId,
     ref: "User",

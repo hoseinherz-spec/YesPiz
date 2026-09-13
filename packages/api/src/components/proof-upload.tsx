@@ -1,4 +1,7 @@
 "use client";
+import { Input, FormScope, FormValue, FormAction, z } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
+
 import { MediaPreview } from "./media-preview";
 import { useRef, useState } from "react";
 import { apiRequest, withAuth } from "../core";
@@ -82,79 +85,90 @@ export function ProofUpload({
     }
   }
   return (
-    <div className="space-y-2">
-      {purpose === "signature" ? (
-        <>
-          <p>Sign inside the box</p>
-          <canvas
-            ref={canvas}
-            width={600}
-            height={240}
-            aria-label="Customer signature"
-            className="w-full touch-none rounded-xl border bg-white"
-            onPointerDown={(event) => {
-              if (busy) return;
-              drawing.current = true;
-              event.currentTarget.setPointerCapture(event.pointerId);
-              const rect = event.currentTarget.getBoundingClientRect();
-              const ctx = event.currentTarget.getContext("2d")!;
-              ctx.beginPath();
-              ctx.moveTo(
-                ((event.clientX - rect.left) * 600) / rect.width,
-                ((event.clientY - rect.top) * 240) / rect.height,
-              );
-            }}
-            onPointerMove={(event) => {
-              if (!drawing.current) return;
-              const rect = event.currentTarget.getBoundingClientRect();
-              const ctx = event.currentTarget.getContext("2d")!;
-              ctx.lineWidth = 3;
-              ctx.lineCap = "round";
-              ctx.lineTo(
-                ((event.clientX - rect.left) * 600) / rect.width,
-                ((event.clientY - rect.top) * 240) / rect.height,
-              );
-              ctx.stroke();
-              setHasSignature(true);
-            }}
-            onPointerUp={() => {
-              drawing.current = false;
-            }}
-            onPointerCancel={() => {
-              drawing.current = false;
-            }}
-          />
-          <button
-            type="button"
-            disabled={busy}
-            className="min-h-11 rounded-full border border-border bg-card px-4 py-2"
-            onClick={() => {
-              canvas.current?.getContext("2d")?.clearRect(0, 0, 600, 240);
-              setHasSignature(false);
-            }}
-          >
-            Clear signature
-          </button>
-          <button
-            type="button"
-            disabled={busy || !hasSignature}
-            className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
-            onClick={() => {
-              if (canvas.current)
-                void upload(canvas.current.toDataURL("image/png"));
-            }}
-          >
-            Upload signature
-          </button>
-        </>
-      ) : (
-        <label className="block">
-          {purpose === "ready"
-            ? "Ready photo"
-            : purpose === "incident"
-              ? "Incident photo"
-              : "Delivery photo"}
-          <input
+    <FormScope>
+      <div className="space-y-2">
+        {purpose === "signature" ? (
+          <>
+            <FormValue
+              name="signature"
+              value={hasSignature}
+              schema={z.literal(true, { error: "Add your signature first." })}
+            />
+            <p>Sign inside the box</p>
+            <canvas
+              ref={canvas}
+              width={600}
+              height={240}
+              aria-label="Customer signature"
+              className="w-full touch-none rounded-xl border bg-white"
+              onPointerDown={(event) => {
+                if (busy) return;
+                drawing.current = true;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                const rect = event.currentTarget.getBoundingClientRect();
+                const ctx = event.currentTarget.getContext("2d")!;
+                ctx.beginPath();
+                ctx.moveTo(
+                  ((event.clientX - rect.left) * 600) / rect.width,
+                  ((event.clientY - rect.top) * 240) / rect.height,
+                );
+              }}
+              onPointerMove={(event) => {
+                if (!drawing.current) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                const ctx = event.currentTarget.getContext("2d")!;
+                ctx.lineWidth = 3;
+                ctx.lineCap = "round";
+                ctx.lineTo(
+                  ((event.clientX - rect.left) * 600) / rect.width,
+                  ((event.clientY - rect.top) * 240) / rect.height,
+                );
+                ctx.stroke();
+                setHasSignature(true);
+              }}
+              onPointerUp={() => {
+                drawing.current = false;
+              }}
+              onPointerCancel={() => {
+                drawing.current = false;
+              }}
+            />
+            <FormButton
+              variant="ghost"
+              type="button"
+              isDisabled={busy}
+              className="min-h-11 rounded-full border border-border bg-card px-4 py-2"
+              onPress={() => {
+                canvas.current?.getContext("2d")?.clearRect(0, 0, 600, 240);
+                setHasSignature(false);
+              }}
+            >
+              Clear signature
+            </FormButton>
+            <FormAction
+              variant="ghost"
+              type="button"
+              isDisabled={busy || !hasSignature}
+              className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
+              onPress={() => {
+                if (canvas.current)
+                  void upload(canvas.current.toDataURL("image/png"));
+              }}
+            >
+              Upload signature
+            </FormAction>
+          </>
+        ) : (
+          <Input
+            label={
+              <>
+                {purpose === "ready"
+                  ? "Ready photo"
+                  : purpose === "incident"
+                    ? "Incident photo"
+                    : "Delivery photo"}
+              </>
+            }
             className="block w-full py-2"
             type="file"
             accept="image/jpeg,image/png"
@@ -162,13 +176,13 @@ export function ProofUpload({
             disabled={busy}
             onChange={(e) => void photo(e.target.files?.[0])}
           />
-        </label>
-      )}
-      {reference && (
-        <MediaPreview reference={reference} accessToken={accessToken} />
-      )}
-      {busy && <p role="status">Uploading…</p>}
-      {message && <p role="status">{message}</p>}
-    </div>
+        )}
+        {reference && (
+          <MediaPreview reference={reference} accessToken={accessToken} />
+        )}
+        {busy && <p role="status">Uploading…</p>}
+        {message && <p role="status">{message}</p>}
+      </div>
+    </FormScope>
   );
 }

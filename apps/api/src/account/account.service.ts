@@ -13,7 +13,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import * as bcrypt from "bcrypt";
 import { OAuth2Client } from "google-auth-library";
 import { Model, Types } from "mongoose";
-import { createHash, randomBytes, randomInt } from "crypto";
+import { createHash, createPublicKey, randomBytes, randomInt } from "crypto";
 import Twilio from "twilio";
 import { AuditService } from "../common/security/audit.service";
 import { isOtpDevBypassEnabled } from "../common/security/production-guards";
@@ -24,6 +24,7 @@ import {
   tierFromScore,
 } from "./cash-trust.util";
 import {
+  SocialLoginDto,
   AcceptInviteDto,
   BootstrapAdminDto,
   ConfirmOtpDto,
@@ -119,7 +120,10 @@ export class AccountService {
     const cooldownKey = `${phone}:${role}`;
     const last = this.otpSendAt.get(cooldownKey) ?? 0;
     if (Date.now() - last < OTP_COOLDOWN_MS) {
-      throw new HttpException("errors.rateLimited", HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        "errors.rateLimited",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     this.otpSendAt.set(cooldownKey, Date.now());
 
@@ -169,7 +173,10 @@ export class AccountService {
         throw new UnauthorizedException("errors.otpInvalid");
       }
       if ((challenge.attempts ?? 0) >= MAX_OTP_ATTEMPTS) {
-        throw new HttpException("errors.rateLimited", HttpStatus.TOO_MANY_REQUESTS);
+        throw new HttpException(
+          "errors.rateLimited",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
       }
       const serviceSid = this.config.get<string>("TWILIO_VERIFY_SERVICE_SID");
       if (this.twilio && serviceSid && !bypass) {
@@ -560,6 +567,97 @@ export class AccountService {
       }
       throw new UnauthorizedException("errors.googleAuthFailed");
     }
+  }
+
+  async socialLogin(dto: SocialLoginDto) {
+    let payload: {
+      sub?: string;
+      email?: string;
+      email_verified?: boolean | string;
+      nonce?: string;
+      given_name?: string;
+      family_name?: string;
+    };
+    try {
+      if (dto.provider === "google") {
+        const audience = this.config.get<string>("GOOGLE_CLIENT_ID");
+        if (!audience || !this.googleClient)
+          throw new BadRequestException("Google sign-in is not configured.");
+        const ticket = await this.googleClient.verifyIdToken({
+          idToken: dto.idToken,
+          audience,
+        });
+        payload = ticket.getPayload()!;
+      } else {
+        const audience = this.config.get<string>("APPLE_CLIENT_ID");
+        if (!audience)
+          throw new BadRequestException("Apple sign-in is not configured.");
+        const header = JSON.parse(
+          Buffer.from(dto.idToken.split(".")[0], "base64url").toString(),
+        );
+        if (header.alg !== "RS256" || typeof header.kid !== "string")
+          throw new Error("Invalid token header");
+        const response = await fetch("https://appleid.apple.com/auth/keys", {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) throw new Error("Unable to verify Apple token");
+        const { keys } = (await response.json()) as {
+          keys: Array<import("crypto").JsonWebKey & { kid: string }>;
+        };
+        const key = keys.find((candidate) => candidate.kid === header.kid);
+        if (!key) throw new Error("Unknown signing key");
+        const publicKey = createPublicKey({ key, format: "jwk" })
+          .export({ type: "spki", format: "pem" })
+          .toString();
+        payload = await this.jwt.verifyAsync(dto.idToken, {
+          publicKey,
+          algorithms: ["RS256"],
+          issuer: "https://appleid.apple.com",
+          audience,
+        });
+      }
+      if (!payload?.sub || payload.nonce !== dto.nonce)
+        throw new Error("Invalid identity");
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new UnauthorizedException("Unable to verify your social sign-in.");
+    }
+    const identity =
+      dto.provider === "apple"
+        ? { appleSub: payload.sub }
+        : { googleSub: payload.sub };
+    let user = await this.users.findOne(identity).exec();
+    if (!user) {
+      if (!payload.email || ![true, "true"].includes(payload.email_verified!)) {
+        throw new UnauthorizedException("A verified email is required.");
+      }
+      const email = payload.email.toLowerCase();
+      // Never silently link an existing account based on an email claim.
+      if (await this.users.exists({ email })) {
+        throw new ConflictException(
+          "An account with this email already exists. Use your existing sign-in method.",
+        );
+      }
+      user = await this.users.create({
+        ...identity,
+        email,
+        firstName: payload.given_name || "User",
+        lastName: payload.family_name || dto.provider,
+        roles: [UserRole.CUSTOMER],
+        activeRole: UserRole.CUSTOMER,
+        emailVerifiedAt: new Date(),
+      });
+    }
+    if (!user.isActive || !user.roles.includes(UserRole.CUSTOMER)) {
+      throw new ForbiddenException(
+        "This account cannot sign in as a customer.",
+      );
+    }
+    this.audit.record("auth.login", {
+      targetUserId: user.id,
+      meta: { role: UserRole.CUSTOMER, method: dto.provider },
+    });
+    return this.tokenResponse(user, UserRole.CUSTOMER);
   }
 
   private tokenResponse(user: UserDocument, activeRole: UserRole) {

@@ -1,3 +1,5 @@
+import type { PizzaPresentation } from "../presentation";
+import type { PizzaCustomization } from "../customization";
 import { Schema as MongoSchema } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
@@ -19,6 +21,8 @@ const RecipeIngredientSchema = SchemaFactory.createForClass(RecipeIngredient);
 
 @Schema({ timestamps: true, collection: "menu_versions" })
 export class MenuVersion {
+  @Prop({ type: Date }) scheduledPublishAt?: Date;
+  @Prop() publishError?: string;
   @Prop({ required: true, unique: true })
   version!: number;
 
@@ -57,6 +61,27 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 @Schema({ timestamps: true, collection: "menu_items" })
 export class MenuItem {
+  @Prop({ type: [MongoSchema.Types.ObjectId], default: [] })
+  additionalCategoryIds!: Types.ObjectId[];
+  @Prop({ type: MongoSchema.Types.Mixed }) presentation?: PizzaPresentation;
+  @Prop({ index: true })
+  pizzaId!: string;
+
+  @Prop({ type: MongoSchema.Types.Mixed })
+  customization?: PizzaCustomization;
+
+  @Prop({ default: 0 })
+  sortOrder!: number;
+
+  @Prop({ enum: ["pizza", "unclassified"], default: "unclassified" })
+  productType!: string;
+
+  @Prop({ type: [String], default: [] })
+  ingredients!: string[];
+
+  @Prop({ type: [String], default: [] })
+  allergens!: string[];
+
   @Prop({
     type: MongoSchema.Types.ObjectId,
     ref: MenuVersion.name,

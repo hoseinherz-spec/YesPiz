@@ -157,6 +157,7 @@ describe("PaymentsService", () => {
       expect.objectContaining({
         amount: 1500,
         currency: "eur",
+        payment_method_types: ["card", "klarna"],
         metadata: { orderId, customerId },
       }),
       { idempotencyKey: `order:${orderId}` },

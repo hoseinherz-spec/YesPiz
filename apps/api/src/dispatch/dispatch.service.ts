@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import { canReceiveOrder } from "../providers/availability";
 import {
   BadRequestException,
   ConflictException,
@@ -9,7 +11,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Model, Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
-import { OfferStatus, OrderStatus } from "../common/enums";
+import { OfferStatus, OrderStatus, PaymentStatus } from "../common/enums";
 import { EtaService } from "../eta/eta.service";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
 import { ProvidersService } from "../providers/providers.service";
@@ -38,9 +40,20 @@ export class DispatchService {
     if (!order) throw new NotFoundException("errors.notFound");
     if (
       order.status !== OrderStatus.PENDING_PAYMENT &&
-      order.status !== OrderStatus.PENDING_OFFERS
+      order.status !== OrderStatus.PENDING_OFFERS &&
+      order.status !== OrderStatus.SCHEDULED
     ) {
       throw new BadRequestException("errors.badRequest");
+    }
+
+    if (order.scheduledAt && order.scheduledAt.getTime() > Date.now()) {
+      order.status = OrderStatus.SCHEDULED;
+      await order.save();
+      return {
+        orderId: order.id,
+        status: OrderStatus.SCHEDULED,
+        offerCount: 0,
+      };
     }
 
     const cfg = await this.config.get();
@@ -244,7 +257,7 @@ export class DispatchService {
       }
 
       const cfg = await this.config.get();
-      const readyBids = order.offers.filter(
+      let readyBids = order.offers.filter(
         (o) =>
           o.status === OfferStatus.PENDING &&
           o.ready === true &&
@@ -267,6 +280,23 @@ export class DispatchService {
         readyBids.map((b) => this.providers.getById(String(b.providerId))),
       );
       const byId = new Map(providerDocs.map((p) => [p.id, p]));
+      readyBids = readyBids.filter((bid) => {
+        const provider = byId.get(String(bid.providerId));
+        return (
+          provider &&
+          canReceiveOrder(
+            provider,
+            order.lines.map((line) => String(line.menuItemId)),
+          )
+        );
+      });
+      if (!readyBids.length) {
+        for (const offer of order.offers)
+          if (offer.status === OfferStatus.PENDING)
+            offer.status = OfferStatus.EXPIRED;
+        await order.save();
+        return this.afterNoPendingOffers(order);
+      }
 
       const maxPrep = Math.max(
         ...readyBids.map((b) => b.quotedPrepMinutes ?? 1),
@@ -448,6 +478,36 @@ export class DispatchService {
       status: order.status,
       reason: "offers_exhausted",
     };
+  }
+
+  @Cron("*/30 * * * * *")
+  async releaseScheduledOrders() {
+    const due = await this.orders
+      .find({
+        status: OrderStatus.SCHEDULED,
+        scheduledAt: { $lte: new Date() },
+        paymentStatus: {
+          $in: [PaymentStatus.CAPTURED, PaymentStatus.AUTHORIZED],
+        },
+      })
+      .limit(100)
+      .exec();
+    for (const order of due) {
+      const owner = randomUUID();
+      const key = `order:wave:${order.id}`;
+      if (!(await this.redis.acquireLock(key, owner, 120_000))) continue;
+      try {
+        const fresh = await this.orders.findById(order.id).exec();
+        if (fresh?.status === OrderStatus.SCHEDULED)
+          await this.startDispatch(order.id);
+      } catch (error) {
+        this.logger.error(
+          `Scheduled dispatch ${order.id}: ${(error as Error).message}`,
+        );
+      } finally {
+        await this.redis.releaseLock(key, owner);
+      }
+    }
   }
 
   @Cron(CronExpression.EVERY_10_SECONDS)

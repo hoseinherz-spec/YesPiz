@@ -6,10 +6,11 @@ import { getProviderToken } from "@/lib/auth";
 import { Button, Typography } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { clearProviderToken } from "@/lib/auth";
 
 const NAV = [
+  { href: "/statement", label: "Settlements" },
   { href: "/offers", label: "Offers" },
   { href: "/kitchen", label: "Kitchen" },
   { href: "/operations", label: "Operations" },
@@ -19,6 +20,23 @@ const NAV = [
 export function ProviderShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const navigation = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navigation.current;
+    if (!nav) return;
+    const revealActive = () => {
+      const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (active)
+        nav.scrollLeft =
+          active.offsetLeft -
+          nav.offsetLeft -
+          (nav.clientWidth - active.clientWidth) / 2;
+    };
+    revealActive();
+    const observer = new ResizeObserver(revealActive);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [pathname]);
   const [kitchenName, setKitchenName] = useState("Kitchen workspace");
   useEffect(() => {
     let active = true;
@@ -39,14 +57,21 @@ export function ProviderShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-border bg-card flex flex-wrap items-center justify-between gap-4 border-b px-5 py-5">
+      <a className="panel-skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <header className="panel-header border-border bg-card flex flex-wrap items-center justify-between gap-4 border-b px-5 py-5">
         <div>
           <Typography type="h3" className="text-lg font-semibold">
             YesPiz Kitchen
           </Typography>
           <p className="text-muted text-xs">{kitchenName}</p>
         </div>
-        <nav className="flex flex-wrap gap-2">
+        <nav
+          ref={navigation}
+          aria-label="Kitchen"
+          className="panel-navigation flex gap-2"
+        >
           {NAV.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -77,7 +102,11 @@ export function ProviderShell({ children }: { children: ReactNode }) {
           </Button>
         </nav>
       </header>
-      <main className="min-w-0 flex-1 p-4 md:p-8">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="panel-main min-w-0 flex-1 p-4 md:p-8"
+      >
         <Notifications accessToken={getProviderToken()} />
         {children}
       </main>

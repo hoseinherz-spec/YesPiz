@@ -1,4 +1,6 @@
 'use client';
+import { AnimatedNumber } from "@/components/AnimatedNumber";
+
 
 import { Typography } from '@heroui/react';
 import { Star } from '@repo/icons';
@@ -17,7 +19,7 @@ export function Rating({ value, reviews }: RatingProps) {
       </Typography>
       {typeof reviews === 'number' ? (
         <Typography type="body-xs" className={styles.reviews()}>
-          ({reviews})
+          (<AnimatedNumber value={reviews} />)
         </Typography>
       ) : null}
     </div>

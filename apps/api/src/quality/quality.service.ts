@@ -65,7 +65,15 @@ export class QualityService {
       order.menuVersion,
     );
     const required = [
-      ...new Set(items.flatMap((item) => item.checklistTemplate ?? [])),
+      ...new Set(
+        order.lines.flatMap(
+          (line) =>
+            line.recipeSnapshot?.checklistTemplate ??
+            items.find((item) => item.id === String(line.menuItemId))
+              ?.checklistTemplate ??
+            [],
+        ),
+      ),
     ];
     if (
       required.some(
@@ -182,9 +190,18 @@ export class QualityService {
       order.menuVersion,
     );
 
-    const requiresSeal =
-      items.length === 0 || items.some((i) => i.requiresNumberedSeal !== false);
-    const requiresPhoto = items.some((i) => i.requiresReadyPhoto === true);
+    const requiresSeal = order.lines.some(
+      (line) =>
+        (line.recipeSnapshot?.requiresNumberedSeal ??
+          items.find((i) => i.id === String(line.menuItemId))
+            ?.requiresNumberedSeal) !== false,
+    );
+    const requiresPhoto = order.lines.some(
+      (line) =>
+        (line.recipeSnapshot?.requiresReadyPhoto ??
+          items.find((i) => i.id === String(line.menuItemId))
+            ?.requiresReadyPhoto) === true,
+    );
 
     if (requiresSeal && !order.sealId) {
       throw new BadRequestException("errors.badRequest");

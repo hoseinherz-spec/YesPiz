@@ -1,3 +1,5 @@
+import { canReceiveOrder, validateHours } from "./availability";
+import { OpeningHoursDto } from "./dto/provider.dto";
 import {
   BadRequestException,
   Injectable,
@@ -76,10 +78,12 @@ export class ProvidersService implements OnModuleInit {
   }
 
   async updateSelf(userId: string, dto: ProviderSelfUpdateDto) {
+    if (dto.pausedUntil && new Date(dto.pausedUntil).getTime() <= Date.now())
+      throw new BadRequestException("Choose a future resume time.");
     const set: Record<string, unknown> = {};
     if (dto.acceptingOrders != null) set.acceptingOrders = dto.acceptingOrders;
     if (dto.logoUrl != null) set.logoUrl = dto.logoUrl;
-    if (dto.acceptCap != null) set.acceptCap = dto.acceptCap;
+    if (dto.acceptCap !== undefined) set.acceptCap = dto.acceptCap;
     if (dto.pauseReason != null) set.pauseReason = dto.pauseReason;
     if (dto.pausedUntil != null) set.pausedUntil = new Date(dto.pausedUntil);
     if (dto.acceptingOrders === true) {
@@ -112,7 +116,10 @@ export class ProvidersService implements OnModuleInit {
     const docs = await this.providers
       .find({
         isActive: true,
-        acceptingOrders: true,
+        $or: [
+          { acceptingOrders: true },
+          { acceptingOrders: false, pausedUntil: { $lte: now } },
+        ],
         autoSuspended: { $ne: true },
         location: {
           $near: {
@@ -123,20 +130,25 @@ export class ProvidersService implements OnModuleInit {
       })
       .exec();
 
-    const required = requiredItemIds.map(String);
-    return docs.filter((p) => {
-      if (p.pausedUntil && p.pausedUntil.getTime() > now.getTime()) {
-        return false;
-      }
-      if (p.acceptCap != null && p.openOrders >= p.acceptCap) {
-        return false;
-      }
-      if (required.length && p.eightySixedItemIds?.length) {
-        const eighty = new Set(p.eightySixedItemIds.map(String));
-        if (required.some((id) => eighty.has(id))) return false;
-      }
-      return true;
-    });
+    return docs.filter((p) => canReceiveOrder(p, requiredItemIds, now));
+  }
+
+  async setHours(userId: string, dto: OpeningHoursDto) {
+    validateHours(dto.timezone, dto.openingHours, dto.closedDates);
+    const doc = await this.providers
+      .findOneAndUpdate(
+        { userId: new Types.ObjectId(userId) },
+        { $set: dto },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException("Partner not found.");
+    return {
+      hoursEnabled: doc.hoursEnabled,
+      timezone: doc.timezone,
+      openingHours: doc.openingHours,
+      closedDates: doc.closedDates,
+    };
   }
 
   async bumpOpenOrders(providerId: string, delta: number) {
@@ -230,6 +242,8 @@ export class ProvidersService implements OnModuleInit {
   }
 
   async pauseOrders(providerId: string, dto: PauseOrdersDto) {
+    if (dto.until && new Date(dto.until).getTime() <= Date.now())
+      throw new BadRequestException("Choose a future resume time.");
     const doc = await this.providers
       .findByIdAndUpdate(
         providerId,

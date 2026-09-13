@@ -18,6 +18,7 @@ import { UserRole } from "../common/enums";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import {
+  OpeningHoursDto,
   CreateProviderDto,
   EightySixDto,
   PauseOrdersDto,
@@ -31,6 +32,13 @@ import { ProvidersService } from "./providers.service";
 @Controller("providers")
 export class ProvidersController {
   constructor(private readonly providers: ProvidersService) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PROVIDER)
+  @Patch("me/hours")
+  hours(@CurrentUser() user: JwtPayloadUser, @Body() dto: OpeningHoursDto) {
+    return this.providers.setHours(user.userId, dto);
+  }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

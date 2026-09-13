@@ -45,6 +45,8 @@ const UserLocationSchema = SchemaFactory.createForClass(UserLocation);
 
 @Schema({ timestamps: true, collection: "users" })
 export class User {
+  @Prop() stripeConnectedAccountId?: string;
+  @Prop({ unique: true, sparse: true }) referralCode?: string;
   @Prop({ required: true, trim: true })
   firstName!: string;
 
@@ -99,6 +101,25 @@ export class User {
   @Prop({ default: 0, min: 0 })
   creditCents!: number;
 
+  @Prop({
+    type: [
+      {
+        _id: false,
+        key: String,
+        orderId: String,
+        amountCents: Number,
+        at: Date,
+      },
+    ],
+    default: [],
+  })
+  creditEntries!: {
+    key: string;
+    orderId: string;
+    amountCents: number;
+    at: Date;
+  }[];
+
   @Prop({ default: false })
   cashBanned!: boolean;
 
@@ -110,6 +131,9 @@ export class User {
 
   @Prop()
   googleSub?: string;
+
+  @Prop({ unique: true, sparse: true })
+  appleSub?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Button, Typography } from '@heroui/react';
 import { ArrowRight, MapPin } from '@repo/icons';
@@ -17,7 +19,7 @@ export default function NotFound() {
     <AppFrame padded={false}>
       <div className="flex min-h-dvh flex-col items-center justify-center bg-black px-8 py-[max(40px,env(safe-area-inset-top))] text-center text-white">
         <div className="relative">
-          <p aria-hidden="true" className="text-[116px] leading-none font-black tracking-[-0.12em] text-white">404</p>
+          <AppText as="p" aria-hidden="true" className="text-[116px] leading-none font-black tracking-[-0.12em] text-white">404</AppText>
           <span className="absolute top-1/2 left-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-accent-foreground">
             <MapPin size={27} />
           </span>

@@ -1,4 +1,6 @@
 'use client';
+import { AppText } from "@/components/Text";
+
 
 import { Button, Card } from '@heroui/react';
 import { Gift, Info, Truck } from '@repo/icons';
@@ -23,8 +25,8 @@ function PreferenceRow({
   return (
     <div className="flex items-center gap-4 border-b border-border py-6">
       <div className="min-w-0 flex-1">
-        <h2 className="text-[21px] font-bold text-foreground">{title}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-muted">{detail}</p>
+        <AppText as="h2" className="text-[21px] font-bold text-foreground">{title}</AppText>
+        <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">{detail}</AppText>
       </div>
       <ThemeSwitch isSelected={selected} onChange={onChange} aria-label={title} />
     </div>
@@ -46,16 +48,16 @@ export default function NotificationsPage() {
   } = useApp();
 
   return (
-    <AppFrame>
+    <AppFrame className="reference-screen">
       <ScreenHeader title={t('notifications.title')} backHref="/settings/" />
 
       <section aria-labelledby="notification-preferences">
-        <h1
+        <AppText as="h1"
           id="notification-preferences"
           className="text-xs font-semibold tracking-wider text-muted uppercase"
         >
           {t('notifications.preferences')}
-        </h1>
+        </AppText>
         <PreferenceRow
           title={t('notifications.sms')}
           detail={t('notifications.smsDetail')}
@@ -79,14 +81,14 @@ export default function NotificationsPage() {
       <section className="pt-9 pb-8" aria-labelledby="notification-activity">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 id="notification-activity" className="text-[21px] font-bold text-foreground">
+            <AppText as="h2" id="notification-activity" className="text-[21px] font-bold text-foreground">
               {t('notifications.activity')}
-            </h2>
-            <p className="mt-1 text-sm text-muted">
+            </AppText>
+            <AppText as="p" className="mt-1 text-sm text-muted">
               {unreadCount
                 ? t('notifications.unread', { n: unreadCount })
                 : t('notifications.caughtUp')}
-            </p>
+            </AppText>
           </div>
           {unreadCount ? (
             <Button
@@ -115,19 +117,19 @@ export default function NotificationsPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
-                      <h3 className="flex-1 font-bold text-foreground">
+                      <AppText as="h3" className="flex-1 font-bold text-foreground">
                         {t(notification.title)}
-                      </h3>
+                      </AppText>
                       {notification.unread ? (
                         <span className="mt-2 size-2 rounded-full bg-danger" />
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm leading-relaxed text-muted">
+                    <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">
                       {t(notification.body)}
-                    </p>
-                    <p className={cn('mt-2 text-xs font-medium text-muted')}>
+                    </AppText>
+                    <AppText as="p" className={cn('mt-2 text-xs font-medium text-muted')}>
                       {t(notification.time)}
-                    </p>
+                    </AppText>
                   </div>
                 </Card.Content>
               </Card>

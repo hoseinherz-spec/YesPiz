@@ -17,13 +17,13 @@ export type UpdateProviderRequest = {
   isActive?: boolean;
   acceptingOrders?: boolean;
   rating?: number;
-  acceptCap?: number;
+  acceptCap?: number | null;
 };
 
 export type ProviderSelfUpdateRequest = {
   acceptingOrders?: boolean;
   logoUrl?: string;
-  acceptCap?: number;
+  acceptCap?: number | null;
   pausedUntil?: string;
 };
 
@@ -37,6 +37,10 @@ export type PauseOrdersRequest = {
 };
 
 export type Provider = {
+  hoursEnabled?: boolean;
+  timezone?: string;
+  openingHours?: { day: number; opens: string; closes: string }[];
+  closedDates?: string[];
   id: string;
   userId: string;
   name: string;
@@ -44,7 +48,7 @@ export type Provider = {
   logoUrl?: string;
   longitude: number;
   latitude: number;
-  location: { type: 'Point'; coordinates: [number, number] };
+  location: { type: "Point"; coordinates: [number, number] };
   rating: number;
   qualityScore?: number;
   complaintCount?: number;
@@ -59,7 +63,7 @@ export type Provider = {
   acceptingOrders: boolean;
   pausedUntil?: string;
   pauseReason?: string;
-  unavailableItemIds?: string[];
+  eightySixedItemIds?: string[];
   createdAt?: string;
   updatedAt?: string;
 };

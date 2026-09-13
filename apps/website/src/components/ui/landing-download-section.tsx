@@ -68,7 +68,7 @@ export function LandingDownloadSection() {
               >
                 {t.title}
                 <br />
-                <span className="text-brand-lime">{t.titleAccent}</span>
+                <span className="landing-accent-copy">{t.titleAccent}</span>
               </Typography>
               <Typography
                 type="body-xs"

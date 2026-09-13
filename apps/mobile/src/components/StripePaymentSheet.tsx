@@ -1,8 +1,11 @@
 "use client";
+import { Form } from "@repo/ui/forms";
+import { Button as FormButton } from "@heroui/react";
 
 import { Typography } from "@heroui/react";
 import {
   Elements,
+  ExpressCheckoutElement,
   PaymentElement,
   useElements,
   useStripe,
@@ -44,6 +47,11 @@ function ConfirmPayment({
     setBusy(true);
     setError(null);
     try {
+      const submitted = await elements.submit();
+      if (submitted.error) {
+        setError(submitted.error.message ?? errorFallback);
+        return;
+      }
       const result = await stripe.confirmPayment({
         elements,
         redirect: "if_required",
@@ -66,23 +74,46 @@ function ConfirmPayment({
   };
 
   return (
-    <form
+    <Form
       className="rounded-[28px] border border-border bg-card p-5"
       onSubmit={(event) => {
         event.preventDefault();
         void confirm();
       }}
     >
-      <PaymentElement options={{ layout: "tabs" }} />
+      <ExpressCheckoutElement
+        options={{
+          paymentMethods: {
+            applePay: "auto",
+            googlePay: "auto",
+            link: "never",
+            amazonPay: "never",
+            paypal: "never",
+          },
+        }}
+        onConfirm={() => {
+          void confirm();
+        }}
+      />
+      <div className="mt-4">
+        <PaymentElement
+          options={{
+            layout: "tabs",
+            paymentMethodOrder: ["card", "klarna"],
+            wallets: { applePay: "never", googlePay: "never" },
+          }}
+        />
+      </div>
       {error ? (
         <Typography type="body-sm" className="mt-3 text-danger" role="alert">
           {error}
         </Typography>
       ) : null}
       <div className="mt-5 flex flex-col gap-2.5">
-        <button
+        <FormButton
+          variant="ghost"
           aria-busy={busy}
-          disabled={!stripe || !elements || busy}
+          isDisabled={!stripe || !elements || busy}
           type="submit"
           className={cn(
             hx.btnPrimary,
@@ -90,17 +121,18 @@ function ConfirmPayment({
           )}
         >
           {busy ? processingLabel : payLabel.replace("{amount}", amountLabel)}
-        </button>
-        <button
-          disabled={busy}
+        </FormButton>
+        <FormButton
+          variant="ghost"
+          isDisabled={busy}
           type="button"
-          onClick={onCancel}
+          onPress={onCancel}
           className="h-11 cursor-pointer rounded-full text-muted disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-focus"
         >
           {cancelLabel}
-        </button>
+        </FormButton>
       </div>
-    </form>
+    </Form>
   );
 }
 

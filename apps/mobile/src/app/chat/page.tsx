@@ -1,4 +1,6 @@
 "use client";
+import { AppText } from "@/components/Text";
+
 import { OrderChat } from "@repo/api/components/order-chat";
 import { AppFrame } from "@/components/AppFrame";
 import { useApp } from "@/context/AppContext";
@@ -9,7 +11,7 @@ export default function ChatPage() {
       {accessToken && activeOrderId ? (
         <OrderChat orderId={activeOrderId} accessToken={accessToken} />
       ) : (
-        <p>Open an active order to chat with your courier.</p>
+        <AppText as="p">Open an active order to chat with your courier.</AppText>
       )}
     </AppFrame>
   );

@@ -1,7 +1,8 @@
-'use client';
+"use client";
+import { Input } from "@repo/ui/forms";
 
-import { cn } from '@/lib/cn';
-import { hx } from '@/lib/heroui-classes';
+import { cn } from "@/lib/cn";
+import { hx } from "@/lib/heroui-classes";
 
 type ErrorBannerProps = {
   message: string;
@@ -13,7 +14,7 @@ export function ErrorBanner({ message, className }: ErrorBannerProps) {
     <p
       role="alert"
       className={cn(
-        'rounded-[18px] border border-border bg-card px-4 py-3 text-sm text-danger',
+        "rounded-[18px] border border-border bg-card px-4 py-3 text-sm text-danger",
         className,
       )}
     >
@@ -28,8 +29,14 @@ type FieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   hint?: string;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  min?: number;
+  step?: number | string;
 };
 
 export function ProofField({
@@ -37,22 +44,27 @@ export function ProofField({
   value,
   onChange,
   placeholder,
-  type = 'text',
+  type = "text",
   inputMode,
   hint,
+  ...rules
 }: FieldProps) {
   return (
-    <label className="flex flex-col gap-2 text-sm font-medium text-muted">
-      {label}
-      <input
-        type={type}
-        inputMode={inputMode}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={cn(hx.field, 'h-14 bg-field-background')}
-      />
-      {hint ? <span className={hx.caption}>{hint}</span> : null}
-    </label>
+    <Input
+      {...rules}
+      label={
+        <>
+          {label}
+          {hint ? <span className={hx.caption}>{hint}</span> : null}
+        </>
+      }
+      wrapperClassName="flex flex-col gap-2 text-sm font-medium text-muted"
+      type={type}
+      inputMode={inputMode}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={cn(hx.field, "h-14 bg-field-background")}
+    />
   );
 }

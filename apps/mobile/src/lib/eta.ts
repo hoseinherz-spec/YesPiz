@@ -16,13 +16,8 @@ export function pickDeliveryEta(view: {
   hasShortExtraStop?: boolean;
   customerStatus?: string | null;
 }): EtaWindow {
-  const inDelivery =
-    view.customerStatus === 'driver' ||
-    view.customerStatus === 'onway' ||
-    view.customerStatus === 'delivered';
-
-  const min = inDelivery ? view.etaDeliveryMin : view.etaPrepMin;
-  const max = inDelivery ? view.etaDeliveryMax : view.etaPrepMax;
+  const min = view.etaDeliveryMin;
+  const max = view.etaDeliveryMax;
 
   return {
     min,
@@ -43,16 +38,32 @@ export function formatEtaRange(
   window: EtaWindow,
   t: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
-  const { min, max } = window;
+  const computed = window.computedAt
+    ? new Date(window.computedAt).getTime()
+    : NaN;
+  const elapsed = Number.isFinite(computed)
+    ? Math.max(0, (Date.now() - computed) / 60_000)
+    : 0;
+  const min =
+    window.min == null
+      ? undefined
+      : Math.max(0, Math.ceil(window.min - elapsed));
+  const max =
+    window.max == null
+      ? undefined
+      : Math.max(0, Math.ceil(window.max - elapsed));
   if (min != null && max != null && min !== max) {
-    return t('tracking.etaRange', { min, max });
+    return t("tracking.etaRange", { min, max });
   }
-  if (max != null) return t('tracking.minutes', { n: max });
-  if (min != null) return t('tracking.minutes', { n: min });
-  return t('tracking.etaPending');
+  if (max != null) return t("tracking.minutes", { n: max });
+  if (min != null) return t("tracking.minutes", { n: min });
+  return t("tracking.etaPending");
 }
 
-export function etaArrivalTimestamp(computedAt?: string, maxMinutes?: number): Date | null {
+export function etaArrivalTimestamp(
+  computedAt?: string,
+  maxMinutes?: number,
+): Date | null {
   if (!computedAt || maxMinutes == null) return null;
   const base = new Date(computedAt).getTime();
   if (Number.isNaN(base)) return null;

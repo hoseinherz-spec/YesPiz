@@ -1,12 +1,13 @@
-import { tv } from 'tailwind-variants';
+import { tv } from "tailwind-variants";
 
 export const stepper = tv({
   slots: {
-    root: 'inline-flex items-center gap-3',
+    root: "inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background/50 p-1",
     decrease:
-      'h-9 w-9 min-w-9 rounded-full border border-border bg-card text-lg font-bold text-foreground',
+      "h-10 w-10 min-w-10 rounded-full border-0 bg-transparent text-lg font-medium text-foreground",
     increase:
-      'h-9 w-9 min-w-9 rounded-full bg-accent text-lg font-bold text-accent-foreground',
-    value: 'min-w-6 text-center text-[15px] font-bold text-foreground',
+      "h-10 w-10 min-w-10 rounded-full bg-surface-tertiary text-lg font-medium text-foreground",
+    value:
+      "min-w-6 text-center text-[15px] font-semibold tabular-nums text-foreground",
   },
 });

@@ -1,38 +1,51 @@
-'use client';
+"use client";
 
 import {
   usePublishedMenuQuery,
   type PublishedMenuItem,
-} from '@repo/api';
-import { useMemo } from 'react';
+  type PizzaCustomization,
+  type PublicPizzaPresentation,
+} from "@repo/api";
+import { useMemo } from "react";
 
-import { PIZZAS, type Pizza } from '@/constants/pizzas';
+import { PIZZAS, type Pizza } from "@/constants/pizzas";
 
-const PLACEHOLDER_IMAGE = '/images/pizza-margherita.png';
+const PLACEHOLDER_IMAGE = "/images/pizza-margherita.png";
 
 export type CatalogPizza = Pizza & {
   tags: string[];
+  customization?: PizzaCustomization;
+  presentation?: PublicPizzaPresentation;
+  pizzaId?: string;
   categoryId?: string;
+  additionalCategoryIds?: string[];
 };
 
 export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
   const tags = item.tags ?? [];
+  const matchingPhoto = PIZZAS.find(
+    (pizza) => pizza.name.toLowerCase() === item.name.trim().toLowerCase(),
+  )?.image;
   return {
     id: item.id,
+    pizzaId: item.pizzaId,
+    customization: item.customization,
+    presentation: item.presentation,
     name: item.name,
     tagline: item.description || item.name,
     description: item.description || item.name,
-    price: item.priceCents / 100,
-    rating: 4.8,
-    reviews: 120,
-    prepTime: Math.max(15, Math.round(16 + (item.prepWeight || 1) * 4)),
-    ingredients: tags.length
-      ? tags.map((tag) => tag.charAt(0).toUpperCase() + tag.slice(1))
-      : ['Signature'],
+    price:
+      (item.customization?.variants
+        .filter((v) => v.isActive)
+        .reduce((min, v) => Math.min(min, v.priceCents), Infinity) ??
+        item.priceCents) / 100,
+    ingredients: item.ingredients ?? [],
+    allergens: item.allergens ?? [],
     imageUrl: item.imageUrl ?? null,
-    image: PLACEHOLDER_IMAGE,
+    image: matchingPhoto ?? PLACEHOLDER_IMAGE,
     tags,
     categoryId: item.categoryId,
+    additionalCategoryIds: item.additionalCategoryIds,
   };
 }
 

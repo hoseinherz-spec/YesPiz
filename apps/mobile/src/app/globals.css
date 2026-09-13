@@ -1,7 +1,37 @@
 @import "tailwindcss";
+@import "./reference-layouts.css";
 @import "@heroui/styles";
 @import "@repo/theme/styles.css";
 @source "../../../../packages/api/src/components";
+@source "../../../../packages/ui/src";
+
+.account-shortcut { display: flex; min-height: 108px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px 6px; border: 1px solid var(--border); border-radius: 24px; background: var(--surface-secondary); color: var(--foreground); font-size: 12px; font-weight: 600; text-align: center; transition: background-color var(--app-motion-control) var(--app-motion-ease); }
+.account-shortcut-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 14px; background: var(--surface-tertiary); color: var(--accent); }
+.account-shortcut:hover { background: var(--surface-tertiary); }
+.account-shortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.referral-ticket::before { content: ''; pointer-events: none; position: absolute; right: -36px; top: -48px; width: 140px; height: 140px; border-radius: 50%; border: 22px solid color-mix(in oklab, var(--accent) 5%, transparent); }
+
+.cart-dock-action { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; flex-shrink: 0; border-radius: 50%; pointer-events: auto; background: var(--accent); color: var(--accent-foreground); border: 1px solid color-mix(in oklab, var(--foreground) 15%, transparent); box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 22%, transparent), 0 8px 24px color-mix(in oklab, var(--accent) 15%, transparent); transition: transform var(--app-motion-control) var(--app-motion-ease); }
+.cart-dock-action:active { transform: scale(.96); }
+.cart-dock-action:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+.cart-dock-count { position: absolute; top: -3px; right: -3px; display: grid; place-items: center; min-width: 23px; height: 23px; padding-inline: 5px; border: 2px solid var(--background); border-radius: 12px; background: var(--foreground); color: var(--background); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.product-showcase { background: radial-gradient(ellipse at 65% 20%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 62%), var(--card); border: 1px solid var(--border); }
+.product-showcase-image { filter: drop-shadow(0 18px 16px color-mix(in oklab, var(--background) 50%, transparent)); }
+.product-showcase-caption { position: relative; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--surface-secondary) 88%, transparent); }
+
+/* Data and empty-state surfaces use the same light source and app palette. */
+.data-surface {
+  background: linear-gradient(145deg, color-mix(in oklab, var(--surface-secondary) 92%, var(--foreground)), var(--surface-secondary) 65%);
+  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 5%, transparent), 0 12px 32px color-mix(in oklab, var(--background) 55%, transparent);
+}
+.empty-state-scene { position: relative; width: 200px; height: 156px; margin-bottom: 24px; }
+.empty-state-orbit { position: absolute; inset: 0 22px; border: 1px solid var(--border); border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--accent) 7%, transparent), transparent 70%); }
+.empty-state-preview { position: absolute; top: 33px; left: 24px; width: 132px; height: 90px; padding: 24px 20px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-secondary); transform: rotate(-9deg); }
+.empty-state-preview span { display: block; height: 5px; margin-bottom: 9px; border-radius: 4px; background: var(--border); }
+.empty-state-preview span:last-child { width: 55%; }
+.empty-state-icon { position: absolute; right: 18px; bottom: 10px; border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border)); background: var(--surface-tertiary); box-shadow: 0 10px 24px color-mix(in oklab, var(--background) 65%, transparent); }
+.empty-state-image { border-radius: 50%; position: absolute; top: 10px; left: 25px; width: 130px; height: 130px; object-fit: contain; filter: drop-shadow(0 12px 10px color-mix(in oklab, var(--background) 60%, transparent)); }
 
 @theme inline {
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
@@ -133,3 +163,52 @@ textarea,
     background-color: color-mix(in oklab, var(--accent) 92%, black);
   }
 }
+
+@layer components {
+  /* Preserve the surrounding design scale while routing all copy through HeroUI. */
+  .app-text { font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; text-align: inherit; }
+  strong.app-text { font-weight: bolder; }
+  small.app-text { font-size: .833em; }
+}
+
+
+
+/* Readable supporting copy and focus indicators on the light app surface. */
+:root, .light, [data-theme="light"] {
+  --muted: #667085;
+  --field-placeholder: #667085;
+  --focus: #344054;
+}
+.dark, [data-theme="dark"] {
+  --muted: #a5afc0;
+  --field-placeholder: #a5afc0;
+  --focus: #d8ff00;
+}
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+:where(h1, h2, h3) { text-wrap: balance; }
+:where(input[inputmode="decimal"], input[type="number"]) { font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: max(1rem, 1em); }
+}
+
+/* Keep focused form controls clear of the fixed checkout action. */
+:where(input, textarea, select, label, button) {
+  scroll-margin-block: 24px 140px;
+}
+
+.account-shortcut-icon { background: var(--accent); color: var(--accent-foreground); }
+
+.button--secondary {
+  --button-fg: var(--foreground);
+  --button-bg: var(--surface-tertiary);
+  --button-bg-hover: var(--default);
+  --button-bg-pressed: var(--default);
+}
+
+/* A five-point scale stays together instead of becoming a long vertical form. */
+.feedback-score { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.feedback-score > .label, .feedback-score > .field-error { grid-column: 1 / -1; }
+.feedback-score .radio { min-width: 0; min-height: 48px; justify-content: center; padding: 8px 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-secondary); }

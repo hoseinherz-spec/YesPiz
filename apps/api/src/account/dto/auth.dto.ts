@@ -304,3 +304,16 @@ export class ResetPasswordDto {
   @MinLength(6)
   password!: string;
 }
+
+export class SocialLoginDto {
+  @IsIn(["google", "apple"])
+  provider!: "google" | "apple";
+
+  @IsString()
+  @MinLength(1)
+  idToken!: string;
+
+  @IsString()
+  @MinLength(16)
+  nonce!: string;
+}

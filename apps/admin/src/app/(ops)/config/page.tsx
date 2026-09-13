@@ -1,4 +1,5 @@
 "use client";
+import { FormAction, FormScope, Input } from "@repo/ui/forms";
 
 import {
   ApiError,
@@ -6,7 +7,7 @@ import {
   type AppConfig,
   type UpdateAppConfigRequest,
 } from "@repo/api";
-import { Button, Card, Typography } from "@heroui/react";
+import { Card, Typography } from "@heroui/react";
 import { useCallback, useState } from "react";
 import { requireAdminToken } from "@/lib/auth";
 import { useLoadOnMount } from "@/lib/load-on-mount";
@@ -110,53 +111,60 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div>
-        <Typography type="h1" className="text-2xl font-semibold">
-          App config
-        </Typography>
-        <p className="text-muted text-sm">
-          Dispatch weights, radii, offer timeout, and batch size
-        </p>
-      </div>
+    <FormScope>
+      {
+        <div className="mx-auto flex max-w-3xl flex-col gap-6">
+          <div>
+            <Typography type="h1" className="text-2xl font-semibold">
+              App config
+            </Typography>
+            <p className="text-muted text-sm">
+              Dispatch weights, radii, offer timeout, and batch size
+            </p>
+          </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
 
-      <Card className="p-4">
-        <Card.Content className="flex flex-col gap-3 p-0">
-          {!config ? (
-            <p className="text-muted text-sm">Loading…</p>
-          ) : (
-            <>
-              <div className="grid gap-3 md:grid-cols-2">
-                {FIELDS.map((field) => (
-                  <label
-                    key={field.key}
-                    className="flex flex-col gap-1 text-sm"
-                  >
-                    {field.label}
-                    <input
-                      type="number"
-                      step={field.step}
-                      value={draft[field.key] ?? ""}
-                      onChange={(e) =>
-                        setDraft((d) => ({
-                          ...d,
-                          [field.key]: Number(e.target.value),
-                        }))
-                      }
-                      className="border-border bg-background rounded-md border px-3 py-2"
-                    />
-                  </label>
-                ))}
-              </div>
-              <Button variant="primary" isDisabled={busy} onPress={save}>
-                Save changes
-              </Button>
-            </>
-          )}
-        </Card.Content>
-      </Card>
-    </div>
+          <Card className="p-4">
+            <FormScope>
+              <Card.Content className="flex flex-col gap-3 p-0">
+                {!config ? (
+                  <p className="text-muted text-sm">Loading…</p>
+                ) : (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {FIELDS.map((field) => (
+                        <Input
+                          label={<>{field.label}</>}
+                          wrapperClassName="flex flex-col gap-1 text-sm"
+                          key={field.key}
+                          type="number"
+                          step={field.step}
+                          value={draft[field.key] ?? ""}
+                          onChange={(e) =>
+                            setDraft((d) => ({
+                              ...d,
+                              [field.key]: Number(e.target.value),
+                            }))
+                          }
+                          className="border-border bg-background rounded-md border px-3 py-2"
+                        />
+                      ))}
+                    </div>
+                    <FormAction
+                      variant="primary"
+                      isDisabled={busy}
+                      onPress={save}
+                    >
+                      Save changes
+                    </FormAction>
+                  </>
+                )}
+              </Card.Content>
+            </FormScope>
+          </Card>
+        </div>
+      }
+    </FormScope>
   );
 }

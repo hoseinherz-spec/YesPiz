@@ -1,12 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import {
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, Max, Min } from "class-validator";
 
 export class WaveRespondDto {
   @ApiProperty({ description: "Kitchen is ready to take the order" })

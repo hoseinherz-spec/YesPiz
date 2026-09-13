@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest } from "@repo/api";
+import { type PizzaSelection, apiRequest } from "@repo/api";
 import React, {
   createContext,
   useCallback,
@@ -13,6 +13,9 @@ import React, {
 import { EXTRAS, SIZES } from "@/constants/pizzas";
 
 export type CartItem = {
+  variantId?: string;
+  selections?: PizzaSelection[];
+  selectionLabels?: string[];
   lineId: string;
   menuItemId: string;
   menuVersion: number;
@@ -110,7 +113,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 item.menuItemId &&
                 Number.isInteger(item.quantity) &&
                 item.quantity > 0 &&
-                item.menuVersion > 0,
+                Number.isInteger(item.menuVersion) && item.menuVersion >= 0,
             ),
           );
       } catch {
@@ -136,6 +139,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const match = prev.find(
         (p) =>
           p.menuItemId === item.menuItemId &&
+          p.variantId === item.variantId &&
+          JSON.stringify(p.selections ?? []) ===
+            JSON.stringify(item.selections ?? []) &&
           p.size === item.size &&
           p.extras.slice().sort().join() === item.extras.slice().sort().join(),
       );
