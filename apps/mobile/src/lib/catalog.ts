@@ -23,6 +23,10 @@ export type CatalogPizza = Pizza & {
 
 export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
   const tags = item.tags ?? [];
+  const activePrices =
+    item.customization?.variants
+      .filter((v) => v.isActive)
+      .map((v) => v.priceCents) ?? [];
   const matchingPhoto = PIZZAS.find(
     (pizza) => pizza.name.toLowerCase() === item.name.trim().toLowerCase(),
   )?.image;
@@ -35,10 +39,7 @@ export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
     tagline: item.description || item.name,
     description: item.description || item.name,
     price:
-      (item.customization?.variants
-        .filter((v) => v.isActive)
-        .reduce((min, v) => Math.min(min, v.priceCents), Infinity) ??
-        item.priceCents) / 100,
+      (activePrices.length ? Math.min(...activePrices) : item.priceCents) / 100,
     ingredients: item.ingredients ?? [],
     allergens: item.allergens ?? [],
     imageUrl: item.imageUrl ?? null,

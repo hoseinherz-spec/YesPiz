@@ -1,15 +1,14 @@
-'use client';
+"use client";
 import { AppText } from "@/components/Text";
 
+import { Button, Card } from "@heroui/react";
+import { Gift, Info, Truck } from "@repo/icons";
 
-import { Button, Card } from '@heroui/react';
-import { Gift, Info, Truck } from '@repo/icons';
-
-import { AppFrame } from '@/components/AppFrame';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { ThemeSwitch } from '@/components/ThemeSwitch';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/cn';
+import { AppFrame } from "@/components/AppFrame";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { ThemeSwitch } from "@/components/ThemeSwitch";
+import { useApp } from "@/context/AppContext";
+import { cn } from "@/lib/cn";
 
 function PreferenceRow({
   title,
@@ -25,10 +24,18 @@ function PreferenceRow({
   return (
     <div className="flex items-center gap-4 border-b border-border py-6">
       <div className="min-w-0 flex-1">
-        <AppText as="h2" className="text-[21px] font-bold text-foreground">{title}</AppText>
-        <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">{detail}</AppText>
+        <AppText as="h2" className="text-[16px] font-semibold text-foreground">
+          {title}
+        </AppText>
+        <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">
+          {detail}
+        </AppText>
       </div>
-      <ThemeSwitch isSelected={selected} onChange={onChange} aria-label={title} />
+      <ThemeSwitch
+        isSelected={selected}
+        onChange={onChange}
+        aria-label={title}
+      />
     </div>
   );
 }
@@ -49,45 +56,53 @@ export default function NotificationsPage() {
 
   return (
     <AppFrame className="reference-screen">
-      <ScreenHeader title={t('notifications.title')} backHref="/settings/" />
+      <ScreenHeader title={t("notifications.title")} backHref="/settings/" />
 
-      <section aria-labelledby="notification-preferences">
-        <AppText as="h1"
-          id="notification-preferences"
-          className="text-xs font-semibold tracking-wider text-muted uppercase"
-        >
-          {t('notifications.preferences')}
-        </AppText>
-        <PreferenceRow
-          title={t('notifications.sms')}
-          detail={t('notifications.smsDetail')}
-          selected={smsNotificationsEnabled}
-          onChange={setSmsNotificationsEnabled}
-        />
-        <PreferenceRow
-          title={t('notifications.email')}
-          detail={t('notifications.emailDetail')}
-          selected={emailNotificationsEnabled}
-          onChange={setEmailNotificationsEnabled}
-        />
-        <PreferenceRow
-          title={t('notifications.push')}
-          detail={t('notifications.pushDetail')}
-          selected={pushEnabled}
-          onChange={setPushEnabled}
-        />
-      </section>
+      <details className="reference-faq mb-5">
+        <summary>{t("notifications.preferences")}</summary>
+        <section aria-labelledby="notification-preferences">
+          <AppText
+            as="h1"
+            id="notification-preferences"
+            className="text-xs font-semibold tracking-wider text-muted uppercase"
+          >
+            {t("notifications.preferences")}
+          </AppText>
+          <PreferenceRow
+            title={t("notifications.sms")}
+            detail={t("notifications.smsDetail")}
+            selected={smsNotificationsEnabled}
+            onChange={setSmsNotificationsEnabled}
+          />
+          <PreferenceRow
+            title={t("notifications.email")}
+            detail={t("notifications.emailDetail")}
+            selected={emailNotificationsEnabled}
+            onChange={setEmailNotificationsEnabled}
+          />
+          <PreferenceRow
+            title={t("notifications.push")}
+            detail={t("notifications.pushDetail")}
+            selected={pushEnabled}
+            onChange={setPushEnabled}
+          />
+        </section>
+      </details>
 
-      <section className="pt-9 pb-8" aria-labelledby="notification-activity">
+      <section className="pt-3 pb-8" aria-labelledby="notification-activity">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <AppText as="h2" id="notification-activity" className="text-[21px] font-bold text-foreground">
-              {t('notifications.activity')}
+            <AppText
+              as="h2"
+              id="notification-activity"
+              className="text-[16px] font-semibold text-foreground"
+            >
+              {t("notifications.activity")}
             </AppText>
             <AppText as="p" className="mt-1 text-sm text-muted">
               {unreadCount
-                ? t('notifications.unread', { n: unreadCount })
-                : t('notifications.caughtUp')}
+                ? t("notifications.unread", { n: unreadCount })
+                : t("notifications.caughtUp")}
             </AppText>
           </div>
           {unreadCount ? (
@@ -96,7 +111,7 @@ export default function NotificationsPage() {
               onPress={markAllRead}
               className="h-11 rounded-full px-3 text-sm font-semibold"
             >
-              {t('notifications.markAll')}
+              {t("notifications.markAll")}
             </Button>
           ) : null}
         </div>
@@ -104,30 +119,42 @@ export default function NotificationsPage() {
         <div className="grid gap-3">
           {notifications.map((notification) => {
             const Icon =
-              notification.kind === 'order'
+              notification.kind === "order"
                 ? Truck
-                : notification.kind === 'promo'
+                : notification.kind === "promo"
                   ? Gift
                   : Info;
             return (
-              <Card key={notification.id} className="rounded-[24px] border border-border bg-card">
+              <Card
+                key={notification.id}
+                className="rounded-none border-0 border-b border-border bg-transparent shadow-none"
+              >
                 <Card.Content className="flex gap-3 p-4">
                   <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
                     <Icon size={19} />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
-                      <AppText as="h3" className="flex-1 font-bold text-foreground">
+                      <AppText
+                        as="h3"
+                        className="flex-1 font-bold text-foreground"
+                      >
                         {t(notification.title)}
                       </AppText>
                       {notification.unread ? (
                         <span className="mt-2 size-2 rounded-full bg-danger" />
                       ) : null}
                     </div>
-                    <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">
+                    <AppText
+                      as="p"
+                      className="mt-1 text-sm leading-relaxed text-muted"
+                    >
                       {t(notification.body)}
                     </AppText>
-                    <AppText as="p" className={cn('mt-2 text-xs font-medium text-muted')}>
+                    <AppText
+                      as="p"
+                      className={cn("mt-2 text-xs font-medium text-muted")}
+                    >
                       {t(notification.time)}
                     </AppText>
                   </div>

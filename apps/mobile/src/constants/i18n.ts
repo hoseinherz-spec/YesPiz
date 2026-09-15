@@ -8,6 +8,25 @@ export const LANGUAGES: { id: Language; label: string }[] = [
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  "menu.retryConnection": "Try again",
+  "home.deliveryLabel": "Delivery address",
+  "home.addAddress": "Add your delivery address",
+  "home.savedLabel": "Saved pizzas",
+  "home.orderHeading": "What sounds good?",
+  "home.featuredLabel": "Your next favourite",
+  "home.choosePizza": "Choose size & extras →",
+  "home.noCategoryResults": "No pizzas in this category",
+  "checkout.edit": "Edit",
+  "checkout.chooseStart": "Choose a start time",
+  "checkout.startTitle": "Order start",
+  "checkout.startExpired":
+    "This start time has passed. Choose a new time before continuing.",
+  "checkout.refreshStart": "Confirm a new start time",
+  "checkout.signInContinue": "Sign in to continue",
+  "cart.savedOffline": "Your cart is saved",
+  "cart.offlineRecovery":
+    "These items use saved menu prices. Open the menu to check availability and choose current items before checkout.",
+
   // common
   "common.total": "Total",
   "common.subtotal": "Subtotal",
@@ -33,7 +52,7 @@ const en: Dict = {
   "common.localOnly": "Saved on this device only",
 
   // partner badge
-  "partner.nearYou": "Partner Kitchen Near You",
+  "partner.nearYou": "Prepared for you by Yespiz",
   "partner.driver": "Partner Driver",
 
   // nav
@@ -107,21 +126,25 @@ const en: Dict = {
   "signup.haveAccount": "Already have an account?",
   "signup.loginLink": "Log in",
   "signup.passwordHint": "Use at least 8 characters.",
-  "signup.terms": "By creating an account, you agree to the Terms and Privacy Policy.",
+  "signup.terms":
+    "By creating an account, you agree to the Terms and Privacy Policy.",
   "forgot.title": "Forgot Password",
   "forgot.heading": "Forgot your password?",
   "forgot.subtitle": "Enter your email to start a local recovery demo.",
   "forgot.action": "Continue",
-  "forgot.demo": "No email will be sent. Password recovery is not connected to the YesPizz backend yet.",
+  "forgot.demo":
+    "No email will be sent. Password recovery is not connected to the YesPizz backend yet.",
   "verification.title": "Verification",
   "verification.heading": "Enter the code",
-  "verification.subtitle": "Use demo code 1234 for {email}. No message was sent.",
+  "verification.subtitle":
+    "Use demo code 1234 for {email}. No message was sent.",
   "verification.action": "Verify",
   "verification.invalid": "Enter the 4-digit demo code 1234.",
   "verification.resend": "Show demo code again",
   "reset.title": "Reset Password",
   "reset.heading": "Choose a new password",
-  "reset.subtitle": "This demo validates your password locally and does not change your account.",
+  "reset.subtitle":
+    "This demo validates your password locally and does not change your account.",
   "reset.confirm": "Confirm password",
   "reset.action": "Reset locally",
   "reset.mismatch": "Passwords must match.",
@@ -132,15 +155,23 @@ const en: Dict = {
   "payment.needAuth": "Please sign in to place an order.",
   "payment.needAddress": "Select a delivery address first.",
   "payment.menuUnavailable": "Menu is still loading. Try again in a moment.",
-  "payment.card": "Online payment · Stripe",
-  "payment.cardDetail": "Apple Pay, Google Pay, Klarna or card",
+  "payment.card": "Card · mock payment",
+  "payment.cardDetail": "Simulated card payment — no real charge",
   "payment.cashUnavailable": "Cash is unavailable on your account right now.",
-  "payment.cashOverCap": "Cash is not available for orders above the policy limit.",
-  "payment.stripeDisclosure": "Payments are secured by Stripe. Available methods depend on your device and eligibility. YesPizz never stores your full card number.",
+  "payment.cashOverCap":
+    "Cash is not available for orders above the policy limit.",
+  "payment.arrivalWindow": "Reserved arrival window",
+  "payment.walletLabel": "Yespizz credit",
+  "payment.walletFirst": "available · use credit first",
+  "payment.cardRemainder": "Remaining on card",
+  "payment.stripeDisclosure":
+    "This checkout uses simulated payments. No real money is charged.",
   "payment.stripeTitle": "Secure card payment",
-  "payment.stripeBody": "Enter your card on the payment screen. Details go directly to Stripe.",
+  "payment.stripeBody":
+    "Enter your card on the payment screen. Details go directly to Stripe.",
   "payment.cancelStripe": "Cancel card payment",
-  "payment.stripeCancelled": "Card payment was cancelled. Your order is still pending payment.",
+  "payment.stripeCancelled":
+    "Card payment was cancelled. Your order is still pending payment.",
   "settings.addressLabel": "Label",
   "settings.addressStreet": "Street",
   "settings.addressCity": "City",
@@ -219,7 +250,7 @@ const en: Dict = {
   "checkout.time": "Delivery Time",
   "checkout.leaveAtDoor": "Leave at the door",
   "checkout.partnerNote":
-    "Your order is matched to the nearest partner kitchen for the freshest, fastest delivery.",
+    "Prepared to Yespiz standards. Follow your order from confirmation to delivery.",
   "checkout.continuePayment": "Continue to Payment",
   "checkout.noAddress": "No delivery address yet. Add one to continue.",
   "checkout.payment": "Payment",
@@ -229,7 +260,7 @@ const en: Dict = {
   "checkout.unit": "Unit / apt",
   "checkout.doorCode": "Door code",
   "checkout.instructions": "Delivery instructions",
-  "time.asap": "ASAP (25–35 min)",
+  "time.asap": "Start now",
   "time.45": "In 45 min",
   "time.1hour": "In 1 hour",
   "time.later": "Schedule later",
@@ -245,10 +276,12 @@ const en: Dict = {
 
   // order success
   "success.title": "Order Successful",
-  "success.body": "Your order is placed. We’ll keep the active order ready for live tracking.",
+  "success.body":
+    "Your order is placed. We’ll keep the active order ready for live tracking.",
   "success.track": "Track Order",
   "success.missingTitle": "Order not found",
-  "success.missingBody": "There is no newly placed order to show. Check your orders for the latest status.",
+  "success.missingBody":
+    "There is no newly placed order to show. Check your orders for the latest status.",
 
   // addresses
   "address.home": "Home",
@@ -260,12 +293,31 @@ const en: Dict = {
   "tracking.onWayToYou": "On the way to you",
   "tracking.viewOrders": "View Orders",
   "tracking.minSuffix": "{n} min",
-  "tracking.noActiveBody": "Place an order or choose an active order from your order list.",
+  "tracking.noActiveBody":
+    "Place an order or choose an active order from your order list.",
   "tracking.openMap": "Open live coordinates",
   "tracking.demoMap": "Demo route · no live coordinates",
   "tracking.awaitingLocation": "Waiting for courier location",
   "tracking.courier": "Your partner courier",
-  "tracking.courierName": "David William",
+  "cart.menuChanged":
+    "Some pizzas are no longer on the current menu. Remove them or choose a replacement to continue.",
+  "cart.removeUnavailable": "Remove unavailable pizzas",
+  "cart.unavailable": "No longer available",
+  "payment.connectionError":
+    "We could not reach Yespizz. Check your connection and try again. Your order details are saved.",
+  "payment.checkDetails":
+    "Review your cart, delivery address and order start time.",
+  "payment.priceChanged":
+    "The price changed. Review the updated total, then submit again.",
+  "payment.retryQuote": "Check again",
+  "payment.checkStatus": "Check payment status",
+  "payment.editCheckout": "Edit checkout",
+  "payment.reviewCart": "Review cart",
+  "tracking.connectionLost":
+    "Connection lost. Showing the last order update; reconnecting automatically…",
+  "tracking.courierAssigned": "Courier assigned",
+  "tracking.courierPending": "Waiting for assignment",
+
   "tracking.callCourier": "Call courier",
   "tracking.chatCourier": "Chat with courier",
   "tracking.deliveryAddress": "Delivery address",
@@ -278,15 +330,19 @@ const en: Dict = {
   "tracking.etaStale": "Estimate may be outdated — refreshing…",
   "tracking.arrivalBy": "Arrive by {time}",
   "tracking.delayNotice": "Your courier has one short extra stop.",
-  "tracking.leaveAtDoorNote": "Leave at door requested — no handoff PIN needed.",
+  "tracking.leaveAtDoorNote":
+    "Leave at door requested — no handoff PIN needed.",
   "tracking.pinTitle": "Delivery verification",
-  "tracking.pinBodyWithCode": "Share this PIN with your courier when they arrive: {pin}",
-  "tracking.pinBodyPending": "Your handoff PIN will appear when the courier is nearby.",
+  "tracking.pinBodyWithCode":
+    "Share this PIN with your courier when they arrive: {pin}",
+  "tracking.pinBodyPending":
+    "Your handoff PIN will appear when the courier is nearby.",
 
   // local support demos
   "call.demo": "Local call demo",
   "call.ended": "Call ended",
-  "call.limitation": "This screen demonstrates call controls and does not place a phone or internet call.",
+  "call.limitation":
+    "This screen demonstrates call controls and does not place a phone or internet call.",
   "call.return": "Return to tracking",
   "call.mute": "Mute",
   "call.unmute": "Unmute",
@@ -294,7 +350,8 @@ const en: Dict = {
   "chat.welcome": "I’m on the way with your YesPizz order.",
   "chat.back": "Back to tracking",
   "chat.courierLabel": "Your delivery courier",
-  "chat.limitation": "Demo chat: messages stay in memory on this screen and are not sent to the courier.",
+  "chat.limitation":
+    "Demo chat: messages stay in memory on this screen and are not sent to the courier.",
   "chat.you": "You",
   "chat.inputLabel": "Message",
   "chat.placeholder": "Type your message…",
@@ -312,7 +369,8 @@ const en: Dict = {
   "orders.noActive": "No active orders",
   "orders.noPast": "No past orders",
   "orders.emptyBody": "When you place an order it will show up here.",
-  "orders.loadError": "We couldn’t refresh your orders. Your last known orders are still shown.",
+  "orders.loadError":
+    "We couldn’t refresh your orders. Your last known orders are still shown.",
   "orders.retry": "Try again",
   "orders.loading": "Loading orders",
 
@@ -332,7 +390,8 @@ const en: Dict = {
   "profile.edit": "Edit profile",
   "profile.saved": "Saved food",
   "profile.history": "Order history",
-  "profile.privacy": "Privacy policy",
+  "profile.security": "Security",
+    "profile.privacy": "Privacy policy",
   "profile.accountMenu": "Account",
   "profile.signInPrompt": "Sign in to manage your YesPizz account.",
   "editProfile.title": "Edit Profile",
@@ -408,7 +467,8 @@ const en: Dict = {
   "settings.notificationsDetail": "Choose SMS, email and push alerts.",
   "settings.languageDetail": "Choose the language used in the app.",
   "settings.cache": "App cache",
-  "settings.cacheDetail": "Clear temporary browser files if the app feels stale.",
+  "settings.cacheDetail":
+    "Clear temporary browser files if the app feels stale.",
   "settings.cacheCleared": "Temporary app cache cleared.",
   "settings.supportDetail": "Get help with an order or your account.",
   "settings.versionTitle": "Version update",
@@ -416,13 +476,17 @@ const en: Dict = {
   "settings.addressDetail": "Manage your delivery destinations.",
   "privacy.title": "Privacy Policy",
   "privacy.introTitle": "Your privacy at YesPizz",
-  "privacy.introBody": "YesPizz uses account, order and delivery information to provide the service you request. We only collect information needed to operate your account, prepare your order, complete payment and deliver safely.",
+  "privacy.introBody":
+    "YesPizz uses account, order and delivery information to provide the service you request. We only collect information needed to operate your account, prepare your order, complete payment and deliver safely.",
   "privacy.dataTitle": "Information we use",
-  "privacy.dataBody": "This can include your contact details, saved delivery addresses, order history and device preferences. Payment providers process payment details under their own privacy terms.",
+  "privacy.dataBody":
+    "This can include your contact details, saved delivery addresses, order history and device preferences. Payment providers process payment details under their own privacy terms.",
   "privacy.controlTitle": "Your choices",
-  "privacy.controlBody": "You can change local notification and appearance preferences at any time. Contact support to request access to or deletion of backend account data.",
+  "privacy.controlBody":
+    "You can change local notification and appearance preferences at any time. Contact support to request access to or deletion of backend account data.",
   "privacy.childrenTitle": "Children’s privacy",
-  "privacy.childrenBody": "YesPizz is not intended for children under 13 and we do not knowingly collect their personal information.",
+  "privacy.childrenBody":
+    "YesPizz is not intended for children under 13 and we do not knowingly collect their personal information.",
   "privacy.updated": "Last updated August 14, 2026",
   "address.newTitle": "Add New Address",
   "address.subtitle": "Add a delivery destination for checkout.",
@@ -454,6 +518,25 @@ const en: Dict = {
 };
 
 const de: Dict = {
+  "menu.retryConnection": "Erneut versuchen",
+  "home.deliveryLabel": "Lieferadresse",
+  "home.addAddress": "Lieferadresse hinzufügen",
+  "home.savedLabel": "Gespeicherte Pizzen",
+  "home.orderHeading": "Worauf hast du Lust?",
+  "home.featuredLabel": "Dein nächster Favorit",
+  "home.choosePizza": "Größe & Extras wählen →",
+  "home.noCategoryResults": "Keine Pizzen in dieser Kategorie",
+  "checkout.edit": "Ändern",
+  "checkout.chooseStart": "Startzeit wählen",
+  "checkout.startTitle": "Bestellstart",
+  "checkout.startExpired":
+    "Diese Startzeit ist verstrichen. Wähle eine neue Zeit, bevor du fortfährst.",
+  "checkout.refreshStart": "Neue Startzeit bestätigen",
+  "checkout.signInContinue": "Anmelden und fortfahren",
+  "cart.savedOffline": "Dein Warenkorb ist gespeichert",
+  "cart.offlineRecovery":
+    "Diese Artikel verwenden gespeicherte Menüpreise. Öffne das Menü, um die Verfügbarkeit zu prüfen und aktuelle Artikel auszuwählen.",
+
   // common
   "common.total": "Gesamt",
   "common.subtotal": "Zwischensumme",
@@ -479,7 +562,7 @@ const de: Dict = {
   "common.localOnly": "Nur auf diesem Gerät gespeichert",
 
   // partner badge
-  "partner.nearYou": "Partnerküche in deiner Nähe",
+  "partner.nearYou": "Von Yespiz für dich zubereitet",
   "partner.driver": "Partner-Fahrer",
 
   // nav
@@ -518,11 +601,13 @@ const de: Dict = {
 
   // login
   "login.welcome": "Willkommen zurück",
-  "login.subtitle": "Melde dich an und bestelle Pizza in Spitzenqualität in Minuten.",
+  "login.subtitle":
+    "Melde dich an und bestelle Pizza in Spitzenqualität in Minuten.",
   "login.apple": "Weiter mit Apple",
   "login.google": "Weiter mit Google",
   "login.email": "Weiter mit E-Mail",
-  "login.terms": "Mit der Fortsetzung stimmst du unseren AGB & Datenschutzbestimmungen zu.",
+  "login.terms":
+    "Mit der Fortsetzung stimmst du unseren AGB & Datenschutzbestimmungen zu.",
   "login.tabOtp": "Telefon-OTP",
   "login.tabPassword": "E-Mail",
   "login.phone": "Telefonnummer",
@@ -546,47 +631,63 @@ const de: Dict = {
   "login.noAccount": "Noch kein Konto?",
   "login.signupLink": "Registrieren",
   "login.orUse": "Oder mit",
-  "login.socialUnavailable": "{provider}-Anmeldung ist noch nicht eingerichtet.",
+  "login.socialUnavailable":
+    "{provider}-Anmeldung ist noch nicht eingerichtet.",
   "signup.title": "Registrieren",
   "signup.subtitle": "Erstelle dein YesPizz-Konto",
   "signup.action": "Konto erstellen",
   "signup.haveAccount": "Du hast bereits ein Konto?",
   "signup.loginLink": "Anmelden",
   "signup.passwordHint": "Verwende mindestens 8 Zeichen.",
-  "signup.terms": "Mit der Kontoerstellung stimmst du den AGB und der Datenschutzrichtlinie zu.",
+  "signup.terms":
+    "Mit der Kontoerstellung stimmst du den AGB und der Datenschutzrichtlinie zu.",
   "forgot.title": "Passwort vergessen",
   "forgot.heading": "Passwort vergessen?",
-  "forgot.subtitle": "Gib deine E-Mail für eine lokale Wiederherstellungsdemo ein.",
+  "forgot.subtitle":
+    "Gib deine E-Mail für eine lokale Wiederherstellungsdemo ein.",
   "forgot.action": "Weiter",
-  "forgot.demo": "Es wird keine E-Mail gesendet. Die Passwortwiederherstellung ist noch nicht mit dem YesPizz-Backend verbunden.",
+  "forgot.demo":
+    "Es wird keine E-Mail gesendet. Die Passwortwiederherstellung ist noch nicht mit dem YesPizz-Backend verbunden.",
   "verification.title": "Bestätigung",
   "verification.heading": "Code eingeben",
-  "verification.subtitle": "Nutze den Demo-Code 1234 für {email}. Es wurde keine Nachricht gesendet.",
+  "verification.subtitle":
+    "Nutze den Demo-Code 1234 für {email}. Es wurde keine Nachricht gesendet.",
   "verification.action": "Bestätigen",
   "verification.invalid": "Gib den vierstelligen Demo-Code 1234 ein.",
   "verification.resend": "Demo-Code erneut anzeigen",
   "reset.title": "Passwort zurücksetzen",
   "reset.heading": "Neues Passwort wählen",
-  "reset.subtitle": "Diese Demo prüft dein Passwort lokal und ändert dein Konto nicht.",
+  "reset.subtitle":
+    "Diese Demo prüft dein Passwort lokal und ändert dein Konto nicht.",
   "reset.confirm": "Passwort bestätigen",
   "reset.action": "Lokal zurücksetzen",
   "reset.mismatch": "Die Passwörter müssen übereinstimmen.",
   "reset.short": "Verwende mindestens 8 Zeichen.",
-  "reset.success": "Demo abgeschlossen. Dein Backend-Passwort wurde nicht geändert.",
+  "reset.success":
+    "Demo abgeschlossen. Dein Backend-Passwort wurde nicht geändert.",
   "payment.processing": "Wird verarbeitet…",
   "payment.error": "Zahlung fehlgeschlagen. Bitte erneut versuchen.",
   "payment.needAuth": "Bitte melde dich an, um zu bestellen.",
   "payment.needAddress": "Bitte zuerst eine Lieferadresse wählen.",
   "payment.menuUnavailable": "Das Menü wird noch geladen. Bitte kurz warten.",
-  "payment.card": "Online bezahlen · Stripe",
-  "payment.cardDetail": "Apple Pay, Google Pay, Klarna oder Karte",
-  "payment.cashUnavailable": "Barzahlung ist für dein Konto derzeit nicht verfügbar.",
-  "payment.cashOverCap": "Barzahlung ist über dem Richtlinienlimit nicht möglich.",
-  "payment.stripeDisclosure": "Sicher bezahlen mit Stripe. Verfügbare Methoden hängen von Gerät und Berechtigung ab. YesPizz speichert keine vollständigen Kartendaten.",
+  "payment.card": "Karte · Testzahlung",
+  "payment.cardDetail": "Simulierte Kartenzahlung — keine echte Abbuchung",
+  "payment.cashUnavailable":
+    "Barzahlung ist für dein Konto derzeit nicht verfügbar.",
+  "payment.cashOverCap":
+    "Barzahlung ist über dem Richtlinienlimit nicht möglich.",
+  "payment.arrivalWindow": "Reserviertes Lieferfenster",
+  "payment.walletLabel": "Yespizz-Guthaben",
+  "payment.walletFirst": "verfügbar · zuerst Guthaben nutzen",
+  "payment.cardRemainder": "Restbetrag per Karte",
+  "payment.stripeDisclosure":
+    "Diese Zahlung wird simuliert. Es wird kein echtes Geld abgebucht.",
   "payment.stripeTitle": "Sichere Kartenzahlung",
-  "payment.stripeBody": "Gib deine Karte auf dem Zahlungsbildschirm ein. Die Daten gehen direkt an Stripe.",
+  "payment.stripeBody":
+    "Gib deine Karte auf dem Zahlungsbildschirm ein. Die Daten gehen direkt an Stripe.",
   "payment.cancelStripe": "Kartenzahlung abbrechen",
-  "payment.stripeCancelled": "Kartenzahlung abgebrochen. Deine Bestellung wartet noch auf Zahlung.",
+  "payment.stripeCancelled":
+    "Kartenzahlung abgebrochen. Deine Bestellung wartet noch auf Zahlung.",
   "settings.addressLabel": "Bezeichnung",
   "settings.addressStreet": "Straße",
   "settings.addressCity": "Stadt",
@@ -665,9 +766,10 @@ const de: Dict = {
   "checkout.time": "Lieferzeit",
   "checkout.leaveAtDoor": "An der Tür abstellen",
   "checkout.partnerNote":
-    "Deine Bestellung wird der nächsten Partnerküche zugeordnet – für frischeste, schnellste Lieferung.",
+    "Nach Yespiz-Standards zubereitet. Verfolge deine Bestellung von der Bestätigung bis zur Lieferung.",
   "checkout.continuePayment": "Weiter zur Zahlung",
-  "checkout.noAddress": "Noch keine Lieferadresse. Füge eine hinzu, um fortzufahren.",
+  "checkout.noAddress":
+    "Noch keine Lieferadresse. Füge eine hinzu, um fortzufahren.",
   "checkout.payment": "Zahlung",
   "checkout.dropoffDetails": "Abstell-Details",
   "checkout.entrance": "Eingang",
@@ -675,7 +777,7 @@ const de: Dict = {
   "checkout.unit": "Wohnung",
   "checkout.doorCode": "Türcode",
   "checkout.instructions": "Lieferhinweise",
-  "time.asap": "Sofort (25–35 Min.)",
+  "time.asap": "Jetzt starten",
   "time.45": "In 45 Min.",
   "time.1hour": "In 1 Stunde",
   "time.later": "Später planen",
@@ -687,14 +789,17 @@ const de: Dict = {
   "payment.cashDetail": "Beim Partner-Fahrer bezahlen",
   "payment.summary": "Bestellübersicht",
   "payment.pay": "{amount} bezahlen",
-  "payment.emptyCart": "Dein Warenkorb ist leer. Füge vor der Zahlung einen Artikel hinzu.",
+  "payment.emptyCart":
+    "Dein Warenkorb ist leer. Füge vor der Zahlung einen Artikel hinzu.",
 
   // order success
   "success.title": "Bestellung erfolgreich",
-  "success.body": "Deine Bestellung wurde aufgegeben. Die aktive Bestellung bleibt für die Live-Verfolgung bereit.",
+  "success.body":
+    "Deine Bestellung wurde aufgegeben. Die aktive Bestellung bleibt für die Live-Verfolgung bereit.",
   "success.track": "Bestellung verfolgen",
   "success.missingTitle": "Bestellung nicht gefunden",
-  "success.missingBody": "Es gibt keine neue Bestellung anzuzeigen. Prüfe den neuesten Status in deinen Bestellungen.",
+  "success.missingBody":
+    "Es gibt keine neue Bestellung anzuzeigen. Prüfe den neuesten Status in deinen Bestellungen.",
 
   // addresses
   "address.home": "Zuhause",
@@ -706,12 +811,31 @@ const de: Dict = {
   "tracking.onWayToYou": "Auf dem Weg zu dir",
   "tracking.viewOrders": "Bestellungen ansehen",
   "tracking.minSuffix": "{n} Min.",
-  "tracking.noActiveBody": "Gib eine Bestellung auf oder wähle eine aktive Bestellung aus deiner Bestellliste.",
+  "tracking.noActiveBody":
+    "Gib eine Bestellung auf oder wähle eine aktive Bestellung aus deiner Bestellliste.",
   "tracking.openMap": "Live-Koordinaten öffnen",
   "tracking.demoMap": "Demoroute · keine Live-Koordinaten",
   "tracking.awaitingLocation": "Warte auf den Fahrerstandort",
   "tracking.courier": "Dein Partner-Fahrer",
-  "tracking.courierName": "David William",
+  "cart.menuChanged":
+    "Einige Pizzen sind nicht mehr auf der aktuellen Karte. Entferne sie oder wähle einen Ersatz.",
+  "cart.removeUnavailable": "Nicht verfügbare Pizzen entfernen",
+  "cart.unavailable": "Nicht mehr verfügbar",
+  "payment.connectionError":
+    "Yespizz ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut. Deine Bestelldaten sind gespeichert.",
+  "payment.checkDetails":
+    "Prüfe deinen Warenkorb, die Lieferadresse und die Startzeit.",
+  "payment.priceChanged":
+    "Der Preis hat sich geändert. Prüfe den neuen Gesamtbetrag und bestätige erneut.",
+  "payment.retryQuote": "Erneut prüfen",
+  "payment.checkStatus": "Zahlungsstatus prüfen",
+  "payment.editCheckout": "Bestellung bearbeiten",
+  "payment.reviewCart": "Warenkorb prüfen",
+  "tracking.connectionLost":
+    "Verbindung unterbrochen. Letzter Bestellstatus; Verbindung wird automatisch wiederhergestellt…",
+  "tracking.courierAssigned": "Fahrer zugewiesen",
+  "tracking.courierPending": "Warte auf Zuweisung",
+
   "tracking.callCourier": "Fahrer anrufen",
   "tracking.chatCourier": "Mit Fahrer chatten",
   "tracking.deliveryAddress": "Lieferadresse",
@@ -724,15 +848,18 @@ const de: Dict = {
   "tracking.etaStale": "Schätzung evtl. veraltet — wird aktualisiert…",
   "tracking.arrivalBy": "Ankunft bis {time}",
   "tracking.delayNotice": "Dein Fahrer hat einen kurzen Zwischenstopp.",
-  "tracking.leaveAtDoorNote": "Abstellung an der Tür — kein Übergabe-PIN nötig.",
+  "tracking.leaveAtDoorNote":
+    "Abstellung an der Tür — kein Übergabe-PIN nötig.",
   "tracking.pinTitle": "Lieferbestätigung",
   "tracking.pinBodyWithCode": "Gib diesen PIN an deinen Fahrer weiter: {pin}",
-  "tracking.pinBodyPending": "Dein Übergabe-PIN erscheint, wenn der Fahrer in der Nähe ist.",
+  "tracking.pinBodyPending":
+    "Dein Übergabe-PIN erscheint, wenn der Fahrer in der Nähe ist.",
 
   // local support demos
   "call.demo": "Lokale Anrufdemo",
   "call.ended": "Anruf beendet",
-  "call.limitation": "Dieser Bildschirm demonstriert Anrufsteuerungen und startet keinen Telefon- oder Internetanruf.",
+  "call.limitation":
+    "Dieser Bildschirm demonstriert Anrufsteuerungen und startet keinen Telefon- oder Internetanruf.",
   "call.return": "Zurück zur Verfolgung",
   "call.mute": "Stumm",
   "call.unmute": "Ton an",
@@ -740,7 +867,8 @@ const de: Dict = {
   "chat.welcome": "Ich bin mit deiner YesPizz-Bestellung unterwegs.",
   "chat.back": "Zurück zur Verfolgung",
   "chat.courierLabel": "Dein Lieferfahrer",
-  "chat.limitation": "Demo-Chat: Nachrichten bleiben auf diesem Bildschirm im Speicher und werden nicht an den Fahrer gesendet.",
+  "chat.limitation":
+    "Demo-Chat: Nachrichten bleiben auf diesem Bildschirm im Speicher und werden nicht an den Fahrer gesendet.",
   "chat.you": "Du",
   "chat.inputLabel": "Nachricht",
   "chat.placeholder": "Nachricht schreiben…",
@@ -758,7 +886,8 @@ const de: Dict = {
   "orders.noActive": "Keine aktiven Bestellungen",
   "orders.noPast": "Keine vergangenen Bestellungen",
   "orders.emptyBody": "Sobald du bestellst, erscheint es hier.",
-  "orders.loadError": "Deine Bestellungen konnten nicht aktualisiert werden. Der letzte bekannte Stand wird weiterhin angezeigt.",
+  "orders.loadError":
+    "Deine Bestellungen konnten nicht aktualisiert werden. Der letzte bekannte Stand wird weiterhin angezeigt.",
   "orders.retry": "Erneut versuchen",
   "orders.loading": "Bestellungen werden geladen",
 
@@ -778,11 +907,13 @@ const de: Dict = {
   "profile.edit": "Profil bearbeiten",
   "profile.saved": "Gespeicherte Speisen",
   "profile.history": "Bestellverlauf",
-  "profile.privacy": "Datenschutzrichtlinie",
+  "profile.security": "Sicherheit",
+    "profile.privacy": "Datenschutzrichtlinie",
   "profile.accountMenu": "Konto",
   "profile.signInPrompt": "Melde dich an, um dein YesPizz-Konto zu verwalten.",
   "editProfile.title": "Profil bearbeiten",
-  "editProfile.subtitle": "Änderungen werden lokal auf diesem Gerät gespeichert.",
+  "editProfile.subtitle":
+    "Änderungen werden lokal auf diesem Gerät gespeichert.",
   "editProfile.phone": "Telefonnummer",
   "editProfile.saved": "Profil lokal aktualisiert.",
 
@@ -795,7 +926,8 @@ const de: Dict = {
   "notifications.sms": "SMS-Mitteilungen",
   "notifications.smsDetail": "Liefer- und Kontohinweise per SMS.",
   "notifications.email": "E-Mail-Mitteilungen",
-  "notifications.emailDetail": "Belege, Angebote und wichtige Kontoinformationen.",
+  "notifications.emailDetail":
+    "Belege, Angebote und wichtige Kontoinformationen.",
   "notifications.push": "Push-Mitteilungen",
   "notifications.pushDetail": "Live-Bestellstatus auf diesem Gerät.",
   "notifications.activity": "Letzte Aktivitäten",
@@ -806,7 +938,8 @@ const de: Dict = {
   "notif.n2.body": "Nutze den Code WELCOME30 an der Kasse.",
   "notif.n2.time": "vor 2 Std.",
   "notif.n3.title": "Wochenend-Special ist da",
-  "notif.n3.body": "Hol dir das YesPiz Special das ganze Wochenende für 12,90 €.",
+  "notif.n3.body":
+    "Hol dir das YesPiz Special das ganze Wochenende für 12,90 €.",
   "notif.n3.time": "vor 1 Tag",
 
   // help
@@ -854,7 +987,8 @@ const de: Dict = {
   "settings.notificationsDetail": "SMS-, E-Mail- und Push-Hinweise auswählen.",
   "settings.languageDetail": "Sprache der App auswählen.",
   "settings.cache": "App-Cache",
-  "settings.cacheDetail": "Temporäre Browserdateien löschen, wenn die App veraltet wirkt.",
+  "settings.cacheDetail":
+    "Temporäre Browserdateien löschen, wenn die App veraltet wirkt.",
   "settings.cacheCleared": "Temporärer App-Cache wurde geleert.",
   "settings.supportDetail": "Hilfe zu einer Bestellung oder deinem Konto.",
   "settings.versionTitle": "Versionsupdate",
@@ -862,13 +996,17 @@ const de: Dict = {
   "settings.addressDetail": "Lieferziele verwalten.",
   "privacy.title": "Datenschutzrichtlinie",
   "privacy.introTitle": "Deine Privatsphäre bei YesPizz",
-  "privacy.introBody": "YesPizz verwendet Konto-, Bestell- und Lieferinformationen, um den gewünschten Service bereitzustellen. Wir erfassen nur Daten, die für dein Konto, die Zubereitung, Zahlung und sichere Lieferung nötig sind.",
+  "privacy.introBody":
+    "YesPizz verwendet Konto-, Bestell- und Lieferinformationen, um den gewünschten Service bereitzustellen. Wir erfassen nur Daten, die für dein Konto, die Zubereitung, Zahlung und sichere Lieferung nötig sind.",
   "privacy.dataTitle": "Verwendete Informationen",
-  "privacy.dataBody": "Dazu können Kontaktdaten, gespeicherte Lieferadressen, Bestellverlauf und Geräteeinstellungen gehören. Zahlungsanbieter verarbeiten Zahlungsdaten nach ihren eigenen Datenschutzbedingungen.",
+  "privacy.dataBody":
+    "Dazu können Kontaktdaten, gespeicherte Lieferadressen, Bestellverlauf und Geräteeinstellungen gehören. Zahlungsanbieter verarbeiten Zahlungsdaten nach ihren eigenen Datenschutzbedingungen.",
   "privacy.controlTitle": "Deine Wahlmöglichkeiten",
-  "privacy.controlBody": "Lokale Mitteilungs- und Darstellungseinstellungen kannst du jederzeit ändern. Kontaktiere den Support für Zugriff auf oder Löschung von Backend-Kontodaten.",
+  "privacy.controlBody":
+    "Lokale Mitteilungs- und Darstellungseinstellungen kannst du jederzeit ändern. Kontaktiere den Support für Zugriff auf oder Löschung von Backend-Kontodaten.",
   "privacy.childrenTitle": "Datenschutz für Kinder",
-  "privacy.childrenBody": "YesPizz richtet sich nicht an Kinder unter 13 Jahren und erfasst deren persönliche Daten nicht wissentlich.",
+  "privacy.childrenBody":
+    "YesPizz richtet sich nicht an Kinder unter 13 Jahren und erfasst deren persönliche Daten nicht wissentlich.",
   "privacy.updated": "Zuletzt aktualisiert am 14. August 2026",
   "address.newTitle": "Neue Adresse",
   "address.subtitle": "Füge ein Lieferziel für die Kasse hinzu.",
@@ -901,7 +1039,10 @@ const de: Dict = {
 
 export const translations: Record<Language, Dict> = { en, de };
 
-export type Translator = (key: string, params?: Record<string, string | number>) => string;
+export type Translator = (
+  key: string,
+  params?: Record<string, string | number>,
+) => string;
 
 export function makeTranslator(lang: Language): Translator {
   const dict = translations[lang] ?? en;
@@ -916,7 +1057,11 @@ export function makeTranslator(lang: Language): Translator {
   };
 }
 
-type PizzaContent = { tagline: string; description: string; ingredients: string[] };
+type PizzaContent = {
+  tagline: string;
+  description: string;
+  ingredients: string[];
+};
 
 type PizzaLike = {
   id: string;
@@ -931,12 +1076,14 @@ export function pizzaTagline(p: PizzaLike, lang: Language): string {
 }
 
 export function pizzaDescription(p: PizzaLike, lang: Language): string {
-  if (lang === "de") return PIZZA_CONTENT_DE[p.id]?.description ?? p.description;
+  if (lang === "de")
+    return PIZZA_CONTENT_DE[p.id]?.description ?? p.description;
   return p.description;
 }
 
 export function pizzaIngredients(p: PizzaLike, lang: Language): string[] {
-  if (lang === "de") return PIZZA_CONTENT_DE[p.id]?.ingredients ?? p.ingredients;
+  if (lang === "de")
+    return PIZZA_CONTENT_DE[p.id]?.ingredients ?? p.ingredients;
   return p.ingredients;
 }
 
@@ -945,7 +1092,12 @@ export const PIZZA_CONTENT_DE: Record<string, PizzaContent> = {
     tagline: "Der zeitlose Klassiker",
     description:
       "San-Marzano-Tomate, Fior di Latte und frisches Basilikum auf 48 Stunden fermentiertem Sauerteigboden.",
-    ingredients: ["San-Marzano-Tomate", "Fior di Latte", "Frisches Basilikum", "Olivenöl"],
+    ingredients: [
+      "San-Marzano-Tomate",
+      "Fior di Latte",
+      "Frisches Basilikum",
+      "Olivenöl",
+    ],
   },
   pepperoni: {
     tagline: "Knusprig & würzig",
@@ -963,7 +1115,12 @@ export const PIZZA_CONTENT_DE: Record<string, PizzaContent> = {
     tagline: "Rauchig & süß",
     description:
       "Gegrilltes Hähnchen, rote Zwiebel und rauchige BBQ-Sauce auf blubberndem Mozzarella.",
-    ingredients: ["BBQ-Sauce", "Mozzarella", "Gegrilltes Hähnchen", "Rote Zwiebel"],
+    ingredients: [
+      "BBQ-Sauce",
+      "Mozzarella",
+      "Gegrilltes Hähnchen",
+      "Rote Zwiebel",
+    ],
   },
   "quattro-formaggi": {
     tagline: "Vier-Käse-Genuss",

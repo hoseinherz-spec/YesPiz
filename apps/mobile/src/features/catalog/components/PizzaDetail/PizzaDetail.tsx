@@ -1,4 +1,5 @@
 "use client";
+import { readUsualPizzas, saveUsualPizza } from "@/lib/usual-pizzas";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { AppText } from "@/components/Text";
@@ -11,7 +12,7 @@ import { Typography, buttonVariants } from "@heroui/react";
 import { ArrowLeft, Heart, ShoppingBag, Truck } from "@repo/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { AppFrame } from "@/components/AppFrame";
 import { IconBadgeButton } from "@/components/IconBadgeButton";
@@ -38,11 +39,19 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
   const [adding, startAdding] = useTransition();
   const { t, language, isFavorite, toggleFavorite } = useApp();
   const { addItem, count, sizes, extraOptions, baseDeliveryFee } = useCart();
-  const { getById, menuVersion, fromApi, isLoading, isOffline } =
-    useMenuCatalog();
+  const {
+    items: menuItems,
+    getById,
+    menuVersion,
+    fromApi,
+    isLoading,
+    isOffline,
+  } = useMenuCatalog();
   const pizza = getById(id);
 
   const [size, setSize] = useState<"small" | "medium" | "large">("medium");
+  const [secondHalfItemId, setSecondHalfItemId] = useState("");
+  const secondHalf = menuItems.find((p) => p.id === secondHalfItemId);
   const [extras, setExtras] = useState<string[]>([]);
   const [chosenVariant, setChosenVariant] = useState("");
   const [selections, setSelections] = useState<PizzaSelection[]>([]);
@@ -54,24 +63,45 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
     (v) => v.id === variantId && v.isActive,
   );
   const choicesValid =
-    !pizza?.customization ||
-    (!!variant &&
-      pizza.customization.groups.every((g) => {
-        const selected =
-          selections.find((s) => s.groupId === g.id)?.optionIds ?? [];
-        return (
-          selected.length >= g.min &&
-          selected.length <= g.max &&
-          selected.every((id) =>
-            g.options.some(
-              (o) =>
-                o.id === id &&
-                o.isActive &&
-                (!o.variantIds.length || o.variantIds.includes(variantId)),
-            ),
-          )
-        );
-      }));
+    (!secondHalfItemId || !!secondHalf) &&
+    (!pizza?.customization ||
+      (!!variant &&
+        pizza.customization.groups.every((g) => {
+          const selected =
+            selections.find((s) => s.groupId === g.id)?.optionIds ?? [];
+          return (
+            selected.length >= g.min &&
+            selected.length <= g.max &&
+            selected.every((id) =>
+              g.options.some(
+                (o) =>
+                  o.id === id &&
+                  o.isActive &&
+                  (!o.variantIds.length || o.variantIds.includes(variantId)),
+              ),
+            )
+          );
+        })));
+  const restoredUsual = useRef("");
+  const [savedMessage, setSavedMessage] = useState("");
+  useEffect(() => {
+    const key = new URLSearchParams(window.location.search).get("usual");
+    if (!key || !pizza || restoredUsual.current === `${id}:${key}`) return;
+    const usual = readUsualPizzas().find((p) => p.id === key);
+    if (!usual) return;
+    const timer = setTimeout(() => {
+      restoredUsual.current = `${id}:${key}`;
+      setSize(usual.size);
+      setExtras(usual.extras);
+      setChosenVariant(usual.variantId ?? "");
+      setSelections(usual.selections);
+      setSecondHalfItemId(
+        menuItems.find((p) => (p.pizzaId ?? p.id) === usual.secondHalfPizzaId)
+          ?.id ?? "",
+      );
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [id, menuItems, pizza]);
   const [qty, setQty] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -101,7 +131,9 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
         : pizza
           ? Math.max(
               0,
-              pizza.price + (sizes.find((s) => s.id === size)?.delta ?? 0),
+              (secondHalf
+                ? Math.round((pizza.price + secondHalf.price) * 50) / 100 + 1
+                : pizza.price) + (sizes.find((s) => s.id === size)?.delta ?? 0),
             ) +
             extras.reduce(
               (sum, id) =>
@@ -109,7 +141,17 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
               0,
             )
           : 0,
-    [pizza, size, extras, sizes, extraOptions, variant, selections, variantId],
+    [
+      pizza,
+      secondHalf,
+      size,
+      extras,
+      sizes,
+      extraOptions,
+      variant,
+      selections,
+      variantId,
+    ],
   );
   const total = unit * qty;
 
@@ -152,9 +194,49 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
   const fav = isFavorite(pizza.pizzaId ?? pizza.id);
   const image = resolveProductImage(pizza);
 
+  const saveUsual = () => {
+    const label = pizza.customization
+      ? [
+          variant?.name,
+          ...pizza.customization.groups.flatMap((g) =>
+            g.options
+              .filter((o) =>
+                selections
+                  .find((s) => s.groupId === g.id)
+                  ?.optionIds.includes(o.id),
+              )
+              .map((o) => o.name),
+          ),
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : [size, ...extras].join(" · ");
+    const ok = saveUsualPizza({
+      pizzaId: pizza.pizzaId ?? pizza.id,
+      name: secondHalf ? `${pizza.name} / ${secondHalf.name}` : pizza.name,
+      secondHalfPizzaId: secondHalf
+        ? (secondHalf.pizzaId ?? secondHalf.id)
+        : undefined,
+      size,
+      extras,
+      variantId: pizza.customization ? variantId : undefined,
+      selections,
+      label,
+    });
+    setSavedMessage(
+      ok
+        ? language === "de"
+          ? "In deinen Kombinationen gespeichert"
+          : "Saved to your usuals"
+        : language === "de"
+          ? "Speichern nicht verfügbar"
+          : "Storage is unavailable",
+    );
+  };
   const add = () => {
     addItem({
       menuItemId: pizza.id,
+      secondHalfItemId: secondHalf?.id,
       variantId: pizza.customization ? variantId : undefined,
       selections: pizza.customization
         ? [...selections]
@@ -176,7 +258,7 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
           ]
         : undefined,
       menuVersion: fromApi ? menuVersion : 0,
-      name: pizza.name,
+      name: secondHalf ? `${pizza.name} / ${secondHalf.name}` : pizza.name,
       size,
       extras,
       quantity: qty,
@@ -189,36 +271,136 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
   return (
     <FormScope>
       <AppFrame padded={false} className="!pb-32">
-        <section className="relative isolate h-[min(52dvh,480px)] min-h-[320px] overflow-hidden bg-accent/15" aria-label={pizza.name}>
-          <ProductImage src={selectedImage ?? image} alt={pizza.name} className="absolute inset-0 h-full w-full object-cover" />
+        <section
+          className="relative isolate h-[min(46dvh,420px)] min-h-[300px] overflow-hidden bg-accent/15"
+          aria-label={pizza.name}
+        >
+          <ProductImage
+            src={selectedImage ?? image}
+            alt={pizza.name}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--background)_25%,transparent),transparent_35%,var(--background)_100%)]" />
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[max(24px,env(safe-area-inset-top))]">
-            <IconBadgeButton aria-label="Back" onPress={() => router.back()} className="bg-surface text-foreground shadow-sm"><ArrowLeft size={20} /></IconBadgeButton>
+            <IconBadgeButton
+              aria-label="Back"
+              onPress={() => router.back()}
+              className="bg-surface text-foreground shadow-sm"
+            >
+              <ArrowLeft size={20} />
+            </IconBadgeButton>
             <div className="flex gap-2">
-              <IconBadgeButton aria-label={fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`} onPress={() => toggleFavorite(pizza.pizzaId ?? pizza.id)} className="bg-surface text-foreground shadow-sm">
-                <Heart size={18} fill={fav ? "var(--danger)" : "transparent"} color={fav ? "var(--danger)" : "var(--foreground)"} />
+              <IconBadgeButton
+                aria-label={
+                  fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
+                }
+                onPress={() => toggleFavorite(pizza.pizzaId ?? pizza.id)}
+                className="bg-surface text-foreground shadow-sm"
+              >
+                <Heart
+                  size={18}
+                  fill={fav ? "var(--danger)" : "transparent"}
+                  color={fav ? "var(--danger)" : "var(--foreground)"}
+                />
               </IconBadgeButton>
-              <IconBadgeButton href="/cart/" aria-label="Cart" badge={count} className="bg-surface text-foreground shadow-sm"><ShoppingBag size={18} /></IconBadgeButton>
+              <IconBadgeButton
+                href="/cart/"
+                aria-label="Cart"
+                badge={count}
+                className="bg-surface text-foreground shadow-sm"
+              >
+                <ShoppingBag size={18} />
+              </IconBadgeButton>
             </div>
           </div>
           <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-6 pb-14">
             <div className="min-w-0">
-              <Typography type="h1" className="text-[clamp(32px,9vw,44px)] leading-[1.08] font-extrabold tracking-tight text-foreground">{pizza.name}</Typography>
-              <Typography type="body-sm" className="mt-3 text-foreground/80">{pizzaTagline(pizza, language)}</Typography>
+              <Typography
+                type="h1"
+                className="text-[clamp(32px,9vw,44px)] leading-[1.08] font-extrabold tracking-tight text-foreground"
+              >
+                {pizza.name}
+              </Typography>
+              <Typography type="body-sm" className="mt-3 text-foreground/80">
+                {pizzaTagline(pizza, language)}
+              </Typography>
             </div>
-            {!!pizza.presentation?.gallery.length && <div className="flex max-h-64 shrink-0 flex-col gap-2 overflow-y-auto">
-              {[...new Set([image, ...pizza.presentation.gallery])].map((src, index) => <button key={src} type="button" aria-label={`View ${pizza.name} photo ${index + 1}`} aria-pressed={(selectedImage ?? image) === src} onClick={() => setSelectedImage(src)} className={cn("size-16 overflow-hidden rounded-2xl border-2 focus-visible:outline-2 focus-visible:outline-accent", (selectedImage ?? image) === src ? "border-accent" : "border-border")}><ProductImage src={src} alt="" className="size-full object-cover" /></button>)}
-            </div>}
+            {!!pizza.presentation?.gallery.length && (
+              <div className="flex max-h-64 shrink-0 flex-col gap-2 overflow-y-auto">
+                {[...new Set([image, ...pizza.presentation.gallery])].map(
+                  (src, index) => (
+                    <button
+                      key={src}
+                      type="button"
+                      aria-label={`View ${pizza.name} photo ${index + 1}`}
+                      aria-pressed={(selectedImage ?? image) === src}
+                      onClick={() => setSelectedImage(src)}
+                      className={cn(
+                        "size-16 overflow-hidden rounded-2xl border-2 focus-visible:outline-2 focus-visible:outline-accent",
+                        (selectedImage ?? image) === src
+                          ? "border-accent"
+                          : "border-border",
+                      )}
+                    >
+                      <ProductImage
+                        src={src}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    </button>
+                  ),
+                )}
+              </div>
+            )}
           </div>
         </section>
         <div className="relative z-10 -mt-7 flex-1 rounded-t-[32px] bg-surface px-6 pt-7 pb-10 text-foreground">
           <div className="grid grid-cols-3 gap-3 border-b border-border pb-6 text-center">
-            <div><Typography type="body-xs" className="text-muted">{language === "de" ? "Preis" : "Price"}</Typography><AppText as="span" className="mt-2 block font-bold text-foreground"><AnimatedNumber currency value={unit} /></AppText></div>
-            <div><Typography type="body-xs" className="text-muted">{t("common.delivery")}</Typography><AppText as="span" className="mt-2 flex items-center justify-center gap-1 font-bold text-foreground"><Truck size={14} /><AnimatedNumber currency value={baseDeliveryFee} /></AppText></div>
-            <div><Typography type="body-xs" className="text-muted">{t("pizza.quantity")}</Typography><AppText as="span" className="mt-2 block font-bold text-foreground"><AnimatedNumber value={qty} /></AppText></div>
+            <div>
+              <Typography type="body-xs" className="text-muted">
+                {language === "de" ? "Preis" : "Price"}
+              </Typography>
+              <AppText
+                as="span"
+                className="mt-2 block font-bold text-foreground"
+              >
+                <AnimatedNumber currency value={unit} />
+              </AppText>
+            </div>
+            <div>
+              <Typography type="body-xs" className="text-muted">
+                {t("common.delivery")}
+              </Typography>
+              <AppText
+                as="span"
+                className="mt-2 flex items-center justify-center gap-1 font-bold text-foreground"
+              >
+                <Truck size={14} />
+                <AnimatedNumber currency value={baseDeliveryFee} />
+              </AppText>
+            </div>
+            <div>
+              <Typography type="body-xs" className="text-muted">
+                {t("pizza.quantity")}
+              </Typography>
+              <AppText
+                as="span"
+                className="mt-2 block font-bold text-foreground"
+              >
+                <AnimatedNumber value={qty} />
+              </AppText>
+            </div>
           </div>
-          {isOffline && <Typography type="body-xs" className="mt-4 text-muted">{language === "de" ? "Gespeicherte Karte. Preise werden vor der Zahlung geprüft." : "Saved menu. Prices will be checked before payment."}</Typography>}
-          <Typography type="h2" className="mt-6 text-xl font-bold">{language === "de" ? "Über diese Pizza" : "About this pizza"}</Typography>
+          {isOffline && (
+            <Typography type="body-xs" className="mt-4 text-muted">
+              {language === "de"
+                ? "Gespeicherte Karte. Preise werden vor der Zahlung geprüft."
+                : "Saved menu. Prices will be checked before payment."}
+            </Typography>
+          )}
+          <Typography type="h2" className="mt-6 text-xl font-bold">
+            {language === "de" ? "Über diese Pizza" : "About this pizza"}
+          </Typography>
           {!!pizza.presentation?.fields.length && (
             <dl className="mt-4 grid gap-2">
               {pizza.presentation.fields.map((f, index) => (
@@ -299,9 +481,47 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
                 onChange={(v) => setSize(v as typeof size)}
                 options={sizes.map((s) => ({
                   id: s.id,
-                  label: `${t(`size.${s.id}`)} · ${s.delta === 0 ? t("pizza.base") : `${s.delta > 0 ? "+" : ""}€${s.delta}`}`,
+                  label: `${t(`size.${s.id}`)} · ${formatPrice((secondHalf ? Math.round((pizza.price + secondHalf.price) * 50) / 100 + 1 : pizza.price) + s.delta)}`,
                 }))}
               />
+              {fromApi && (
+                <label className="my-5 block text-sm font-semibold">
+                  {language === "de" ? "Halb & Halb" : "Half & half"}
+                  <select
+                    value={secondHalfItemId}
+                    onChange={(e) => setSecondHalfItemId(e.target.value)}
+                    className="mt-2 min-h-12 w-full rounded-xl border border-border bg-surface-secondary px-3"
+                  >
+                    <option value="">
+                      {language === "de" ? "Eine Sorte" : "One favourite"}
+                    </option>
+                    {menuItems
+                      .filter((p) => p.id !== pizza.id && !p.customization)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                  <small className="mt-2 block font-normal leading-5 text-muted">
+                    {language === "de"
+                      ? "Durchschnitt beider Grundpreise + 1 €. Größe und Extras zusätzlich."
+                      : "Average of both base prices + €1. Size and extras are added."}
+                  </small>
+                  {secondHalf && (
+                    <small className="mt-2 block font-normal text-warning">
+                      {language === "de"
+                        ? "Zusätzliche Allergene: "
+                        : "Second-half allergens: "}
+                      {secondHalf.allergens?.length
+                        ? secondHalf.allergens.join(", ")
+                        : language === "de"
+                          ? "Nicht angegeben — bitte nachfragen"
+                          : "Not supplied — please ask before ordering"}
+                    </small>
+                  )}
+                </label>
+              )}
               <CheckboxGroupField
                 name="extras"
                 label={t("pizza.addExtras")}
@@ -329,6 +549,23 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
 
         {fromApi && <PizzaComments id={pizza.id} language={language} />}
 
+        <div className="px-6 pb-5">
+          <button
+            type="button"
+            disabled={!choicesValid}
+            onClick={saveUsual}
+            className="min-h-12 w-full rounded-full border border-border px-5 text-sm font-semibold disabled:opacity-50"
+          >
+            {language === "de"
+              ? "Als meine Kombination speichern"
+              : "Save as my usual"}
+          </button>
+          {savedMessage && (
+            <p role="status" className="mt-3 text-center text-sm text-muted">
+              {savedMessage}
+            </p>
+          )}
+        </div>
         <MobileActionBar
           expandingArrow
           isPending={adding}

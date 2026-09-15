@@ -1,12 +1,12 @@
 "use client";
+import { ReferenceHeader } from "@/components/ReferenceHeader";
+import { ReferenceSheet } from "@/components/ReferenceSheet";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { AppText } from "@/components/Text";
 
 import { FormAction, FormScope, Input } from "@repo/ui/forms";
 import { Button as FormButton } from "@heroui/react";
-
-import { Notifications } from "@repo/api/components/notifications";
 
 import {
   ordersClient,
@@ -20,17 +20,17 @@ import { Clock, ShoppingBag } from "@repo/icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { ContinueOrder } from "@/components/ContinueOrder";
 import { OrderProgress } from "@/components/OrderProgress";
 import { AppFrame } from "@/components/AppFrame";
 import { EmptyState } from "@/components/EmptyState";
+import { useMenuCatalog } from "@/lib/catalog";
 import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
 import { ORDER_STEPS, useApp } from "@/context/AppContext";
 import { cn } from "@/lib/cn";
-import { hx } from "@/lib/heroui-classes";
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { items: catalog } = useMenuCatalog();
   const { clear: clearCart, addItem } = useCart();
   const [preview, setPreview] = useState<ReorderPreviewResponse | null>(null);
   const [cancelOrder, setCancelOrder] = useState<CustomerOrderView | null>(
@@ -38,9 +38,18 @@ export default function OrdersPage() {
   );
   const [reason, setReason] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
-  const { t, orders, accessToken, hydrated, refreshOrders, setActiveOrderId } =
-    useApp();
-  const [tab, setTab] = useState<"active" | "history">("active");
+  const {
+    t,
+    language,
+    orders,
+    accessToken,
+    hydrated,
+    refreshOrders,
+    setActiveOrderId,
+  } = useApp();
+  const [tab, setTab] = useState<"active" | "completed" | "cancelled">(
+    "active",
+  );
   const [loading, setLoading] = useState(Boolean(accessToken));
   const [error, setError] = useState<string | null>(null);
 
@@ -109,7 +118,7 @@ export default function OrdersPage() {
 
   const list = useMemo(() => {
     if (tab === "active") return orders.filter((o) => o.status === "active");
-    return orders.filter((o) => o.status !== "active");
+    return orders.filter((o) => o.status === tab);
   }, [orders, tab]);
 
   return (
@@ -117,31 +126,23 @@ export default function OrdersPage() {
       {
         <FormScope>
           <AppFrame withTabs className="reference-screen">
-            <Typography type="h1" className={hx.h1}>
-              {t("orders.title")}
-            </Typography>
-
-            <Button
-              variant="secondary"
-              className="mt-4"
-              onPress={() => router.push("/credit/")}
-            >
-              Your Yespizz credit
-            </Button>
-            <Notifications accessToken={accessToken} />
-            <ContinueOrder />
+            <ReferenceHeader />
+            <h1 className="sr-only">{t("orders.title")}</h1>
             {preview && (
-              <section
-                role="dialog"
-                aria-label="Review reorder"
-                className="my-4 space-y-3 rounded-2xl border p-4"
+              <ReferenceSheet
+                open
+                onClose={() => setPreview(null)}
+                title={
+                  language === "de" ? "Erneut bestellen" : "Review reorder"
+                }
               >
-                <AppText as="h2">Review your reorder</AppText>
-                <AppText as="p">This replaces your current cart. Prices use today’s menu.</AppText>
+                <AppText as="p">
+                  This replaces your current cart. Prices use today’s menu.
+                </AppText>
                 {preview.cartLines.map((line, i) => (
                   <AppText as="p" key={i}>
-                    <AnimatedNumber value={line.quantity} /> × {line.name} · {line.size}{" "}
-                    {line.extras.join(", ")} · €
+                    <AnimatedNumber value={line.quantity} /> × {line.name} ·{" "}
+                    {line.size} {line.extras.join(", ")} · €
                     {(line.unitPriceCents / 100).toFixed(2)}
                   </AppText>
                 ))}
@@ -166,7 +167,10 @@ export default function OrdersPage() {
                   </AppText>
                 ))}
                 {preview.changed.length > 0 && (
-                  <AppText as="p"><AnimatedNumber value={preview.changed.length} /> item price(s) changed.</AppText>
+                  <AppText as="p">
+                    <AnimatedNumber value={preview.changed.length} /> item
+                    price(s) changed.
+                  </AppText>
                 )}
                 <FormAction
                   isDisabled={!preview.cartLines.length}
@@ -192,14 +196,16 @@ export default function OrdersPage() {
                 <Button variant="secondary" onPress={() => setPreview(null)}>
                   Keep current cart
                 </Button>
-              </section>
+              </ReferenceSheet>
             )}
             {cancelOrder && (
               <FormScope>
-                <section
-                  role="dialog"
-                  aria-label="Cancel order"
-                  className="my-4 space-y-3 rounded-2xl border p-4"
+                <ReferenceSheet
+                  open
+                  onClose={() => setCancelOrder(null)}
+                  title={
+                    language === "de" ? "Bestellung stornieren" : "Cancel order"
+                  }
                 >
                   {cancelOrder.canCancel ? (
                     <>
@@ -235,32 +241,24 @@ export default function OrdersPage() {
                   >
                     Close
                   </Button>
-                </section>
+                </ReferenceSheet>
               </FormScope>
             )}
-            <div className="mt-5 grid grid-cols-2 rounded-full bg-surface-secondary p-1.5">
-              {(["active", "history"] as const).map((key) => (
+            <div className="reference-segments mt-3">
+              {(["active", "completed", "cancelled"] as const).map((key) => (
                 <Button
                   key={key}
                   variant={tab === key ? "primary" : "secondary"}
-                  className={cn(
-                    "h-12 rounded-full border-0 text-[14px] font-bold shadow-none",
-                    tab === key
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-transparent text-muted",
-                  )}
+                  aria-pressed={tab === key}
                   onPress={() => setTab(key)}
                 >
-                  {t(`orders.${key}`)}
-                  {hydrated && !loading && (
-                    <AppText as="span" className="ml-2 rounded-full bg-current/10 px-2 py-0.5 text-xs tabular-nums">
-                      <AnimatedNumber value={orders.filter((order) =>
-                          key === "active"
-                            ? order.status === "active"
-                            : order.status !== "active",
-                        ).length} />
-                    </AppText>
-                  )}
+                  {key === "active"
+                    ? t("orders.active")
+                    : key === "completed"
+                      ? language === "de"
+                        ? "Geliefert"
+                        : "Completed"
+                      : t("orders.cancelled")}
                 </Button>
               ))}
             </div>
@@ -341,74 +339,62 @@ export default function OrdersPage() {
                     );
                   };
 
+                  const pizza = catalog.find(
+                    (p) => p.name === order.items[0]?.name,
+                  );
+                  const image =
+                    order.thumbnail || pizza?.imageUrl || pizza?.image;
                   return (
                     <Card
                       key={order.id}
-                      className="data-surface relative overflow-hidden rounded-[30px] p-5"
+                      className="data-surface rounded-[28px] p-4"
                     >
-                      {order.status === "active" ? (
-                        <Button
-                          variant="ghost"
-                          aria-label={
-                            order.awaitingPayment
-                              ? "Resume payment"
-                              : t("orders.track")
-                          }
-                          onPress={track}
-                          className="absolute inset-0 z-0 h-full w-full rounded-[30px] bg-transparent p-0 shadow-none"
-                        />
-                      ) : null}
-                      <Card.Content className="relative z-[1] p-0">
-                        <div className="mb-3 flex items-start justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <AppText as="span" className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-card text-foreground">
-                              {order.thumbnail ? (
-                                <ProductImage
-                                  src={order.thumbnail}
-                                  alt=""
-                                  className="h-full w-full object-contain p-1"
-                                  fallbackClassName="[&>svg]:size-6"
-                                />
-                              ) : (
-                                <ShoppingBag size={19} />
+                      <Card.Content className="p-0">
+                        <div className="reference-order-top">
+                          <div className="reference-order-image">
+                            {image ? (
+                              <ProductImage
+                                src={image}
+                                alt=""
+                                className="h-full w-full object-contain"
+                              />
+                            ) : (
+                              <ShoppingBag size={32} />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h2 className="text-[16px] font-bold">
+                              {t("orders.orderNum", { id: shortId })}
+                            </h2>
+                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">
+                              {order.items
+                                .map((i) => `${i.quantity} × ${i.name}`)
+                                .join(" · ")}
+                            </p>
+                            <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
+                              <Clock size={12} />
+                              {new Date(order.placedAt).toLocaleDateString(
+                                language === "de" ? "de-DE" : "en-IE",
                               )}
-                            </AppText>
-                            <div className="min-w-0">
-                              <Typography type="h6" className={hx.title}>
-                                {t("orders.orderNum", { id: shortId })}
-                              </Typography>
-                              <Typography
-                                type="body-xs"
+                            </p>
+                            <div className="reference-order-meta">
+                              <strong>
+                                <AnimatedNumber currency value={order.total} />
+                              </strong>
+                              <span
                                 className={cn(
-                                  hx.caption,
-                                  "mt-0.5 flex items-center gap-1",
+                                  "reference-order-status",
+                                  statusClass,
                                 )}
                               >
-                                <Clock size={12} />
-                                {new Date(order.placedAt).toLocaleDateString()}
-                              </Typography>
+                                {statusLabel}
+                              </span>
                             </div>
                           </div>
-                          <AppText as="span"
-                            className={cn(
-                              "rounded-full px-2.5 py-1 text-[11px] font-semibold",
-                              statusClass,
-                            )}
-                          >
-                            {statusLabel}
-                          </AppText>
                         </div>
-                        <Typography
-                          type="body-sm"
-                          className={cn(hx.bodySm, "line-clamp-2")}
-                        >
-                          {order.items
-                            .map((i) => `${i.quantity}× ${i.name}`)
-                            .join(" · ")}
-                        </Typography>
                         {order.status === "active" &&
                           !order.awaitingPayment && (
-                            <div className="mt-5 rounded-2xl bg-background/40 p-3.5">
+                            <div className="mt-4">
                               <OrderProgress
                                 stepIndex={order.stepIndex}
                                 compact
@@ -416,90 +402,89 @@ export default function OrdersPage() {
                             </div>
                           )}
                         {Boolean(order.compensationCents) && (
-                          <AppText as="p" className="mt-3 text-sm">
-                            <AnimatedNumber currency value={(order.compensationCents ?? 0) / 100} />{" "}
-                            delivery credit added to your Yespizz account.
-                          </AppText>
+                          <p className="mt-3 text-sm">
+                            <AnimatedNumber
+                              currency
+                              value={(order.compensationCents ?? 0) / 100}
+                            />{" "}
+                            {language === "de"
+                              ? "Guthaben hinzugefügt."
+                              : "delivery credit added."}
+                          </p>
                         )}
                         {order.refundStatus && (
-                          <AppText as="p" className="mt-2 text-sm">
+                          <p className="mt-3 text-xs text-muted">
                             Refund:{" "}
                             {order.refundStatus === "succeeded"
                               ? "sent to your original payment method"
                               : order.refundStatus === "retry_pending"
                                 ? "being processed"
                                 : order.refundStatus}
-                          </AppText>
+                          </p>
                         )}
-                        <div className="relative z-[2] mt-3 flex flex-wrap gap-2">
+                        <div className="reference-order-actions">
+                          {order.status === "active" ? (
+                            <>
+                              <Button
+                                variant="secondary"
+                                isDisabled={actionBusy}
+                                onPress={() => void reviewCancel(order.id)}
+                              >
+                                {language === "de"
+                                  ? "Optionen"
+                                  : "Order options"}
+                              </Button>
+                              <Button variant="primary" onPress={track}>
+                                {order.awaitingPayment
+                                  ? "Resume payment"
+                                  : t("orders.track")}
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="secondary"
+                                onPress={() =>
+                                  router.push(
+                                    order.status === "completed"
+                                      ? `/feedback/?order=${encodeURIComponent(order.id)}`
+                                      : `/help/?order=${encodeURIComponent(order.id)}`,
+                                  )
+                                }
+                              >
+                                {order.status === "completed"
+                                  ? language === "de"
+                                    ? "Feedback"
+                                    : "Leave feedback"
+                                  : language === "de"
+                                    ? "Hilfe"
+                                    : "Get help"}
+                              </Button>
+                              <Button
+                                variant="primary"
+                                isDisabled={actionBusy}
+                                onPress={() => void reviewReorder(order.id)}
+                              >
+                                {t("orders.reorder")}
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        {order.status !== "cancelled" && (
                           <Button
-                            size="sm"
                             variant="ghost"
+                            className="mt-2 h-10 w-full text-xs text-muted"
                             onPress={() =>
                               router.push(
                                 `/help/?order=${encodeURIComponent(order.id)}`,
                               )
                             }
                           >
-                            Get help
+                            {language === "de"
+                              ? "Hilfe zur Bestellung"
+                              : "Help with this order"}
                           </Button>
-                          {order.status === "completed" && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onPress={() =>
-                                router.push(
-                                  `/feedback/?order=${encodeURIComponent(order.id)}`,
-                                )
-                              }
-                            >
-                              Private feedback
-                            </Button>
-                          )}
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <Typography
-                            type="h6"
-                            className={cn(
-                              hx.title,
-                              "text-accent tabular-nums text-[24px] tracking-tight",
-                            )}
-                          >
-                            <AnimatedNumber currency value={order.total} />
-                          </Typography>
-                          {order.status === "active" ? (
-                            <div className="relative z-[2] w-36">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                isDisabled={actionBusy}
-                                onPress={() => void reviewCancel(order.id)}
-                              >
-                                Order options
-                              </Button>
-                              <Button
-                                variant="primary"
-                                onPress={track}
-                                className="h-11 w-full rounded-full bg-accent px-4 text-[12px] font-bold text-accent-foreground shadow-none"
-                              >
-                                {order.awaitingPayment
-                                  ? "Resume payment"
-                                  : t("orders.track")}
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="relative z-[2] w-36">
-                              <Button
-                                variant="secondary"
-                                isDisabled={actionBusy}
-                                onPress={() => void reviewReorder(order.id)}
-                                className="h-11 w-full rounded-full border border-border bg-card px-4 text-[12px] font-bold text-foreground shadow-none"
-                              >
-                                {t("orders.reorder")}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </Card.Content>
                     </Card>
                   );

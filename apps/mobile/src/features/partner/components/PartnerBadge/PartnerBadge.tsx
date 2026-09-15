@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { Chip } from '@heroui/react';
-import { MapPin } from '@repo/icons';
+import { Chip } from "@heroui/react";
+import { MapPin } from "@repo/icons";
 
-import { useApp } from '@/context/AppContext';
+import { useApp } from "@/context/AppContext";
 
-import { partnerBadge } from './PartnerBadge.styles';
-import type { PartnerBadgeProps } from './PartnerBadge.types';
+import { partnerBadge } from "./PartnerBadge.styles";
+import type { PartnerBadgeProps } from "./PartnerBadge.types";
 
 export function PartnerBadge({ compact = false }: PartnerBadgeProps) {
   const { t } = useApp();
@@ -14,8 +14,8 @@ export function PartnerBadge({ compact = false }: PartnerBadgeProps) {
 
   return (
     <Chip color="accent" variant="soft" className={styles.root()}>
-      <MapPin size={compact ? 12 : 14} color="var(--accent)" />
-      <Chip.Label className={styles.label()}>{t('partner.nearYou')}</Chip.Label>
+      <MapPin size={compact ? 12 : 14} color="var(--foreground)" />
+      <Chip.Label className={styles.label()}>{t("partner.nearYou")}</Chip.Label>
     </Chip>
   );
 }

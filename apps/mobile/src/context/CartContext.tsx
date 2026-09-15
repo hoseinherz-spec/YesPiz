@@ -1,5 +1,6 @@
 "use client";
 
+import { trackProductEvent } from "@/lib/product-events";
 import { type PizzaSelection, apiRequest } from "@repo/api";
 import React, {
   createContext,
@@ -13,6 +14,7 @@ import React, {
 import { EXTRAS, SIZES } from "@/constants/pizzas";
 
 export type CartItem = {
+  secondHalfItemId?: string;
   variantId?: string;
   selections?: PizzaSelection[];
   selectionLabels?: string[];
@@ -113,7 +115,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 item.menuItemId &&
                 Number.isInteger(item.quantity) &&
                 item.quantity > 0 &&
-                Number.isInteger(item.menuVersion) && item.menuVersion >= 0,
+                Number.isInteger(item.menuVersion) &&
+                item.menuVersion >= 0,
             ),
           );
       } catch {
@@ -134,11 +137,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items, restored]);
 
   const addItem = useCallback((item: Omit<CartItem, "lineId">) => {
+    trackProductEvent("cart_add");
     setItems((prev) => {
       if (prev.some((line) => line.menuVersion !== item.menuVersion)) prev = [];
       const match = prev.find(
         (p) =>
           p.menuItemId === item.menuItemId &&
+          p.secondHalfItemId === item.secondHalfItemId &&
           p.variantId === item.variantId &&
           JSON.stringify(p.selections ?? []) ===
             JSON.stringify(item.selections ?? []) &&

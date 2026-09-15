@@ -1,7 +1,6 @@
 "use client";
 import { AppText } from "@/components/Text";
 
-
 import Script from "next/script";
 import { useCallback, useRef, useState } from "react";
 import { useApp } from "@/context/AppContext";
@@ -133,14 +132,7 @@ export function SocialLogin({ onSuccess }: { onSuccess: () => void }) {
             }
           />
         </>
-      ) : (
-        <button
-          disabled
-          className="h-12 w-full rounded-2xl border border-border opacity-50"
-        >
-          Google
-        </button>
-      )}
+      ) : null}
       {appleId && appleRedirect && (
         <Script
           src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"
@@ -150,25 +142,15 @@ export function SocialLogin({ onSuccess }: { onSuccess: () => void }) {
           }
         />
       )}
-      <button
-        type="button"
-        disabled={!appleReady || busy || authLoading}
-        onClick={() => void appleLogin()}
-        className="h-12 w-full rounded-2xl bg-foreground font-semibold text-background disabled:opacity-50"
-      >
-        Apple
-      </button>
-      {(!googleId || !appleId || !appleRedirect) && (
-        <AppText as="p" className="text-center text-xs text-muted">
-          {t("login.socialUnavailable", {
-            provider: [
-              !googleId && "Google",
-              (!appleId || !appleRedirect) && "Apple",
-            ]
-              .filter(Boolean)
-              .join(" / "),
-          })}
-        </AppText>
+      {appleId && appleRedirect && (
+        <button
+          type="button"
+          disabled={!appleReady || busy || authLoading}
+          onClick={() => void appleLogin()}
+          className="h-12 w-full rounded-2xl bg-foreground font-semibold text-background disabled:opacity-50"
+        >
+          Apple
+        </button>
       )}
       {error && (
         <AppText as="p" role="alert" className="text-sm text-danger">

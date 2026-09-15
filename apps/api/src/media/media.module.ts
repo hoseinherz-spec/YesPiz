@@ -49,7 +49,7 @@ import {
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "../common/enums";
+import { OrderStatus, UserRole } from "../common/enums";
 
 @Schema({ timestamps: true, collection: "proof_media" })
 class ProofMedia {
@@ -63,8 +63,18 @@ class ProofMedia {
 }
 class UploadProofDto {
   @IsMongoId() orderId!: string;
-  @IsIn(["ready", "dropoff", "signature", "incident"]) purpose!: string;
-  @IsIn(["image/jpeg", "image/png"]) contentType!: string;
+  @IsIn(["ready", "dropoff", "signature", "incident", "chat"]) purpose!: string;
+  @IsIn([
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "audio/webm",
+    "audio/ogg",
+    "audio/mp4",
+    "video/mp4",
+    "video/webm",
+  ])
+  contentType!: string;
   @IsString() @MaxLength(7_000_000) base64!: string;
 }
 @Injectable()
@@ -100,9 +110,21 @@ export class MediaService {
     const order = await this.orders.findById(orderId).exec();
     if (!order) throw new NotFoundException("Order not found.");
     const allowed =
-      purpose === "ready"
-        ? !!(await this.providers.exists({ _id: order.providerId, userId }))
-        : String(order.courierId) === userId;
+      purpose === "chat"
+        ? !!order.courierId &&
+          [String(order.customerId), String(order.courierId)].includes(
+            userId,
+          ) &&
+          [
+            OrderStatus.ASSIGNED_TO_COURIER,
+            OrderStatus.PICKED_UP,
+            OrderStatus.ON_THE_WAY,
+            OrderStatus.EXCEPTION_REPORTED,
+            OrderStatus.ADMIN_REVIEW,
+          ].includes(order.status)
+        : purpose === "ready"
+          ? !!(await this.providers.exists({ _id: order.providerId, userId }))
+          : String(order.courierId) === userId;
     if (!allowed) throw new NotFoundException("Order not found.");
   }
   async upload(userId: string, dto: UploadProofDto) {
@@ -114,13 +136,41 @@ export class MediaService {
       .subarray(0, 8)
       .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     const jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+    const signatures: Record<string, boolean> = {
+      "image/png": png,
+      "image/jpeg": jpeg,
+      "application/pdf": bytes.subarray(0, 5).toString() === "%PDF-",
+      "audio/webm": bytes
+        .subarray(0, 4)
+        .equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])),
+      "video/webm": bytes
+        .subarray(0, 4)
+        .equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])),
+      "audio/ogg": bytes.subarray(0, 4).toString() === "OggS",
+      "audio/mp4": bytes.subarray(4, 8).toString() === "ftyp",
+      "video/mp4": bytes.subarray(4, 8).toString() === "ftyp",
+    };
     if (
       bytes.length > 5 * 1024 * 1024 ||
       bytes.length < 16 ||
-      (dto.contentType === "image/png" ? !png : !jpeg)
+      !signatures[dto.contentType] ||
+      (dto.purpose !== "chat" &&
+        !["image/png", "image/jpeg"].includes(dto.contentType))
     )
-      throw new BadRequestException("Upload a PNG or JPEG up to 5 MB.");
-    const key = `${randomUUID()}.${png ? "png" : "jpg"}`;
+      throw new BadRequestException(
+        "Choose a supported file up to 5 MB. Proof requires PNG or JPEG.",
+      );
+    const extension: Record<string, string> = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "application/pdf": "pdf",
+      "audio/webm": "webm",
+      "video/webm": "webm",
+      "audio/ogg": "ogg",
+      "audio/mp4": "m4a",
+      "video/mp4": "mp4",
+    };
+    const key = `${randomUUID()}.${extension[dto.contentType]}`;
     const bucket = this.config.get<string>("S3_BUCKET");
     if (bucket) {
       await this.s3.send(
@@ -129,6 +179,8 @@ export class MediaService {
           Key: `proof/${key}`,
           Body: bytes,
           ContentType: dto.contentType,
+          ContentDisposition:
+            dto.contentType === "application/pdf" ? "attachment" : "inline",
         }),
       );
     } else {
@@ -159,14 +211,33 @@ export class MediaService {
         "Upload proof for this order before submitting.",
       );
   }
+  async chatAttachment(userId: string, orderId: string, id: string) {
+    if (!Types.ObjectId.isValid(id))
+      throw new BadRequestException("Invalid attachment.");
+    const record = await this.media
+      .findOne({ _id: id, orderId, ownerId: userId, purpose: "chat" })
+      .exec();
+    if (!record)
+      throw new BadRequestException(
+        "Upload an attachment for this order first.",
+      );
+    return { id: record.id, contentType: record.contentType };
+  }
   async read(user: JwtPayloadUser, id: string) {
     if (!Types.ObjectId.isValid(id)) throw new NotFoundException();
     const record = await this.media.findById(id).exec();
-    if (
-      !record ||
-      (!user.roles.includes(UserRole.ADMIN) && record.ownerId !== user.userId)
-    )
-      throw new NotFoundException();
+    if (!record) throw new NotFoundException();
+    let allowed =
+      user.roles.includes(UserRole.ADMIN) || record.ownerId === user.userId;
+    if (!allowed && record.purpose === "chat") {
+      const order = await this.orders.findById(record.orderId).exec();
+      allowed =
+        !!order &&
+        [String(order.customerId), String(order.courierId)].includes(
+          user.userId,
+        );
+    }
+    if (!allowed) throw new NotFoundException();
     if (record.storage === "s3") {
       return {
         url: await getSignedUrl(
@@ -181,13 +252,17 @@ export class MediaService {
     }
     return new StreamableFile(
       await readFile(join(this.directory(), record.key)),
-      { type: record.contentType, disposition: "inline" },
+      {
+        type: record.contentType,
+        disposition:
+          record.contentType === "application/pdf" ? "attachment" : "inline",
+      },
     );
   }
 }
 @Controller("media")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.COURIER, UserRole.PROVIDER, UserRole.ADMIN)
+@Roles(UserRole.COURIER, UserRole.PROVIDER, UserRole.ADMIN, UserRole.CUSTOMER)
 class MediaController {
   constructor(private readonly media: MediaService) {}
   @Post() upload(

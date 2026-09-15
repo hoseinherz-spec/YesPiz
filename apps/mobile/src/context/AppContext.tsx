@@ -3,6 +3,7 @@ import { disableNotifications } from "@repo/api/components/notifications";
 
 import {
   accountClient,
+  apiRequest,
   ApiError,
   ordersClient,
   type CustomerOrderProjection,
@@ -48,6 +49,8 @@ export type Order = {
   refundStatus?: string;
   stepIndex: number;
   eta: EtaWindow;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
   scheduledAt?: string;
   isScheduled?: boolean;
   promisedDeliveryAt?: string;
@@ -113,8 +116,13 @@ type AppContextValue = {
     code: string,
     names?: { firstName?: string; lastName?: string },
   ) => Promise<void>;
-  loginWithSocial: (provider: "google" | "apple", idToken: string, nonce: string) => Promise<void>;
+  loginWithSocial: (
+    provider: "google" | "apple",
+    idToken: string,
+    nonce: string,
+  ) => Promise<void>;
   loginWithPassword: (email: string, password: string) => Promise<void>;
+  loginWithPasskey: () => Promise<void>;
   register: (
     email: string,
     password: string,
@@ -287,6 +295,8 @@ export function mapCustomerOrder(view: CustomerOrderView): Order {
     awaitingPayment: view.orderState === "awaiting_payment",
     stepIndex,
     eta: delivered ? {} : pickDeliveryEta(view),
+    deliveryWindowStart: view.deliveryWindowStart,
+    deliveryWindowEnd: view.deliveryWindowEnd,
     scheduledAt: view.scheduledAt,
     isScheduled: view.isScheduled,
     promisedDeliveryAt: view.promisedDeliveryAt,
@@ -387,9 +397,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('campaign');
+    const code = new URLSearchParams(window.location.search).get("campaign");
     if (code && /^[a-z0-9-]{3,40}$/.test(code)) {
-      try { sessionStorage.setItem('yespizz_campaign', code); } catch { /* attribution is optional */ }
+      try {
+        sessionStorage.setItem("yespizz_campaign", code);
+      } catch {
+        /* attribution is optional */
+      }
     }
   }, []);
 
@@ -456,7 +470,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (error) {
             // Interrupted navigation and temporary API failures do not invalidate a session.
-            if (!cancelled && error instanceof ApiError && error.status === 401) {
+            if (
+              !cancelled &&
+              error instanceof ApiError &&
+              error.status === 401
+            ) {
               localStorage.removeItem(TOKEN_KEY);
               setAccessToken(null);
               setUser(null);
@@ -590,18 +608,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [applyAuth],
   );
 
-  const loginWithSocial = useCallback(async (provider: "google" | "apple", idToken: string, nonce: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const res = await accountClient.socialLogin({ provider, idToken, nonce });
-      applyAuth(res.accessToken, mapProfile(res.user));
-      setOnboarded(true);
-    } catch (err) {
-      setAuthError(authErrorMessage(err));
-      throw err;
-    } finally { setAuthLoading(false); }
-  }, [applyAuth]);
+  const loginWithSocial = useCallback(
+    async (provider: "google" | "apple", idToken: string, nonce: string) => {
+      setAuthLoading(true);
+      setAuthError(null);
+      try {
+        const res = await accountClient.socialLogin({
+          provider,
+          idToken,
+          nonce,
+        });
+        applyAuth(res.accessToken, mapProfile(res.user));
+        setOnboarded(true);
+      } catch (err) {
+        setAuthError(authErrorMessage(err));
+        throw err;
+      } finally {
+        setAuthLoading(false);
+      }
+    },
+    [applyAuth],
+  );
 
   const loginWithPassword = useCallback(
     async (email: string, password: string) => {
@@ -625,6 +652,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [applyAuth],
   );
+
+  const loginWithPasskey = useCallback(async () => {
+    setAuthLoading(true);setAuthError(null);
+    try {
+      const {startAuthentication}=await import("@simplewebauthn/browser");
+      const request=await apiRequest<{requestId:string;options:Parameters<typeof startAuthentication>[0]["optionsJSON"]}>("/api/v1/account/passkeys/authenticate/options",{method:"POST"});
+      const response=await startAuthentication({optionsJSON:request.options});
+      const result=await apiRequest<Awaited<ReturnType<typeof accountClient.login>>>("/api/v1/account/passkeys/authenticate/verify",{method:"POST",body:{requestId:request.requestId,response}});
+      applyAuth(result.accessToken,mapProfile(result.user));setOnboarded(true);
+    }catch(error){setAuthError(authErrorMessage(error));throw error;}finally{setAuthLoading(false);}
+  },[applyAuth]);
 
   const register = useCallback(
     async (
@@ -770,6 +808,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sendOtp,
     loginWithOtp,
     loginWithPassword,
+    loginWithPasskey,
     loginWithSocial,
     register,
     logout,

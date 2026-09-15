@@ -13,12 +13,14 @@ export type OrderDocument = HydratedDocument<Order>;
 
 @Schema({ _id: false })
 export class OrderLine {
+  @Prop() secondHalfItemId?: string;
   @Prop() pizzaId?: string;
   @Prop() variantId?: string;
   @Prop({ type: [MongoSchema.Types.Mixed], default: [] })
   selections!: PizzaSelection[];
   @Prop({ type: [String], default: [] }) selectionLabels!: string[];
   @Prop({ type: MongoSchema.Types.Mixed }) recipeSnapshot?: {
+    inventoryComplete?:boolean;
     recipeIngredients: Array<{ name: string; weightGrams: number }>;
     checklistTemplate: string[];
     requiresNumberedSeal: boolean;
@@ -87,6 +89,16 @@ const OrderOfferSchema = SchemaFactory.createForClass(OrderOffer);
 
 @Schema({ timestamps: true, collection: "orders" })
 export class Order {
+  @Prop({type:MongoSchema.Types.Mixed}) loyaltyPolicy?:{version:number;ordersPerReward:number;rewardCents:number;minimumOrderCents:number};
+  @Prop() deliverySlotId?: string;
+  @Prop() slotHoldUntil?: Date;
+  @Prop() deliveryWindowStart?: Date;
+  @Prop() deliveryWindowEnd?: Date;
+  @Prop({ default: 0 }) walletCents!: number;
+  @Prop() acceptedAt?: Date;
+  @Prop() preparingAt?: Date;
+  @Prop() pickedUpAt?: Date;
+
   @Prop() couponCode?: string;
   @Prop({ default: 0 }) discountCents!: number;
   @Prop()
@@ -301,3 +313,6 @@ OrderSchema.index(
   },
 );
 OrderSchema.index({ providerId: 1, status: 1 });
+
+OrderSchema.index({ deliverySlotId: 1, status: 1, slotHoldUntil: 1 });
+OrderSchema.index({ providerId: 1, createdAt: -1, preparingAt: 1, readyAt: 1 });

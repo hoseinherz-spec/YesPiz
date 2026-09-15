@@ -63,6 +63,7 @@ export type DeliveryAddress = {
 };
 
 export type OrderLineRequest = {
+  secondHalfItemId?: string;
   variantId?: string;
   selections?: PizzaSelection[];
   selectionLabels?: string[];
@@ -78,9 +79,16 @@ export type OrderQuote = {
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
+  walletCents?: number;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
 };
 
 export type CreateOrderRequest = {
+  deliverySlotId?: string;
+  walletCents?: number;
+
+  expectedTotalCents?: number;
   couponCode?: string;
   campaignCode?: string;
   idempotencyKey?: string;
@@ -141,6 +149,9 @@ export type CustomerOrderView = {
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
+  walletCents?: number;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
   orderState: "awaiting_payment" | "active" | "completed" | "cancelled";
   customerStatus: CustomerOrderProjection | null;
   paymentMethod: PaymentMethod;
@@ -203,6 +214,9 @@ export type Order = {
   subtotalCents: number;
   deliveryFeeCents: number;
   totalCents: number;
+  walletCents?: number;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -273,6 +287,9 @@ export type AtRiskOrderRow = {
   orderId: string;
   status: OrderStatus;
   totalCents: number;
+  walletCents?: number;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
   updatedAt?: string;
   risk: "exception" | "delayed_eta";
   etaDeliveryMax?: number;

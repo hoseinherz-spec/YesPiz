@@ -7,6 +7,8 @@ export type PaymentDocument = HydratedDocument<Payment>;
 
 @Schema({ timestamps: true, collection: "payments" })
 export class Payment {
+  @Prop({ default: 0 }) walletCents!: number;
+
   @Prop({
     type: MongoSchema.Types.ObjectId,
     ref: "Order",

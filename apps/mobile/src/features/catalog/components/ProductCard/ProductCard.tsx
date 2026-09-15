@@ -2,7 +2,6 @@
 import { PageHero } from "@repo/ui/mobile-page-transition";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-
 import { Button, Card, Typography } from "@heroui/react";
 import { Heart, Plus } from "@repo/icons";
 import Link from "next/link";
@@ -56,13 +55,14 @@ export function ProductCard({
               aria-label={
                 fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
               }
+              aria-pressed={fav}
               onPress={() => onFavoritePress()}
               className={styles.favorite()}
             >
               <Heart
                 size={18}
-                fill={fav ? "var(--danger)" : "transparent"}
-                color={fav ? "var(--danger)" : "#fff"}
+                fill={fav ? "var(--accent)" : "transparent"}
+                color={fav ? "var(--accent)" : "var(--foreground)"}
               />
             </Button>
           </div>
@@ -108,13 +108,14 @@ export function ProductCard({
           aria-label={
             fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
           }
+          aria-pressed={fav}
           onPress={() => onFavoritePress()}
           className={styles.favorite()}
         >
           <Heart
             size={18}
-            fill={fav ? "var(--danger)" : "transparent"}
-            color={fav ? "var(--danger)" : "#fff"}
+            fill={fav ? "var(--accent)" : "transparent"}
+            color={fav ? "var(--accent)" : "var(--foreground)"}
           />
         </Button>
       </div>
@@ -122,14 +123,16 @@ export function ProductCard({
         <Typography type="h6" className={styles.title()}>
           {pizza.name}
         </Typography>
-        <Typography type="body-xs" className={styles.subtitle()}>{meta ?? tagline}</Typography>
-        <div className="mt-1 flex items-center justify-between gap-2">
-            <Typography type="body-sm" className={styles.price()}>
-              <AnimatedNumber currency value={pizza.price} />
-            </Typography>
-            <span className={styles.addButton()} aria-hidden="true">
-              <Plus size={18} />
-            </span>
+        <Typography type="body-xs" className={styles.subtitle()}>
+          {meta ?? tagline}
+        </Typography>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+          <Typography type="body-sm" className={styles.price()}>
+            <AnimatedNumber currency value={pizza.price} />
+          </Typography>
+          <span className={styles.addButton()} aria-hidden="true">
+            <Plus size={18} />
+          </span>
         </div>
       </Card.Content>
     </Card>

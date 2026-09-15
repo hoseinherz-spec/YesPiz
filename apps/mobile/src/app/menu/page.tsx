@@ -1,7 +1,6 @@
 "use client";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-import { PageBanner } from "@/components/PageBanner";
 import { AppText } from "@/components/Text";
 
 import { SearchField, RadioField, FormScope, FormAction } from "@repo/ui/forms";
@@ -10,7 +9,7 @@ import { Button, Drawer, Typography } from "@heroui/react";
 import { ArrowLeft, Bookmark, Search, SlidersHorizontal } from "@repo/icons";
 import { useRouter } from "next/navigation";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppFrame } from "@/components/AppFrame";
 import { IconBadgeButton } from "@/components/IconBadgeButton";
@@ -36,8 +35,37 @@ function matchesPrice(price: number, filter: Price) {
 
 export default function MenuPage() {
   const router = useRouter();
-  const { t } = useApp();
-  const { items, categories, isOffline, isLoading } = useMenuCatalog();
+  const { t, language } = useApp();
+  const de = language === "de";
+  const labels: Record<string, string> = {
+    Recommended: "Empfohlen",
+    "Low Price": "Preis aufsteigend",
+    "High Price": "Preis absteigend",
+    "Any price": "Alle Preise",
+    "Under €12": "Unter 12 €",
+    "€12–€14": "12–14 €",
+    "€14+": "Ab 14 €",
+  };
+  const [diet, setDiet] = useState("all");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const stored = localStorage.getItem("yespizz_diet");
+        if (stored && ["all", "vegetarian", "vegan"].includes(stored))
+          setDiet(stored);
+      } catch {}
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+  function chooseDiet(value: string) {
+    setDiet(value);
+    try {
+      localStorage.setItem("yespizz_diet", value);
+    } catch {}
+  }
+
+  const { items, categories, isOffline, isLoading, isFetching, refetch } =
+    useMenuCatalog();
   const categoryOptions = [{ id: "All", name: "All" }, ...categories];
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category>("All");
@@ -55,6 +83,8 @@ export default function MenuPage() {
         .toLowerCase();
       return (
         haystack.includes(normalizedQuery) &&
+        (diet === "all" ||
+          pizza.tags.some((tag) => tag.toLowerCase() === diet)) &&
         (category === "All" ||
           pizza.categoryId === category ||
           !!pizza.additionalCategoryIds?.includes(category)) &&
@@ -66,9 +96,10 @@ export default function MenuPage() {
     if (sort === "High Price")
       next = [...next].sort((a, b) => b.price - a.price);
     return next;
-  }, [category, items, price, query, sort]);
+  }, [category, items, price, query, sort, diet]);
 
   const activeFilters =
+    Number(diet !== "all") +
     Number(category !== "All") +
     Number(sort !== "Recommended") +
     Number(price !== "Any price");
@@ -86,6 +117,7 @@ export default function MenuPage() {
   };
 
   const clearFilters = () => {
+    chooseDiet("all");
     setQuery("");
     setCategory("All");
     setSort("Recommended");
@@ -112,12 +144,41 @@ export default function MenuPage() {
         </IconBadgeButton>
       </div>
 
-      <PageBanner />
+      <div
+        className="my-4 flex flex-wrap gap-2"
+        aria-label={de ? "Ernährungsweise" : "Dietary preference"}
+      >
+        {[
+          { id: "all", en: "All pizzas", de: "Alle Pizzen" },
+          { id: "vegetarian", en: "Vegetarian", de: "Vegetarisch" },
+          { id: "vegan", en: "Vegan", de: "Vegan" },
+        ].map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            aria-pressed={diet === d.id}
+            onClick={() => chooseDiet(d.id)}
+            className={`min-h-11 rounded-full border border-border px-4 text-xs font-semibold ${diet === d.id ? "bg-accent text-accent-foreground" : "bg-surface-secondary"}`}
+          >
+            {de ? d.de : d.en}
+          </button>
+        ))}
+      </div>
       {isOffline ? (
         <div className="mt-5 rounded-[18px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-4 py-3">
           <Typography type="body-xs" className={cn(hx.caption, "text-warning")}>
             {t("login.offlineBanner")}
           </Typography>
+          <Button
+            variant="ghost"
+            isPending={isFetching}
+            onPress={() => {
+              void refetch();
+            }}
+            className="mt-2 min-h-11 px-0 text-sm font-semibold text-foreground underline underline-offset-4"
+          >
+            {t("menu.retryConnection")}
+          </Button>
         </div>
       ) : null}
 
@@ -148,7 +209,10 @@ export default function MenuPage() {
           >
             <SlidersHorizontal size={21} />
             {activeFilters > 0 ? (
-              <AppText as="span" className="absolute top-0 right-0 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-extrabold text-accent-foreground">
+              <AppText
+                as="span"
+                className="absolute top-0 right-0 flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-extrabold text-accent-foreground"
+              >
                 <AnimatedNumber value={activeFilters} />
               </AppText>
             ) : null}
@@ -174,12 +238,12 @@ export default function MenuPage() {
                       }}
                       className="rounded-full text-[13px] text-muted"
                     >
-                      Reset
+                      {de ? "Zurücksetzen" : "Reset"}
                     </Button>
                   </Drawer.Header>
                   <Drawer.Body className="px-[clamp(22px,8vw,38px)] pb-3">
                     <RadioField
-                      label="Categories"
+                      label={de ? "Kategorien" : "Categories"}
                       required
                       value={draftCategory}
                       onChange={setDraftCategory}
@@ -190,19 +254,25 @@ export default function MenuPage() {
                     />
 
                     <RadioField
-                      label="Sort by"
+                      label={de ? "Sortieren" : "Sort by"}
                       required
                       value={draftSort}
                       onChange={(v) => setDraftSort(v as Sort)}
-                      options={SORTS.map((v) => ({ id: v, label: v }))}
+                      options={SORTS.map((v) => ({
+                        id: v,
+                        label: de ? (labels[v] ?? v) : v,
+                      }))}
                     />
 
                     <RadioField
-                      label="Price range"
+                      label={de ? "Preisbereich" : "Price range"}
                       required
                       value={draftPrice}
                       onChange={(v) => setDraftPrice(v as Price)}
-                      options={PRICES.map((v) => ({ id: v, label: v }))}
+                      options={PRICES.map((v) => ({
+                        id: v,
+                        label: de ? (labels[v] ?? v) : v,
+                      }))}
                     />
                   </Drawer.Body>
                   <Drawer.Footer className="px-[clamp(22px,8vw,38px)] pb-[max(20px,env(safe-area-inset-bottom))]">
@@ -213,7 +283,7 @@ export default function MenuPage() {
                       onPress={applyFilters}
                       className={hx.btnPrimary}
                     >
-                      Apply filters
+                      {de ? "Filter anwenden" : "Apply filters"}
                     </FormAction>
                   </Drawer.Footer>
                 </Drawer.Dialog>
@@ -228,16 +298,22 @@ export default function MenuPage() {
           type="h1"
           className={cn(hx.h1, "max-w-[270px] text-[clamp(30px,9vw,42px)]")}
         >
-          {isLoading && items.length === 0 ? t("menu.title") : `${list.length} ${list.length === 1 ? "pizza" : "pizzas"}`}
+          {isLoading && items.length === 0
+            ? t("menu.title")
+            : `${list.length} ${list.length === 1 ? "pizza" : "pizzas"}`}
         </Typography>
         <Search size={34} color="var(--foreground)" />
       </div>
 
       <div className="menu-categories" aria-label={t("menu.title")}>
         {categoryOptions.map((option) => (
-          <Button key={option.id} aria-pressed={category === option.id}
+          <Button
+            key={option.id}
+            aria-pressed={category === option.id}
             variant={category === option.id ? "primary" : "secondary"}
-            onPress={() => setCategory(option.id)} className="rounded-full shrink-0">
+            onPress={() => setCategory(option.id)}
+            className="rounded-full shrink-0"
+          >
             {option.id === "All" ? t("category.All") : option.name}
           </Button>
         ))}
@@ -268,14 +344,16 @@ export default function MenuPage() {
             type="body-sm"
             className={cn(hx.bodySm, "mt-2 max-w-[260px]")}
           >
-            Try another search or reset your filters.
+            {de
+              ? "Versuche eine andere Suche oder setze die Filter zurück."
+              : "Try another search or reset your filters."}
           </Typography>
           <Button
             variant="primary"
             className="mt-5 rounded-full px-6"
             onPress={clearFilters}
           >
-            Clear filters
+            {de ? "Filter zurücksetzen" : "Clear filters"}
           </Button>
         </div>
       )}

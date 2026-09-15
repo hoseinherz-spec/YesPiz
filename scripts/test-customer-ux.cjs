@@ -1,0 +1,50 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const { createRequire } = require('node:module');
+const root = require('node:path').resolve(__dirname, '..');
+const req = createRequire(root + '/package.json');
+const ts = req('typescript');
+function load(relative, globals = {}) {
+  const source = fs.readFileSync(root + '/' + relative, 'utf8');
+  const code = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+  const exports = {};
+  vm.runInNewContext(code, {exports, require: req, URLSearchParams, Date, ...globals});
+  return exports;
+}
+const auth = load('apps/mobile/src/lib/auth-destination.ts');
+assert.equal(auth.safeAuthDestination('?next=%2Fcheckout%2F'), '/checkout/');
+assert.equal(auth.safeAuthDestination('?next=%2Faddresses%2Fnew%2F%3Ffrom%3Dcheckout'), '/addresses/new/?from=checkout');
+for (const next of ['https://outside.example', '//outside.example', '/\\outside.example', '/\n/outside.example', '/\t/outside.example']) {
+ assert.equal(auth.safeAuthDestination('?next='+encodeURIComponent(next)), '/home/');
+}
+assert.equal(auth.safeAuthDestination(''), '/home/');
+const values = new Map();
+const sessionStorage = {getItem: key=>values.get(key)??null, setItem:(key,value)=>values.set(key,value), removeItem:key=>values.delete(key)};
+const storage = load('apps/mobile/src/lib/checkout-storage.ts', {sessionStorage});
+const timestamp = storage.scheduledAtFromChoice('45');
+assert.ok(Math.abs(Date.parse(timestamp)-Date.now()-45*60000)<1000);
+storage.writeCheckoutPrefs({schedule:'45',scheduledAt:timestamp,leaveAtDoor:true,deliveryInstructions:'Ring the bell',deliveryUnit:'2'}, 'cash');
+assert.equal(storage.readCheckoutPrefs().scheduledAt,timestamp);
+assert.equal(storage.readCheckoutPrefs().schedule,'45');
+assert.equal(storage.readCheckoutPrefs().deliveryInstructions,'Ring the bell');
+assert.equal(storage.readPaymentMethod(),'cash');
+const remounted = load('apps/mobile/src/lib/checkout-storage.ts', {sessionStorage});
+assert.equal(remounted.readCheckoutPrefs().scheduledAt,timestamp);
+assert.equal(remounted.readCheckoutPrefs().deliveryUnit,'2');
+assert.equal(storage.scheduledAtFromChoice('asap'),undefined);
+storage.clearCheckoutPrefs();
+assert.equal(storage.readCheckoutPrefs().schedule,'asap');
+assert.equal(storage.readCheckoutPrefs().scheduledAt,undefined);
+const unavailable = load('apps/mobile/src/lib/checkout-storage.ts', {sessionStorage:{getItem(){throw Error('Unavailable')}}});
+assert.equal(unavailable.readCheckoutPrefs().schedule,'asap');
+console.log('PASS: local auth destinations, external/control-character rejection, scheduling offsets, draft restoration, clearing, unavailable storage.');
+const eta = load('apps/mobile/src/lib/eta.ts');
+const translate = (key, vars) => key + (vars ? JSON.stringify(vars) : '');
+assert.equal(eta.formatEtaRange({min:1,max:2,computedAt:new Date(Date.now()-3*60000).toISOString()},translate),'tracking.etaPending');
+assert.equal(eta.isEtaStale(undefined),true);
+assert.equal(eta.isEtaStale('invalid'),true);
+assert.equal(eta.isEtaStale(new Date(Date.now()-11*60000).toISOString()),true);
+assert.equal(eta.isEtaStale(new Date().toISOString()),false);
+assert.equal(eta.etaArrivalTimestamp('invalid',10),null);
+console.log('PASS: expired delivery estimates cannot claim 0-minute arrival; invalid/missing/stale timestamps are detected.');

@@ -1,4 +1,5 @@
 "use client";
+import { DeliverySlotPicker } from "@/components/DeliverySlotPicker";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { AppText } from "@/components/Text";
@@ -48,38 +49,53 @@ export default function CheckoutPage() {
     accessToken,
   } = useApp();
   const { subtotal, discount, total, count, deliveryFee } = useCart();
+  const [deliverySlotId, setDeliverySlotId] = useState<string | undefined>();
+  const [scheduledAt, setScheduledAt] = useState<string | undefined>();
+  const [draftReady, setDraftReady] = useState(false);
+  const [scheduleExpired, setScheduleExpired] = useState(false);
   const [time, setTime] = useState<CheckoutSchedule>(() => "asap");
-  const [leaveAtDoor, setLeaveAtDoor] = useState(() =>
-    typeof window === "undefined" ? false : readCheckoutPrefs().leaveAtDoor,
-  );
-  const [payment, setPayment] = useState<"card" | "cash">(() =>
-    typeof window === "undefined" ? "card" : readPaymentMethod(),
-  );
-  const [entrance, setEntrance] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (readCheckoutPrefs().deliveryEntrance ?? ""),
-  );
-  const [floor, setFloor] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (readCheckoutPrefs().deliveryFloor ?? ""),
-  );
-  const [unit, setUnit] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (readCheckoutPrefs().deliveryUnit ?? ""),
-  );
-  const [doorCode, setDoorCode] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (readCheckoutPrefs().deliveryDoorCode ?? ""),
-  );
-  const [instructions, setInstructions] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (readCheckoutPrefs().deliveryInstructions ?? ""),
-  );
+  const [leaveAtDoor, setLeaveAtDoor] = useState(false);
+  const [payment, setPayment] = useState<"card" | "cash">("card");
+  const [entrance, setEntrance] = useState("");
+  const [floor, setFloor] = useState("");
+  const [unit, setUnit] = useState("");
+  const [doorCode, setDoorCode] = useState("");
+  const [instructions, setInstructions] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const prefs = readCheckoutPrefs();
+      setDeliverySlotId(prefs.deliverySlotId);
+      setTime(prefs.schedule);
+      setScheduledAt(prefs.scheduledAt);
+      setLeaveAtDoor(prefs.leaveAtDoor);
+      setEntrance(prefs.deliveryEntrance ?? "");
+      setFloor(prefs.deliveryFloor ?? "");
+      setUnit(prefs.deliveryUnit ?? "");
+      setDoorCode(prefs.deliveryDoorCode ?? "");
+      setInstructions(prefs.deliveryInstructions ?? "");
+      setPayment(readPaymentMethod());
+      setDraftReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const check = () =>
+      setScheduleExpired(
+        time !== "asap" &&
+          (!scheduledAt ||
+            !Number.isFinite(Date.parse(scheduledAt)) ||
+            Date.parse(scheduledAt) <= Date.now()),
+      );
+    const timer = window.setTimeout(check, 0);
+    const interval = window.setInterval(check, 1000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+    };
+  }, [time, scheduledAt]);
+
   const [cashAvail, setCashAvail] = useState<Awaited<
     ReturnType<typeof paymentsClient.cashAvailability>
   > | null>(null);
@@ -114,15 +130,13 @@ export default function CheckoutPage() {
     return null;
   }, [cashReason, t]);
 
-  const continueToPayment = () => {
-    if (!authed) {
-      router.push("/login/?next=/checkout/");
-      return;
-    }
+  useEffect(() => {
+    if (!draftReady) return;
     writeCheckoutPrefs(
       {
+        deliverySlotId,
         schedule: time,
-        scheduledAt: scheduledAtFromChoice(time),
+        scheduledAt,
         leaveAtDoor,
         deliveryEntrance: entrance.trim() || undefined,
         deliveryFloor: floor.trim() || undefined,
@@ -132,64 +146,146 @@ export default function CheckoutPage() {
       },
       selectedPayment,
     );
+  }, [
+    draftReady,
+    time,
+    scheduledAt,
+    deliverySlotId,
+    leaveAtDoor,
+    entrance,
+    floor,
+    unit,
+    doorCode,
+    instructions,
+    selectedPayment,
+  ]);
+
+  const saveDraft = () => {
+    writeCheckoutPrefs(
+      {
+        deliverySlotId,
+        schedule: time,
+        scheduledAt,
+        leaveAtDoor,
+        deliveryEntrance: entrance.trim() || undefined,
+        deliveryFloor: floor.trim() || undefined,
+        deliveryUnit: unit.trim() || undefined,
+        deliveryDoorCode: doorCode.trim() || undefined,
+        deliveryInstructions: instructions.trim() || undefined,
+      },
+      selectedPayment,
+    );
+  };
+  const addAddress = () => {
+    saveDraft();
+    router.push("/addresses/new/?from=checkout");
+  };
+  const continueToPayment = () => {
+    if (!draftReady || count === 0) return;
+    if (
+      time !== "asap" &&
+      (!scheduledAt ||
+        !Number.isFinite(Date.parse(scheduledAt)) ||
+        Date.parse(scheduledAt) <= Date.now())
+    ) {
+      setScheduleExpired(true);
+      return;
+    }
+    saveDraft();
+    if (!authed) {
+      router.push("/login/?next=/checkout/");
+      return;
+    }
+    if (!selectedAddressId) {
+      addAddress();
+      return;
+    }
     router.push("/payment/");
   };
+  const selectedAddress = addresses.find(
+    (address) => address.id === selectedAddressId,
+  );
+  const startLabel =
+    time === "asap"
+      ? t("time.asap")
+      : scheduledAt && Number.isFinite(Date.parse(scheduledAt))
+        ? new Intl.DateTimeFormat(language === "de" ? "de-DE" : "en-GB", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZoneName: "short",
+          }).format(new Date(scheduledAt))
+        : t("checkout.chooseStart");
   const fieldClass = "w-full";
   const inputClass = cn(hx.field, "!h-[56px] !rounded-[18px]");
 
   return (
     <FormScope>
-      <AppFrame className="!pb-36">
+      <AppFrame className="checkout-screen !pb-44">
         <ScreenHeader
           title={t("checkout.title")}
           subtitle={t("checkout.subtitle")}
           backHref="/cart/"
         />
 
-        <section>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <Typography type="h3" className={hx.h3}>
+        <details className="checkout-section">
+          <summary>
+            <span>
               {t("checkout.address")}
-            </Typography>
-            <Button
-              variant="ghost"
-              onPress={() => router.push("/addresses/new/?from=checkout")}
-              className="h-auto min-w-0 px-0 text-[13px] font-semibold text-foreground"
-            >
-              {t("settings.addAddress")}
-            </Button>
+              <small>
+                {selectedAddress?.detail || t("checkout.noAddress")}
+              </small>
+            </span>
+            <span className="checkout-edit">{t("checkout.edit")}</span>
+          </summary>
+          <div className="checkout-editor">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                onPress={addAddress}
+                className="min-h-11 w-full rounded-full border border-border px-4 text-[13px] font-semibold text-foreground"
+              >
+                {t("settings.addAddress")}
+              </Button>
+            </div>
+            {addresses.length > 0 ? (
+              <RadioField
+                name="deliveryAddress"
+                label={t("checkout.address")}
+                required={authed && Boolean(selectedAddressId)}
+                value={selectedAddressId ?? ""}
+                onChange={setSelectedAddressId}
+                options={addresses.map((addr) => ({
+                  id: addr.id,
+                  label: (
+                    <span>
+                      <AppText as="strong">
+                        {addressTitle(t, addr.label)}
+                      </AppText>
+                      <AppText as="span" className="block text-xs text-muted">
+                        {addr.detail}
+                      </AppText>
+                    </span>
+                  ),
+                }))}
+              />
+            ) : null}
           </div>
-          {addresses.length > 0 ? (
-            <RadioField
-              name="deliveryAddress"
-              label={t("checkout.address")}
-              required={authed}
-              value={selectedAddressId ?? ""}
-              onChange={setSelectedAddressId}
-              options={addresses.map((addr) => ({
-                id: addr.id,
-                label: (
-                  <span>
-                    <AppText as="strong">{addressTitle(t, addr.label)}</AppText>
-                    <AppText as="span" className="block text-xs text-muted">
-                      {addr.detail}
-                    </AppText>
-                  </span>
-                ),
-              }))}
-            />
-          ) : (
-            <AppText as="p" className="rounded-3xl border border-dashed border-border p-4">
-              {t("checkout.noAddress")}
-            </AppText>
-          )}
-        </section>
+        </details>
 
-        <section className="mt-7">
-          <Typography type="h3" className={cn(hx.h3, "mb-3")}>
-            {t("checkout.dropoffDetails")}
-          </Typography>
-          <div className="grid grid-cols-2 gap-3">
+        <details className="checkout-dropoff mt-4 rounded-[18px] border border-border p-4">
+          <summary className="cursor-pointer text-[16px] font-semibold text-foreground">
+            {t("checkout.dropoffDetails")}{" "}
+            <AppText as="span" className="ml-2 text-xs font-normal text-muted">
+              {entrance || floor || unit || doorCode || instructions
+                ? language === "de"
+                  ? "Hinweise hinzugefügt"
+                  : "Details added"
+                : "Optional"}
+            </AppText>
+          </summary>
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <Input
               wrapperClassName={fieldClass}
               name="entrance"
@@ -236,106 +332,182 @@ export default function CheckoutPage() {
             onChange={(e) => setInstructions(e.target.value)}
             className={inputClass}
           />
-        </section>
+        </details>
 
-        <section className="mt-7">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <Typography type="h3" className={hx.h3}>
-              {t("checkout.payment")}
-            </Typography>
-          </div>
-          <RadioField
-            name="paymentMethod"
-            label={t("checkout.payment")}
-            required
-            value={selectedPayment}
-            onChange={(v) => setPayment(v as typeof selectedPayment)}
-            options={[
-              { id: "card", label: t("payment.card") },
-              {
-                id: "cash",
-                label: (
-                  <>
-                    {t("payment.cash")}{" "}
-                    {cashReasonLabel && (
-                      <AppText as="span" className="text-xs text-warning">
-                        {cashReasonLabel}
-                      </AppText>
-                    )}
-                  </>
-                ),
-                disabled: cashDisabled,
-              },
-            ]}
-          />
-        </section>
-
-        <section className="mt-7">
-          <Typography type="h3" className={cn(hx.h3, "mb-3")}>
-            {language === "de" ? "Bestellung starten" : "Start this order"}
-          </Typography>
-          <AppText as="p" className="mb-4 text-sm leading-6 text-muted">
-            {language === "de"
-              ? "Die gewählte Zeit ist der Bestellstart, nicht die Ankunft. Zubereitung und Lieferung folgen danach."
-              : "This is the order start time, not arrival. Preparation and delivery follow afterwards."}
-          </AppText>
-          <RadioField
-            name="startTime"
-            label={
-              language === "de" ? "Bestellung starten" : "Start this order"
+        <DeliverySlotPicker
+          value={deliverySlotId}
+          count={count}
+          onChange={(id) => {
+            setDeliverySlotId(id);
+            if (id) {
+              setTime("asap");
+              setScheduledAt(undefined);
             }
-            required
-            value={time}
-            onChange={(v) => setTime(v as CheckoutSchedule)}
-            options={TIMES.map((key) => ({
-              id: key,
-              label:
-                key === "later"
-                  ? language === "de"
-                    ? "In 2 Stunden"
-                    : "In 2 hours"
-                  : t(`time.${key}`),
-            }))}
-          />
-          <div className="mt-3 flex items-center justify-between rounded-[24px] bg-surface-secondary px-4 py-3.5">
-            <span className="flex items-center gap-2">
-              <MapPin size={18} />
-              <AppText as="span" className="text-[14px] font-semibold text-foreground">
+          }}
+        />
+        <details
+          hidden={!!deliverySlotId}
+          className="checkout-section mt-4"
+          open={scheduleExpired}
+        >
+          <summary>
+            <span>
+              {t("checkout.startTitle")}
+              <small>{startLabel}</small>
+            </span>
+            <span className="checkout-edit">{t("checkout.edit")}</span>
+          </summary>
+          <div className="checkout-editor">
+            {scheduleExpired && (
+              <p role="alert" className="mb-4 text-sm text-warning">
+                {t("checkout.startExpired")}
+              </p>
+            )}
+            <Typography type="h3" className={cn(hx.h3, "mb-3")}>
+              {language === "de" ? "Bestellung starten" : "Start this order"}
+            </Typography>
+            <AppText as="p" className="mb-4 text-sm leading-6 text-muted">
+              {language === "de"
+                ? "Die gewählte Zeit ist der Bestellstart, nicht die Ankunft. Zubereitung und Lieferung folgen danach."
+                : "This is the order start time, not arrival. Preparation and delivery follow afterwards."}
+            </AppText>
+            <RadioField
+              name="startTime"
+              label={
+                language === "de" ? "Bestellung starten" : "Start this order"
+              }
+              required
+              value={time}
+              onChange={(v) => {
+                const choice = v as CheckoutSchedule;
+                setTime(choice);
+                setScheduledAt(scheduledAtFromChoice(choice));
+                setScheduleExpired(false);
+              }}
+              options={TIMES.map((key) => ({
+                id: key,
+                label:
+                  key === "later"
+                    ? language === "de"
+                      ? "In 2 Stunden"
+                      : "In 2 hours"
+                    : t(`time.${key}`),
+              }))}
+            />
+            {scheduleExpired && (
+              <Button
+                variant="secondary"
+                className="mt-3 w-full"
+                onPress={() => {
+                  setScheduledAt(scheduledAtFromChoice(time));
+                  setScheduleExpired(false);
+                }}
+              >
+                {t("checkout.refreshStart")}
+              </Button>
+            )}
+          </div>
+        </details>
+        <div className="mt-4 flex items-center justify-between rounded-[24px] bg-surface-secondary px-4 py-3.5">
+          <span className="flex items-center gap-2">
+            <MapPin size={18} />
+            <AppText
+              as="span"
+              className="text-[14px] font-semibold text-foreground"
+            >
+              {t("checkout.leaveAtDoor")}
+            </AppText>
+          </span>
+          <SwitchField
+            label={
+              <AppText as="span" className="sr-only">
                 {t("checkout.leaveAtDoor")}
               </AppText>
+            }
+            value={leaveAtDoor}
+            onChange={setLeaveAtDoor}
+          />
+        </div>
+
+        <details className="checkout-section mt-4">
+          <summary>
+            <span>
+              {t("checkout.payment")}
+              <small>
+                {t(
+                  selectedPayment === "cash" ? "payment.cash" : "payment.card",
+                )}
+              </small>
             </span>
-            <SwitchField
-              label={
-                <AppText as="span" className="sr-only">{t("checkout.leaveAtDoor")}</AppText>
-              }
-              value={leaveAtDoor}
-              onChange={setLeaveAtDoor}
+            <span className="checkout-edit">{t("checkout.edit")}</span>
+          </summary>
+          <div className="checkout-editor">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Typography type="h3" className={hx.h3}>
+                {t("checkout.payment")}
+              </Typography>
+            </div>
+            <RadioField
+              name="paymentMethod"
+              label={t("checkout.payment")}
+              required
+              value={selectedPayment}
+              onChange={(v) => setPayment(v as typeof selectedPayment)}
+              options={[
+                { id: "card", label: t("payment.card") },
+                {
+                  id: "cash",
+                  label: (
+                    <>
+                      {t("payment.cash")}{" "}
+                      {cashReasonLabel && (
+                        <AppText as="span" className="text-xs text-warning">
+                          {cashReasonLabel}
+                        </AppText>
+                      )}
+                    </>
+                  ),
+                  disabled: cashDisabled,
+                },
+              ]}
             />
           </div>
-        </section>
+        </details>
 
         <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
           <Card.Content className="p-0">
             <div className="flex items-center justify-between text-[14px] text-muted">
               <AppText as="span">{t("common.subtotal")}</AppText>
-              <AppText as="span"><AnimatedNumber currency value={subtotal} /></AppText>
+              <AppText as="span">
+                <AnimatedNumber currency value={subtotal} />
+              </AppText>
             </div>
             {discount > 0 ? (
               <div className="mt-3 flex items-center justify-between text-[14px] text-success">
                 <AppText as="span">{t("common.discount")}</AppText>
-                <AppText as="span">−<AnimatedNumber currency value={discount} /></AppText>
+                <AppText as="span">
+                  −<AnimatedNumber currency value={discount} />
+                </AppText>
               </div>
             ) : null}
             <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
               <AppText as="span">{t("common.delivery")}</AppText>
-              <AppText as="span"><AnimatedNumber currency value={deliveryFee} /></AppText>
+              <AppText as="span">
+                <AnimatedNumber currency value={deliveryFee} />
+              </AppText>
             </div>
             <Separator className="my-4 bg-border" />
             <div className="flex items-end justify-between">
-              <AppText as="span" className="text-[16px] font-semibold text-muted">
+              <AppText
+                as="span"
+                className="text-[16px] font-semibold text-muted"
+              >
                 {t("common.total")}
               </AppText>
-              <AppText as="span" className="text-[21px] font-bold text-foreground">
+              <AppText
+                as="span"
+                className="text-[21px] font-bold text-foreground"
+              >
                 <AnimatedNumber currency value={total} />
               </AppText>
             </div>
@@ -343,7 +515,8 @@ export default function CheckoutPage() {
               type="body-xs"
               className={cn(hx.caption, "mt-1 text-right")}
             >
-              <AnimatedNumber value={count} /> {count === 1 ? t("common.item") : t("common.items")}
+              <AnimatedNumber value={count} />{" "}
+              {count === 1 ? t("common.item") : t("common.items")}
             </Typography>
           </Card.Content>
         </Card>
@@ -358,10 +531,15 @@ export default function CheckoutPage() {
         <MobileActionBar
           onPress={continueToPayment}
           icon={<ShoppingBag size={20} />}
-          isDisabled={count === 0 || (authed && !selectedAddressId)}
+          isDisabled={!draftReady || count === 0 || scheduleExpired}
           label={
             <AppText as="span">
-              {t("checkout.continuePayment")} · <AnimatedNumber currency value={total} />
+              {!authed
+                ? t("checkout.signInContinue")
+                : !selectedAddressId
+                  ? t("settings.addAddress")
+                  : t("checkout.continuePayment")}{" "}
+              · <AnimatedNumber currency value={total} />
             </AppText>
           }
         />

@@ -17,10 +17,12 @@ import {
 } from "@/components/AccountScreen";
 import { useApp } from "@/context/AppContext";
 import { AuthScreen } from "@/components/AuthScreen";
+import { useAuthDestination } from "@/lib/auth-destination";
 import { hx } from "@/lib/heroui-classes";
 
 export default function SignupPage() {
   const router = useRouter();
+  const destination = useAuthDestination();
   const { t, register, authLoading, authError, clearAuthError } = useApp();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -41,18 +43,29 @@ export default function SignupPage() {
     }
     try {
       await register(email.trim(), password, firstName.trim(), lastName.trim());
-      router.replace("/home/");
+      router.replace(destination);
     } catch {
       // Context exposes the API error.
     }
   };
 
   return (
-    <AuthScreen variant="signup" title={t("signup.title")} backHref="/onboarding/">
+    <AuthScreen
+      variant="signup"
+      title={t("signup.title")}
+      backHref="/onboarding/"
+    >
       <AccountHero
         title={t("signup.title")}
         description={t("signup.subtitle")}
       />
+
+      <Link
+        href="/home/"
+        className="mb-6 inline-flex min-h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-semibold text-foreground"
+      >
+        {t("common.browseMenu")}
+      </Link>
 
       {authError || validation ? (
         <AccountNotice tone="danger">{authError ?? validation}</AccountNotice>
@@ -103,7 +116,9 @@ export default function SignupPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <AppText as="p" className="text-sm text-muted">{t("signup.passwordHint")}</AppText>
+        <AppText as="p" className="text-sm text-muted">
+          {t("signup.passwordHint")}
+        </AppText>
         <Button
           type="submit"
           variant="primary"
@@ -115,16 +130,25 @@ export default function SignupPage() {
         </Button>
       </Form>
 
-      <AppText as="p" className="mt-6 text-center text-sm font-medium text-muted">
+      <AppText
+        as="p"
+        className="mt-6 text-center text-sm font-medium text-muted"
+      >
         {t("signup.haveAccount")}{" "}
-        <Link href="/login/" className="font-bold text-foreground">
+        <Link
+          href={`/login/?next=${encodeURIComponent(destination)}`}
+          className="font-bold text-foreground"
+        >
           {t("signup.loginLink")}
         </Link>
       </AppText>
-      <AppText as="p" className="mt-auto pt-8 text-center text-xs leading-relaxed text-muted">
+      <AppText
+        as="p"
+        className="mt-auto pt-8 text-center text-xs leading-relaxed text-muted"
+      >
         {t("signup.terms")}
       </AppText>
-      <SocialLogin onSuccess={() => router.replace("/home/")} />
+      <SocialLogin onSuccess={() => router.replace(destination)} />
     </AuthScreen>
   );
 }

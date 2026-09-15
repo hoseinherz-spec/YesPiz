@@ -45,6 +45,19 @@ const UserLocationSchema = SchemaFactory.createForClass(UserLocation);
 
 @Schema({ timestamps: true, collection: "users" })
 export class User {
+  @Prop({ type: [String], default: undefined }) adminPermissions?: string[];
+  @Prop({ default: 0 }) adminPermissionsRevision!: number;
+  @Prop({ type: [Object], default: [] }) adminAccessAudit!: {
+    actorId: string;
+    permissions: string[];
+    fullAccess: boolean;
+    at: Date;
+    revision: number;
+  }[];
+  @Prop() membershipUntil?: Date;
+  @Prop({ default: false }) membershipCancelled!: boolean;
+  @Prop({ type: [String], default: [] }) membershipReceipts!: string[];
+
   @Prop() stripeConnectedAccountId?: string;
   @Prop({ unique: true, sparse: true }) referralCode?: string;
   @Prop({ required: true, trim: true })

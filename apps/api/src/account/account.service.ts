@@ -660,6 +660,11 @@ export class AccountService {
     return this.tokenResponse(user, UserRole.CUSTOMER);
   }
 
+  passkeyToken(user: UserDocument) {
+    this.audit.record("auth.login", {targetUserId:user.id,meta:{role:UserRole.CUSTOMER,method:"passkey"}});
+    return this.tokenResponse(user,UserRole.CUSTOMER);
+  }
+
   private tokenResponse(user: UserDocument, activeRole: UserRole) {
     const expiresIn = this.parseExpires(
       this.config.get<string>("JWT_EXPIRES_IN") || "7d",
@@ -720,6 +725,9 @@ export class AccountService {
       cashTrustScore: user.cashTrustScore,
       cashTrustTier: user.cashTrustTier,
       creditCents: user.creditCents,
+      adminPermissions: user.roles.includes(UserRole.ADMIN)
+        ? user.adminPermissions
+        : undefined,
       cashRestoredAt: user.cashRestoredAt?.toISOString(),
       cashRestoreReason: user.cashRestoreReason,
     };

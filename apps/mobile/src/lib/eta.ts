@@ -28,9 +28,9 @@ export function pickDeliveryEta(view: {
 }
 
 export function isEtaStale(computedAt?: string, now = Date.now()): boolean {
-  if (!computedAt) return false;
+  if (!computedAt) return true;
   const at = new Date(computedAt).getTime();
-  if (Number.isNaN(at)) return false;
+  if (Number.isNaN(at)) return true;
   return now - at > STALE_MS;
 }
 
@@ -52,6 +52,7 @@ export function formatEtaRange(
     window.max == null
       ? undefined
       : Math.max(0, Math.ceil(window.max - elapsed));
+  if ((max ?? min) === 0) return t("tracking.etaPending");
   if (min != null && max != null && min !== max) {
     return t("tracking.etaRange", { min, max });
   }

@@ -1,6 +1,6 @@
 "use client";
+import { UsualPizzas } from "@/components/UsualPizzas";
 import { AppText } from "@/components/Text";
-
 
 import { Button, Typography } from "@heroui/react";
 import { Heart, GridFour, ListThreeBullet } from "@repo/icons";
@@ -34,6 +34,7 @@ export default function SavedPage() {
         backHref="/home/"
       />
 
+      <UsualPizzas editable />
       {isOffline ? (
         <div className="mt-4 rounded-[18px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-4 py-3">
           <Typography type="body-xs" className={cn(hx.caption, "text-warning")}>

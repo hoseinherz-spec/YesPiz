@@ -32,6 +32,7 @@
     "@repo/icons": "*",
     "@repo/theme": "*",
     "@repo/ui": "*",
+    "@simplewebauthn/browser": "^13.3.0",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.1",
     "clsx": "^2.1.1",

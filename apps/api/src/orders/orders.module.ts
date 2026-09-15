@@ -1,3 +1,4 @@
+import { SlotsModule } from "../slots/slots.module";
 import { GrowthModule } from "../growth/growth.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -22,6 +23,7 @@ import { Incident, IncidentSchema } from "../incidents/schemas/incident.schema";
 @Module({
   imports: [
     GrowthModule,
+    SlotsModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: DeliveryAddress.name, schema: DeliveryAddressSchema },

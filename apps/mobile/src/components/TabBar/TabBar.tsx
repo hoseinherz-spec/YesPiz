@@ -1,7 +1,6 @@
 "use client";
 import { AppText } from "@/components/Text";
 
-
 import { Typography } from "@heroui/react";
 import { FileText, Home, User, ShoppingBag } from "@repo/icons";
 import Link from "next/link";
@@ -33,8 +32,7 @@ export function TabBar() {
         <div
           className={styles.pill()}
           style={{
-            backgroundColor:
-              "color-mix(in oklab, var(--card) 88%, transparent)",
+            backgroundColor: "var(--nav-background)",
             backdropFilter: "blur(28px) saturate(1.2)",
             WebkitBackdropFilter: "blur(28px) saturate(1.2)",
           }}
@@ -65,9 +63,7 @@ export function TabBar() {
                 >
                   <Icon
                     size={20}
-                    color={
-                      focused ? "var(--accent-foreground)" : "var(--muted)"
-                    }
+                    color={focused ? "var(--selection)" : "var(--nav-muted)"}
                   />
                   <Typography type="body-xs" className={tabStyles.label()}>
                     {t(tab.navKey)}

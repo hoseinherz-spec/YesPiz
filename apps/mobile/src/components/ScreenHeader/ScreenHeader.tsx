@@ -1,13 +1,18 @@
-'use client';
+"use client";
 
-import { Button, Typography } from '@heroui/react';
-import { ArrowLeft } from '@repo/icons';
-import { useRouter } from 'next/navigation';
+import { Button, Typography } from "@heroui/react";
+import { ArrowLeft } from "@repo/icons";
+import { useRouter } from "next/navigation";
 
-import { screenHeader } from './ScreenHeader.styles';
-import type { ScreenHeaderProps } from './ScreenHeader.types';
+import { screenHeader } from "./ScreenHeader.styles";
+import type { ScreenHeaderProps } from "./ScreenHeader.types";
 
-export function ScreenHeader({ title, subtitle, right, backHref }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  subtitle,
+  right,
+  backHref,
+}: ScreenHeaderProps) {
   const router = useRouter();
   const styles = screenHeader();
 
@@ -32,7 +37,7 @@ export function ScreenHeader({ title, subtitle, right, backHref }: ScreenHeaderP
           </Typography>
         ) : null}
       </div>
-      <div className="flex size-16 items-center justify-center">{right}</div>
+      <div className="flex items-center justify-center">{right}</div>
     </div>
   );
 }

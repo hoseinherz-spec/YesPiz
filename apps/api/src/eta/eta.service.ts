@@ -1,9 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { RoutingService } from "./routing.service";
+import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { AppConfigService } from "../app-config/app-config.service";
 import { OrderStatus } from "../common/enums";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
+
+import {
+  Provider,
+  ProviderDocument,
+} from "../providers/schemas/provider.schema";
 
 export type EtaWindow = {
   etaPrepMin: number;
@@ -18,6 +24,10 @@ export class EtaService {
   constructor(
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     private readonly config: AppConfigService,
+    @Optional()
+    @InjectModel(Provider.name)
+    private readonly providers?: Model<ProviderDocument>,
+    @Optional() private readonly routing?: RoutingService,
   ) {}
 
   /**
@@ -48,7 +58,25 @@ export class EtaService {
       order.providerId ? String(order.providerId) : null,
     );
 
-    const hour = new Date().getHours();
+    const provider =
+      this.providers && order.providerId
+        ? await this.providers
+            .findById(order.providerId)
+            .select("longitude latitude timezone")
+            .exec()
+        : null;
+    let hour: number;
+    try {
+      hour = Number(
+        new Intl.DateTimeFormat("en-GB", {
+          hour: "numeric",
+          hourCycle: "h23",
+          timeZone: provider?.timezone || "Europe/Berlin",
+        }).format(new Date()),
+      );
+    } catch {
+      hour = new Date().getUTCHours();
+    }
     const rushFactor =
       hour >= 11 && hour <= 14 ? 1.15 : hour >= 17 && hour <= 21 ? 1.2 : 1;
 
@@ -62,18 +90,69 @@ export class EtaService {
           cookMinutes * 0.25 +
           queueExtra,
       );
-    prepMid = Math.max(8, prepMid);
+    const ready = [
+      OrderStatus.READY_FOR_PICKUP,
+      OrderStatus.ASSIGNED_TO_COURIER,
+      OrderStatus.PICKED_UP,
+      OrderStatus.ON_THE_WAY,
+      OrderStatus.DELIVERED,
+      OrderStatus.COMPLETED,
+    ].includes(order.status);
+    const elapsed = order.preparingAt
+      ? Math.max(
+          0,
+          (Date.now() - new Date(order.preparingAt).getTime()) / 60000,
+        )
+      : 0;
+    prepMid = ready ? 0 : Math.max(3, prepMid - elapsed);
 
-    const deliveryMid = Math.round(
+    let deliveryMid = Math.round(
       (cfg.etaBaseDeliveryMinutes ?? 22) * rushFactor,
     );
+    const lat = order.deliveryLatitude,
+      lng = order.deliveryLongitude;
+    if (provider && Number.isFinite(lat) && Number.isFinite(lng)) {
+      const rad = Math.PI / 180;
+      const a =
+        Math.sin(((lat! - provider.latitude) * rad) / 2) ** 2 +
+        Math.cos(provider.latitude * rad) *
+          Math.cos(lat! * rad) *
+          Math.sin(((lng! - provider.longitude) * rad) / 2) ** 2;
+      const km = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      // Conservative distance estimate; never represent this as live road routing.
+      deliveryMid = Math.max(
+        8,
+        Math.round((((km * 1.4) / 18) * 60 + 4) * rushFactor),
+      );
+    }
+    if (
+      provider &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      this.routing
+    ) {
+      const roadMinutes = await this.routing.minutes(provider, {
+        latitude: lat!,
+        longitude: lng!,
+      });
+      if (roadMinutes !== null) deliveryMid = Math.max(5, roadMinutes + 4);
+    }
+    if (order.pickedUpAt)
+      deliveryMid = Math.max(
+        3,
+        deliveryMid -
+          Math.floor(
+            (Date.now() - new Date(order.pickedUpAt).getTime()) / 60000,
+          ),
+      );
 
     const window: EtaWindow = {
-      etaPrepMin: Math.max(5, prepMid - pad),
-      etaPrepMax: prepMid + pad,
+      etaPrepMin: ready ? 0 : Math.max(1, prepMid - pad),
+      etaPrepMax: ready ? 0 : prepMid + pad,
       etaDeliveryMin:
-        Math.max(5, prepMid - pad) + Math.max(8, deliveryMid - pad),
-      etaDeliveryMax: prepMid + deliveryMid + pad * 2,
+        (ready ? 0 : Math.max(1, prepMid - pad)) +
+        Math.max(1, deliveryMid - pad),
+      etaDeliveryMax: prepMid + deliveryMid + pad * (ready ? 1 : 2),
       etaComputedAt: new Date(),
     };
 
@@ -118,16 +197,22 @@ export class EtaService {
             OrderStatus.ON_THE_WAY,
           ],
         },
-        quotedPrepMinutes: { $exists: true, $ne: null },
+        preparingAt: { $exists: true },
+        readyAt: { $exists: true },
       })
       .sort({ createdAt: -1 })
       .limit(30)
-      .select("quotedPrepMinutes")
+      .select("preparingAt readyAt")
       .exec();
 
     const values = recent
-      .map((o) => o.quotedPrepMinutes)
-      .filter((v): v is number => typeof v === "number" && v > 0)
+      .map(
+        (o) =>
+          (new Date(o.readyAt!).getTime() -
+            new Date(o.preparingAt!).getTime()) /
+          60000,
+      )
+      .filter((v) => Number.isFinite(v) && v >= 1 && v <= 180)
       .sort((a, b) => a - b);
     if (!values.length) return null;
     return values[Math.floor(values.length / 2)]!;

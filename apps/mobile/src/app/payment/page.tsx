@@ -9,6 +9,7 @@ import { Button as FormButton } from "@heroui/react";
 
 import { Button, Card, Separator, Typography } from "@heroui/react";
 import {
+  ApiError,
   walletClient,
   ordersClient,
   paymentsClient,
@@ -83,6 +84,7 @@ export default function PaymentPage() {
   const [method, setMethod] = useState<(typeof METHODS)[number]["id"]>(() =>
     typeof window === "undefined" ? "card" : readPaymentMethod(),
   );
+  const [walletCents, setWalletCents] = useState(0);
   const [creditCents, setCreditCents] = useState<number | null>(null);
   useEffect(() => {
     if (accessToken)
@@ -102,6 +104,7 @@ export default function PaymentPage() {
   );
   const [quote, setQuote] = useState<OrderQuote | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(true);
+  const [quoteRevision, setQuoteRevision] = useState(0);
   const inFlight = useRef(false);
   const search = useSyncExternalStore(
     () => () => undefined,
@@ -136,9 +139,19 @@ export default function PaymentPage() {
       })(),
       addressId: selectedAddressId,
       paymentMethod: method,
+      walletCents: method === "card" ? walletCents : 0,
       lines: items.map(
-        ({ menuItemId, quantity, size, extras, variantId, selections }) => ({
+        ({
           menuItemId,
+          quantity,
+          size,
+          extras,
+          variantId,
+          selections,
+          secondHalfItemId,
+        }) => ({
+          menuItemId,
+          secondHalfItemId,
           variantId,
           selections,
           quantity,
@@ -150,6 +163,7 @@ export default function PaymentPage() {
         const prefs = readCheckoutPrefs();
         return {
           scheduledAt: prefs.scheduledAt,
+          deliverySlotId: prefs.deliverySlotId,
           leaveAtDoor: prefs.leaveAtDoor,
           deliveryEntrance: prefs.deliveryEntrance,
           deliveryFloor: prefs.deliveryFloor,
@@ -159,7 +173,7 @@ export default function PaymentPage() {
         };
       })(),
     }),
-    [items, menuVersion, selectedAddressId, method, couponCode],
+    [items, menuVersion, selectedAddressId, method, couponCode, walletCents],
   );
 
   useEffect(() => {
@@ -194,11 +208,17 @@ export default function PaymentPage() {
             accessToken,
           });
           if (!cancelled) setQuote(next);
+        } else if (!cancelled) {
+          setError(t("payment.checkDetails"));
         }
       } catch (err) {
         if (!cancelled)
           setError(
-            err instanceof Error ? err.message : "Unable to check this order.",
+            err instanceof TypeError
+              ? t("payment.connectionError")
+              : err instanceof Error
+                ? err.message
+                : t("payment.error"),
           );
       } finally {
         if (!cancelled) setQuoteBusy(false);
@@ -208,7 +228,7 @@ export default function PaymentPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [accessToken, checkoutRequest, resumeId]);
+  }, [accessToken, checkoutRequest, resumeId, quoteRevision, t]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -285,7 +305,19 @@ export default function PaymentPage() {
       }
       let order = pendingOrder;
       if (!order) {
-        const request = { ...checkoutRequest, paymentMethod };
+        const freshQuote = await ordersClient.quote(
+          { ...checkoutRequest, paymentMethod },
+          { accessToken },
+        );
+        setQuote(freshQuote);
+        if (freshQuote.totalCents !== quote?.totalCents) {
+          throw new Error(t("payment.priceChanged"));
+        }
+        const request = {
+          ...checkoutRequest,
+          paymentMethod,
+          expectedTotalCents: freshQuote.totalCents,
+        };
         const fingerprint = JSON.stringify(request);
         const storageKey = `yespizz_attempt_${user?.id}`;
         let attempt: { fingerprint: string; key: string } | null = null;
@@ -341,6 +373,12 @@ export default function PaymentPage() {
       }
       await finishOrder(order.id);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && !pendingOrder) {
+        await ordersClient
+          .quote(checkoutRequest, { accessToken })
+          .then(setQuote)
+          .catch(() => setQuote(null));
+      }
       setError(err instanceof Error ? err.message : t("payment.error"));
     } finally {
       setBusy(false);
@@ -439,6 +477,33 @@ export default function PaymentPage() {
           />
         )}
 
+        {!stripeSecret &&
+          !pendingOrder &&
+          selectedMethod === "card" &&
+          (creditCents ?? 0) > 0 && (
+            <label className="data-surface mt-4 flex min-h-16 items-center justify-between gap-4 rounded-2xl p-4">
+              <span>
+                <strong>{t("payment.walletLabel")}</strong>
+                <span className="mt-1 block text-xs text-muted">
+                  {formatPrice((creditCents ?? 0) / 100)}{" "}
+                  {t("payment.walletFirst")}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className="size-5 accent-[var(--accent)]"
+                checked={walletCents > 0}
+                disabled={busy || quoteBusy}
+                onChange={(e) =>
+                  setWalletCents(
+                    e.target.checked
+                      ? Math.min(creditCents ?? 0, Math.round(total * 100))
+                      : 0,
+                  )
+                }
+              />
+            </label>
+          )}
         {!stripeSecret ? (
           <Typography type="body-xs" className={cn(hx.caption, "mt-3")}>
             {t("payment.stripeDisclosure")}
@@ -507,35 +572,120 @@ export default function PaymentPage() {
             <Typography type="body-sm" className="text-danger">
               {error}
             </Typography>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {pendingOrder ? (
+                pendingOrder.orderState !== "cancelled" && (
+                  <Button
+                    variant="secondary"
+                    isDisabled={busy}
+                    onPress={() => void onStripeSuccess()}
+                  >
+                    {t("payment.checkStatus")}
+                  </Button>
+                )
+              ) : (
+                <Button
+                  variant="secondary"
+                  isDisabled={busy || quoteBusy}
+                  onPress={() => setQuoteRevision((v) => v + 1)}
+                >
+                  {t("payment.retryQuote")}
+                </Button>
+              )}
+              <Button variant="ghost" onPress={() => router.push("/checkout/")}>
+                {t("payment.editCheckout")}
+              </Button>
+              <Button variant="ghost" onPress={() => router.push("/cart/")}>
+                {t("payment.reviewCart")}
+              </Button>
+            </div>
           </div>
         ) : null}
 
-        {!stripeSecret ? (
+        {!stripeSecret && (pendingOrder || quote) ? (
           <Card className="mt-7 rounded-[28px] border-0 bg-surface-secondary p-5 shadow-none">
             <Card.Content className="p-0">
               <Typography type="h3" className={cn(hx.h3, "mb-4")}>
                 {t("payment.summary")}
               </Typography>
+              {(pendingOrder?.deliveryWindowStart ??
+                quote?.deliveryWindowStart) && (
+                <p className="mb-4 rounded-2xl border border-border p-3 text-sm">
+                  {t("payment.arrivalWindow")}
+                  <br />
+                  <strong>
+                    {new Date(
+                      (pendingOrder?.deliveryWindowStart ??
+                        quote?.deliveryWindowStart)!,
+                    ).toLocaleString()}{" "}
+                    –{" "}
+                    {new Date(
+                      (pendingOrder?.deliveryWindowEnd ??
+                        quote?.deliveryWindowEnd)!,
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>
+                </p>
+              )}
               <div className="flex items-center justify-between text-[14px] text-muted">
                 <AppText as="span">{t("common.subtotal")}</AppText>
-                <AppText as="span"><AnimatedNumber currency value={subtotal} /></AppText>
+                <AppText as="span">
+                  <AnimatedNumber currency value={subtotal} />
+                </AppText>
               </div>
               {discount > 0 ? (
                 <div className="mt-3 flex items-center justify-between text-[14px] text-success">
                   <AppText as="span">{t("common.discount")}</AppText>
-                  <AppText as="span">−<AnimatedNumber currency value={discount} /></AppText>
+                  <AppText as="span">
+                    −<AnimatedNumber currency value={discount} />
+                  </AppText>
                 </div>
               ) : null}
               <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
                 <AppText as="span">{t("common.delivery")}</AppText>
-                <AppText as="span"><AnimatedNumber currency value={deliveryFee} /></AppText>
+                <AppText as="span">
+                  <AnimatedNumber currency value={deliveryFee} />
+                </AppText>
               </div>
+              {(pendingOrder?.walletCents ?? walletCents) > 0 && (
+                <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+                  <div className="flex justify-between">
+                    <span>{t("payment.walletLabel")}</span>
+                    <strong>
+                      −
+                      {formatPrice(
+                        (pendingOrder?.walletCents ?? walletCents) / 100,
+                      )}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{t("payment.cardRemainder")}</span>
+                    <strong>
+                      {formatPrice(
+                        Math.max(
+                          0,
+                          total -
+                            (pendingOrder?.walletCents ?? walletCents) / 100,
+                        ),
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              )}
               <Separator className="my-4 bg-border" />
               <div className="flex items-center justify-between">
-                <AppText as="span" className="text-[16px] font-semibold text-muted">
+                <AppText
+                  as="span"
+                  className="text-[16px] font-semibold text-muted"
+                >
                   {t("common.total")}
                 </AppText>
-                <AppText as="span" className="text-[23px] font-bold text-foreground">
+                <AppText
+                  as="span"
+                  className="text-[23px] font-bold text-foreground"
+                >
                   <AnimatedNumber currency value={total} />
                 </AppText>
               </div>
@@ -547,7 +697,12 @@ export default function PaymentPage() {
           <MobileActionBar
             onPress={() => void pay()}
             icon={<ShoppingBag size={20} />}
-            isDisabled={busy || quoteBusy || (!pendingOrder && !quote)}
+            isDisabled={
+              busy ||
+              quoteBusy ||
+              pendingOrder?.orderState === "cancelled" ||
+              (!pendingOrder && !quote)
+            }
             isPending={busy || quoteBusy}
             label={
               busy || quoteBusy

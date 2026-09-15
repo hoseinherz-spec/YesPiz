@@ -85,20 +85,28 @@ export default function CreditPage() {
             <AppText as="p" className="relative text-sm text-muted">
               {de ? "Verfügbares Guthaben" : "Available credit"}
             </AppText>
-            <AppText as="p" className="relative mt-3 break-words text-[clamp(32px,10vw,48px)] font-semibold tracking-tight text-accent tabular-nums">
+            <AppText
+              as="p"
+              className="relative mt-3 break-words text-[clamp(32px,10vw,48px)] font-semibold tracking-tight text-accent tabular-nums"
+            >
               {data ? formatPrice(data.balanceCents / 100) : "—"}
             </AppText>
-            <AppText as="p" className="relative mt-5 max-w-[32ch] text-sm leading-6 text-text-secondary">
+            <AppText
+              as="p"
+              className="relative mt-5 max-w-[32ch] text-sm leading-6 text-text-secondary"
+            >
               {de
-                ? "Wähle Yespizz-Guthaben beim Bezahlen, wenn es die gesamte Bestellung abdeckt."
-                : "Choose Yespizz credit at payment when your balance covers the full order."}
+                ? "Nutze dein Guthaben beim Bezahlen und zahle den Rest mit Karte."
+                : "Use your credit at checkout. Pay the rest by card, or cover the whole order with your balance."}
             </AppText>
             <Link
               href="/menu/"
               className="relative mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"
             >
               {de ? "Menü entdecken" : "Explore the menu"}{" "}
-              <AppText as="span" aria-hidden="true">↗</AppText>
+              <AppText as="span" aria-hidden="true">
+                ↗
+              </AppText>
             </Link>
           </section>
           {data && data.entries.length > 0 && (
@@ -137,11 +145,17 @@ export default function CreditPage() {
                     }
                     className="data-surface rounded-[22px] p-4 text-left outline-none transition-colors hover:border-accent/40 focus-visible:ring-2 focus-visible:ring-focus aria-pressed:border-accent/60"
                   >
-                    <AppText as="span" className="mb-3 flex items-center gap-2 text-xs text-muted">
+                    <AppText
+                      as="span"
+                      className="mb-3 flex items-center gap-2 text-xs text-muted"
+                    >
                       {metric.icon}
                       {metric.label}
                     </AppText>
-                    <AppText as="strong" className="block break-words text-xl font-semibold tracking-tight tabular-nums">
+                    <AppText
+                      as="strong"
+                      className="block break-words text-xl font-semibold tracking-tight tabular-nums"
+                    >
                       <AnimatedNumber currency value={metric.amount / 100} />
                     </AppText>
                     <span
@@ -161,7 +175,9 @@ export default function CreditPage() {
             </section>
           )}
           <div className="mt-7 flex items-center justify-between">
-            <AppText as="h2" className="text-xl font-bold">{de ? "Verlauf" : "Activity"}</AppText>
+            <AppText as="h2" className="text-xl font-bold">
+              {de ? "Verlauf" : "Activity"}
+            </AppText>
             <Button
               variant="ghost"
               isDisabled={loading}
@@ -250,7 +266,8 @@ export default function CreditPage() {
               className="mt-3 flex items-center justify-between gap-3 rounded-2xl border-b border-border px-1 py-4"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <AppText as="span"
+                <AppText
+                  as="span"
                   aria-hidden="true"
                   className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface-secondary text-text-secondary"
                 >
@@ -262,13 +279,17 @@ export default function CreditPage() {
                 </AppText>
                 <div>
                   <AppText as="p" className="text-sm font-semibold">
-                    {entry.kind === "referral"
-                      ? "Referral reward"
-                      : entry.kind === "compensation"
-                        ? "Delivery credit"
-                        : entry.kind === "refund"
-                          ? "Order refund"
-                          : "Pizza order"}
+                    {entry.kind === "loyalty"
+                      ? de
+                        ? "Treueprämie"
+                        : "Loyalty reward"
+                      : entry.kind === "referral"
+                        ? "Referral reward"
+                        : entry.kind === "compensation"
+                          ? "Delivery credit"
+                          : entry.kind === "refund"
+                            ? "Order refund"
+                            : "Pizza order"}
                   </AppText>
                   <AppText as="p" className="mt-1 text-xs text-muted">
                     {entry.orderId ? `#${entry.orderId.slice(-6)} · ` : ""}
@@ -276,7 +297,8 @@ export default function CreditPage() {
                   </AppText>
                 </div>
               </div>
-              <AppText as="strong"
+              <AppText
+                as="strong"
                 className={`shrink-0 text-sm tabular-nums ${entry.amountCents > 0 ? "text-success" : "text-foreground"}`}
               >
                 {entry.amountCents > 0 ? "+" : ""}

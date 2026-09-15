@@ -124,6 +124,7 @@ export class ProofService {
     await proof.save();
 
     order.status = OrderStatus.PICKED_UP;
+    order.pickedUpAt = now;
     order.proofId = proof._id as Types.ObjectId;
     await order.save();
     this.emitStatus(order);

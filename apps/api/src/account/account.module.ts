@@ -1,3 +1,4 @@
+import { Passkey,PasskeySchema,PasskeyChallenge,PasskeyChallengeSchema,PasskeysController,PasskeysService } from "./passkeys";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
@@ -30,14 +31,16 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
       }),
     }),
     MongooseModule.forFeature([
+      {name:Passkey.name,schema:PasskeySchema},
+      {name:PasskeyChallenge.name,schema:PasskeyChallengeSchema},
       { name: User.name, schema: UserSchema },
       { name: OtpChallenge.name, schema: OtpChallengeSchema },
       { name: Invite.name, schema: InviteSchema },
       { name: PasswordReset.name, schema: PasswordResetSchema },
     ]),
   ],
-  controllers: [AccountController],
-  providers: [AccountService, JwtStrategy, AuditService],
+  controllers: [AccountController,PasskeysController],
+  providers: [PasskeysService,AccountService, JwtStrategy, AuditService],
   exports: [AccountService, MongooseModule, AuditService],
 })
 export class AccountModule {}

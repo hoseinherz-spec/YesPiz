@@ -87,13 +87,15 @@ export class WalletService {
           orderId: entry.key.startsWith("referral:") ? "" : entry.orderId,
           amountCents: entry.amountCents,
           at: entry.at,
-          kind: entry.key.startsWith("referral:")
-            ? "referral"
-            : entry.key.startsWith("sla:")
-              ? "compensation"
-              : entry.key.startsWith("refund:")
-                ? "refund"
-                : "purchase",
+          kind: entry.key.startsWith("loyalty:")
+            ? "loyalty"
+            : entry.key.startsWith("referral:")
+              ? "referral"
+              : entry.key.startsWith("sla:")
+                ? "compensation"
+                : entry.key.startsWith("refund:")
+                  ? "refund"
+                  : "purchase",
         })),
     };
   }

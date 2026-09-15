@@ -36,9 +36,16 @@ export default function TrackingPage() {
     accessToken,
     addOrder,
   } = useApp();
-  const [courierLoc, setCourierLoc] = useState<CourierLocationView | null>(
-    null,
-  );
+  const [courierSnapshot, setCourierSnapshot] = useState<{
+    orderId: string;
+    location: CourierLocationView | null;
+  } | null>(null);
+  const [connectionLost, setConnectionLost] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const order = useMemo(() => {
     if (activeOrderId) return orders.find((item) => item.id === activeOrderId);
@@ -58,9 +65,12 @@ export default function TrackingPage() {
     const tick = async () => {
       try {
         const view = await ordersClient.get(orderId, { accessToken });
-        if (!cancelled) addOrder(mapCustomerOrder(view));
+        if (!cancelled) {
+          addOrder(mapCustomerOrder(view));
+          setConnectionLost(false);
+        }
       } catch {
-        // Keep the last known API state and retry on the next polling interval.
+        if (!cancelled) setConnectionLost(true);
       }
     };
     void tick();
@@ -80,9 +90,9 @@ export default function TrackingPage() {
         const location = await ordersClient.getCourierLocation(orderId, {
           accessToken,
         });
-        if (!cancelled) setCourierLoc(location);
+        if (!cancelled) setCourierSnapshot({ orderId, location });
       } catch {
-        // Courier coordinates can arrive after the order status; keep retrying.
+        if (!cancelled) setCourierSnapshot({ orderId, location: null });
       }
     };
     void tick();
@@ -152,12 +162,29 @@ export default function TrackingPage() {
     );
   }
 
-  const safeStep = Math.min(order.stepIndex, ORDER_STEPS.length - 1);
+  const safeStep = Math.max(
+    0,
+    Math.min(order.stepIndex, ORDER_STEPS.length - 1),
+  );
   const delivered = safeStep >= ORDER_STEPS.length - 1;
   const currentStep = ORDER_STEPS[safeStep];
+  const courierLoc =
+    courierSnapshot && courierSnapshot.orderId === orderId
+      ? courierSnapshot.location
+      : null;
+  const locationAge = courierLoc?.updatedAt
+    ? now - new Date(courierLoc.updatedAt).getTime()
+    : Infinity;
   const latitude = courierLoc?.latitude;
   const longitude = courierLoc?.longitude;
-  const hasLiveLocation = latitude != null && longitude != null;
+  const hasLiveLocation =
+    !delivered &&
+    !connectionLost &&
+    safeStep >= 3 &&
+    locationAge >= 0 &&
+    locationAge <= 90_000 &&
+    latitude != null &&
+    longitude != null;
   const coordinateLabel = hasLiveLocation
     ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
     : null;
@@ -168,7 +195,10 @@ export default function TrackingPage() {
   const etaLabel = delivered
     ? t("tracking.arrived")
     : formatEtaRange(order.eta, t);
-  const etaStale = !delivered && isEtaStale(order.eta.computedAt);
+  const etaStale =
+    !delivered &&
+    Boolean(order.eta.computedAt) &&
+    isEtaStale(order.eta.computedAt, now);
   const arrivalAt = etaArrivalTimestamp(order.eta.computedAt, order.eta.max);
   const showPinHandoff =
     !delivered &&
@@ -177,8 +207,13 @@ export default function TrackingPage() {
       order.customerStatus === "driver");
 
   return (
-    <AppFrame padded={false} className="bg-[#202126]">
-      <div className="relative min-h-[58dvh] overflow-hidden bg-[#202126]">
+    <AppFrame padded={false} className="bg-surface">
+      <div
+        className={cn(
+          "relative overflow-hidden bg-surface-secondary",
+          hasLiveLocation ? "min-h-[42dvh]" : "min-h-[260px]",
+        )}
+      >
         {hasLiveLocation ? (
           <div className="absolute inset-0">
             <LocationMap
@@ -188,8 +223,13 @@ export default function TrackingPage() {
             />
           </div>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/70">
-            Waiting for courier location
+          <div className="absolute inset-x-5 top-28 text-center" role="status">
+            <AppText as="p" className="text-2xl font-bold text-foreground">
+              {etaLabel}
+            </AppText>
+            <AppText as="p" className="mt-2 text-sm text-muted">
+              {t(`step.${currentStep.key}.hint`)}
+            </AppText>
           </div>
         )}
 
@@ -198,15 +238,15 @@ export default function TrackingPage() {
           variant="secondary"
           aria-label={t("common.backToHome")}
           onPress={() => router.back()}
-          className="absolute top-[max(18px,env(safe-area-inset-top))] left-5 z-20 size-14 min-w-14 rounded-full border-0 bg-[#1b1b22] text-white shadow-none"
+          className="absolute top-[max(18px,env(safe-area-inset-top))] left-5 z-20 size-14 min-w-14 rounded-full border-0 bg-surface text-foreground shadow-none"
         >
           <ArrowLeft size={21} />
         </Button>
         <div className="absolute top-[max(22px,env(safe-area-inset-top))] inset-x-20 z-10 text-center">
-          <AppText as="p" className="text-[12px] font-semibold text-white/60">
+          <AppText as="p" className="text-[12px] font-semibold text-muted">
             {t("tracking.title")}
           </AppText>
-          <AppText as="p" className="text-[16px] font-bold text-white">
+          <AppText as="p" className="text-[16px] font-bold text-foreground">
             {t(`step.${currentStep.key}.label`)}
           </AppText>
         </div>
@@ -216,21 +256,48 @@ export default function TrackingPage() {
             href={osmHref}
             target="_blank"
             rel="noreferrer"
-            className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white"
+            className="absolute bottom-5 left-5 z-20 rounded-full bg-surface px-4 py-2 text-[11px] font-semibold text-foreground"
           >
             {t("tracking.openMap")} · {coordinateLabel}
           </a>
         ) : (
-          <AppText as="span" className="absolute bottom-5 left-5 z-20 rounded-full bg-[#1b1b22]/90 px-4 py-2 text-[11px] font-semibold text-white/70">
-            {isLocalOrder
-              ? t("tracking.demoMap")
-              : t("tracking.awaitingLocation")}
+          <AppText
+            as="span"
+            className="absolute bottom-5 left-5 z-20 rounded-full bg-surface px-4 py-2 text-[11px] font-semibold text-muted"
+          >
+            {delivered
+              ? t("tracking.arrived")
+              : isLocalOrder
+                ? t("tracking.demoMap")
+                : t("tracking.awaitingLocation")}
           </AppText>
         )}
       </div>
 
       <div className="-mt-3 relative z-20 rounded-t-[42px] bg-surface px-[clamp(20px,8vw,38px)] pt-5 pb-[max(28px,env(safe-area-inset-bottom))]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-tertiary" />
+        {connectionLost && (
+          <AppText
+            as="p"
+            role="status"
+            className="mb-4 rounded-2xl bg-warning/10 p-4 text-sm text-foreground"
+          >
+            {t("tracking.connectionLost")}
+          </AppText>
+        )}
+        {order.deliveryWindowStart && order.deliveryWindowEnd && (
+          <p className="my-4 rounded-2xl border border-border p-4 text-sm">
+            {t("payment.arrivalWindow")}
+            <br />
+            <strong>
+              {new Date(order.deliveryWindowStart).toLocaleString()} –{" "}
+              {new Date(order.deliveryWindowEnd).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </strong>
+          </p>
+        )}
         {order.scheduledAt && order.isScheduled && (
           <AppText as="p" className="mb-4 rounded-2xl bg-card p-4 text-sm">
             Order starts {new Date(order.scheduledAt).toLocaleString()}.
@@ -266,10 +333,14 @@ export default function TrackingPage() {
                 {t("tracking.courier")}
               </Typography>
               <Typography type="h6" className={cn(hx.title, "truncate")}>
-                {t("tracking.courierName")}
+                {t(
+                  safeStep >= 3
+                    ? "tracking.courierAssigned"
+                    : "tracking.courierPending",
+                )}
               </Typography>
             </div>
-            {MASKED_COMMS_ENABLED ? (
+            {MASKED_COMMS_ENABLED && safeStep >= 3 && !delivered ? (
               <>
                 <Button
                   isIconOnly
@@ -334,7 +405,8 @@ export default function TrackingPage() {
                 {t("tracking.pinTitle")}
               </Typography>
               {order.deliveryPin ? (
-                <AppText as="p"
+                <AppText
+                  as="p"
                   data-testid="delivery-pin"
                   className="mt-2 text-2xl font-bold tracking-widest"
                 >
@@ -358,8 +430,10 @@ export default function TrackingPage() {
           >
             {delivered ? t("step.delivered.label") : t("tracking.estimate")}
           </Typography>
-          <AppText as="p" className="mt-1 text-[25px] font-bold">{etaLabel}</AppText>
-          {arrivalAt && !delivered ? (
+          <AppText as="p" className="mt-1 text-[25px] font-bold">
+            {etaLabel}
+          </AppText>
+          {arrivalAt && arrivalAt.getTime() > now && !delivered ? (
             <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
               {t("tracking.arrivalBy", {
                 time: arrivalAt.toLocaleTimeString([], {

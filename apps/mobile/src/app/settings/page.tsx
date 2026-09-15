@@ -133,7 +133,7 @@ export default function SettingsPage() {
         <SettingsRow
           title={t('settings.addresses')}
           detail={t('settings.addressDetail')}
-          href="/addresses/new/?from=settings"
+          href="/addresses/"
         />
         <SettingsRow
           title={t('settings.cache')}

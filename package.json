@@ -30,7 +30,9 @@
     "test:stripe-sandbox": "npm run build --workspace=@repo/i18n && npm run test:stripe-sandbox --workspace=api",
     "test:stripe-browser": "playwright test --config=playwright.stripe.config.ts",
     "stripe:listen": "node scripts/stripe-webhook.cjs",
-    "test:e2e:review": "node e2e/run-role-review.cjs"
+    "test:e2e:review": "node e2e/run-role-review.cjs",
+    "test:customer-ux": "node scripts/test-customer-ux.cjs",
+    "dev:mock-api": "TEST_STRIPE_SANDBOX=0 node e2e/start-api.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

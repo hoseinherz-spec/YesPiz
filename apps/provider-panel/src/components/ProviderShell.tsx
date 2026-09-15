@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { clearProviderToken } from "@/lib/auth";
 
 const NAV = [
+  { href: "/inventory", label: "Stock" },
   { href: "/statement", label: "Settlements" },
   { href: "/offers", label: "Offers" },
   { href: "/kitchen", label: "Kitchen" },

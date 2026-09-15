@@ -3,10 +3,11 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { AppText } from "@/components/Text";
 
-
 import { Button, Card, Separator, Typography } from "@heroui/react";
+import { usePublishedMenuQuery } from "@repo/api";
 import { ShoppingBag, Trash2 } from "@repo/icons";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { AppFrame } from "@/components/AppFrame";
 import { EmptyState } from "@/components/EmptyState";
@@ -23,7 +24,7 @@ import { hx } from "@/lib/heroui-classes";
 
 export default function CartPage() {
   const router = useRouter();
-  const { t, language } = useApp();
+  const { t } = useApp();
   const {
     items,
     menuVersion,
@@ -35,6 +36,19 @@ export default function CartPage() {
     updateQty,
     removeItem,
   } = useCart();
+
+  const menu = usePublishedMenuQuery();
+  const unavailable = items.filter(
+    (item) =>
+      menu.data &&
+      (item.menuVersion !== menu.data.version?.version ||
+        !menu.data.items.some((pizza) => pizza.id === item.menuItemId) ||
+        (item.secondHalfItemId &&
+          !menu.data.items.some(
+            (pizza) => pizza.id === item.secondHalfItemId,
+          ))),
+  );
+  const needsReview = unavailable.length > 0;
 
   if (items.length === 0) {
     return (
@@ -53,7 +67,10 @@ export default function CartPage() {
   }
 
   return (
-    <AppFrame padded={false} className="!pb-32">
+    <AppFrame
+      padded={false}
+      className={menuVersion === 0 ? "!pb-64" : "!pb-32"}
+    >
       <div className="h-[max(38px,env(safe-area-inset-top))] bg-background" />
       <div className="min-h-[calc(100dvh-38px)] flex-1 rounded-t-[44px] bg-surface px-[clamp(20px,8vw,38px)] pt-4 pb-10 text-surface-foreground">
         <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-surface-tertiary" />
@@ -63,6 +80,48 @@ export default function CartPage() {
           backHref="/home/"
         />
 
+        {needsReview && (
+          <div
+            role="alert"
+            className="mt-4 rounded-2xl border border-danger/30 bg-danger/10 p-4"
+          >
+            <AppText as="p" className="text-sm">
+              {t("cart.menuChanged")}
+            </AppText>
+            <Button
+              variant="secondary"
+              className="mt-3"
+              onPress={() =>
+                unavailable.forEach((item) => removeItem(item.lineId))
+              }
+            >
+              {t("cart.removeUnavailable")}
+            </Button>
+            <Link
+              href="/menu/"
+              className="mt-2 flex min-h-11 items-center underline"
+            >
+              {t("common.browseMenu")}
+            </Link>
+          </div>
+        )}
+        {menu.isError && menuVersion !== 0 && (
+          <div
+            role="status"
+            className="mt-4 rounded-2xl bg-surface-secondary p-4"
+          >
+            <AppText as="p" className="text-sm">
+              {t("cart.offlineRecovery")}
+            </AppText>
+            <Button
+              variant="secondary"
+              className="mt-2"
+              onPress={() => void menu.refetch()}
+            >
+              {t("payment.retryQuote")}
+            </Button>
+          </div>
+        )}
         <div className="mt-5 flex flex-col gap-3">
           {items.map((item) => (
             <Card key={item.lineId} className="data-surface rounded-[28px] p-4">
@@ -85,6 +144,13 @@ export default function CartPage() {
                         >
                           {item.name}
                         </Typography>
+                        {unavailable.some(
+                          (line) => line.lineId === item.lineId,
+                        ) && (
+                          <AppText as="p" className="mt-1 text-xs text-danger">
+                            {t("cart.unavailable")}
+                          </AppText>
+                        )}
                         <Typography
                           type="body-xs"
                           className={cn(hx.caption, "mt-1 line-clamp-2")}
@@ -102,7 +168,7 @@ export default function CartPage() {
                         variant="ghost"
                         aria-label={`Remove ${item.name}`}
                         onPress={() => removeItem(item.lineId)}
-                        className="size-8 min-w-8 rounded-full text-danger"
+                        className="size-11 min-w-11 rounded-full text-danger"
                       >
                         <Trash2 size={16} color="var(--danger)" />
                       </Button>
@@ -112,16 +178,21 @@ export default function CartPage() {
                         type="h6"
                         className={cn(hx.title, "tabular-nums")}
                       >
-                        <AnimatedNumber currency value={item.unitPrice * item.quantity} />
+                        <AnimatedNumber
+                          currency
+                          value={item.unitPrice * item.quantity}
+                        />
                       </Typography>
-                      <Stepper
-                        value={item.quantity}
-                        onChange={(next) =>
-                          updateQty(item.lineId, next - item.quantity)
-                        }
-                      />
                     </div>
                   </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <Stepper
+                    value={item.quantity}
+                    onChange={(next) =>
+                      updateQty(item.lineId, next - item.quantity)
+                    }
+                  />
                 </div>
               </Card.Content>
             </Card>
@@ -159,9 +230,36 @@ export default function CartPage() {
         </Card>
       </div>
 
-      {menuVersion === 0 && <AppText as="p" role="status" className="mt-4 text-sm text-muted">{language === "de" ? "Dein Warenkorb ist gespeichert. Öffne die aktuelle Karte, sobald du wieder online bist, um Preise zu bestätigen und zu bestellen." : "Your cart is saved. Open the live menu when connected to confirm prices and checkout."}</AppText>}
       <MobileActionBar
-        isDisabled={menuVersion === 0}
+        className={
+          menuVersion === 0
+            ? "!flex-col !items-stretch !gap-0 !px-5"
+            : undefined
+        }
+        leading={
+          menuVersion === 0 ? (
+            <div
+              role="status"
+              className="mb-3 rounded-[18px] border border-border bg-surface-secondary p-4"
+            >
+              <AppText as="p" className="text-sm font-semibold text-foreground">
+                {t("cart.savedOffline")}
+              </AppText>
+              <AppText as="p" className="mt-1 text-xs text-muted">
+                {t("cart.offlineRecovery")}
+              </AppText>
+              <Link
+                href="/menu/"
+                className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-foreground underline underline-offset-4"
+              >
+                {t("common.browseMenu")}
+              </Link>
+            </div>
+          ) : undefined
+        }
+        isDisabled={
+          menuVersion === 0 || menu.isPending || menu.isError || needsReview
+        }
         onPress={() => router.push("/checkout/")}
         icon={<ShoppingBag size={20} />}
         label={

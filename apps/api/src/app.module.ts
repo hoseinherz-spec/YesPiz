@@ -1,3 +1,7 @@
+import { OperationsModule } from "./operations/operations.module";
+import { InsightsModule } from "./insights/insights.module";
+import { GroupsModule } from "./groups/groups.module";
+import { RewardsModule } from "./rewards/rewards.module";
 import { ReferralsModule } from "./referrals/referrals.module";
 import { FinanceModule } from "./finance/finance.module";
 import { CareModule } from "./care/care.module";
@@ -33,6 +37,10 @@ import { SlaModule } from "./sla/sla.module";
 @Module({
   imports: [
     ReferralsModule,
+    RewardsModule,
+    GroupsModule,
+    InsightsModule,
+    OperationsModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {

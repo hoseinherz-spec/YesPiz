@@ -1004,6 +1004,94 @@ describe("Full lifecycle all roles (e2e)", () => {
     expect(codes.body.pickupCode).toBeDefined();
   }, 180_000);
 
+  it("rejects a changed reviewed price before persistence and accepts a reviewed retry", async () => {
+    const server = app.getHttpServer();
+    const body = {
+      menuVersion,
+      addressId,
+      paymentMethod: "card",
+      lines: [{ menuItemId, quantity: 1 }],
+      idempotencyKey: "reviewed-price-001",
+    };
+    const quote = await request(server)
+      .post("/api/v1/orders/quote")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send(body)
+      .expect(201);
+    const collection = app
+      .get<Connection>(getConnectionToken())
+      .collection("orders");
+    const rejected = await request(server)
+      .post("/api/v1/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ ...body, expectedTotalCents: quote.body.totalCents - 1 })
+      .expect(409);
+    expect(rejected.body.message).toContain("price changed");
+    expect(
+      await collection.countDocuments({ idempotencyKey: body.idempotencyKey }),
+    ).toBe(0);
+    const accepted = await request(server)
+      .post("/api/v1/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ ...body, expectedTotalCents: quote.body.totalCents })
+      .expect(201);
+    const retry = await request(server)
+      .post("/api/v1/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ ...body, expectedTotalCents: quote.body.totalCents })
+      .expect(201);
+    expect(retry.body.id).toBe(accepted.body.id);
+    expect(
+      await collection.countDocuments({ idempotencyKey: body.idempotencyKey }),
+    ).toBe(1);
+  });
+
+  it("blocks expired scheduling, stale menus, unavailable pizza and outside-area addresses", async () => {
+    const server = app.getHttpServer();
+    const body = {
+      menuVersion,
+      addressId,
+      paymentMethod: "card",
+      lines: [{ menuItemId, quantity: 1 }],
+    };
+    const post = (payload: object) =>
+      request(server)
+        .post("/api/v1/orders/quote")
+        .set("Authorization", `Bearer ${customerToken}`)
+        .send(payload);
+    const expired = await post({
+      ...body,
+      scheduledAt: new Date(Date.now() - 60000).toISOString(),
+    }).expect(400);
+    expect(expired.body.message).toContain("start time");
+    const stale = await post({ ...body, menuVersion: 99999 }).expect(400);
+    expect(stale.body.message).toContain("menu has changed");
+    const missing = await post({
+      ...body,
+      lines: [{ menuItemId: new Types.ObjectId().toString(), quantity: 1 }],
+    }).expect(400);
+    expect(missing.body.message).toContain("no longer available");
+    const keys = [
+      "SERVICE_AREA_RADIUS_METERS",
+      "SERVICE_AREA_LATITUDE",
+      "SERVICE_AREA_LONGITUDE",
+    ];
+    const previous = keys.map((key) => process.env[key]);
+    try {
+      process.env.SERVICE_AREA_RADIUS_METERS = "1000";
+      process.env.SERVICE_AREA_LATITUDE = "0";
+      process.env.SERVICE_AREA_LONGITUDE = "0";
+      const outside = await post(body).expect(400);
+      expect(outside.body.message).toContain("outside our delivery area");
+    } finally {
+      keys.forEach((key, index) => {
+        if (previous[index] === undefined) delete process.env[key];
+        else process.env[key] = previous[index];
+      });
+    }
+    await post(body).expect(201);
+  });
+
   it("quotes options, preserves delivery details and makes checkout retries idempotent", async () => {
     const server = app.getHttpServer();
     const body = {

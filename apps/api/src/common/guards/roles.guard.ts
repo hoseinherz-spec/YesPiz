@@ -1,3 +1,4 @@
+import { requiredAdminPermission } from "../security/admin-permissions";
 import {
   CanActivate,
   ExecutionContext,
@@ -22,9 +23,11 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context
-      .switchToHttp()
-      .getRequest<{ user?: JwtPayloadUser }>();
+    const request = context.switchToHttp().getRequest<{
+      user?: JwtPayloadUser;
+      originalUrl: string;
+      method: string;
+    }>();
     const user = request.user;
     if (!user) {
       throw new ForbiddenException("errors.forbidden");
@@ -34,6 +37,20 @@ export class RolesGuard implements CanActivate {
     const ok = required.some((role) => userRoles.includes(role));
     if (!ok) {
       throw new ForbiddenException("errors.roleNotAllowed");
+    }
+    if (
+      required.includes(UserRole.ADMIN) &&
+      userRoles.includes(UserRole.ADMIN) &&
+      user.adminPermissions !== undefined
+    ) {
+      const permission = requiredAdminPermission(
+        request.originalUrl,
+        request.method,
+      );
+      if (!permission || !user.adminPermissions.includes(permission))
+        throw new ForbiddenException(
+          "Your team access does not allow this action.",
+        );
     }
     return true;
   }

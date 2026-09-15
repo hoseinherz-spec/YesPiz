@@ -34,7 +34,12 @@ export default function AddAddressPage() {
     () => "",
   );
   const source = new URLSearchParams(search).get("from");
-  const returnPath = source === "checkout" ? "/checkout/" : "/settings/";
+  const returnPath =
+    source === "checkout"
+      ? "/checkout/"
+      : source === "addresses"
+        ? "/addresses/"
+        : "/settings/";
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<
     Array<{
@@ -308,7 +313,10 @@ export default function AddAddressPage() {
                 id: o.value,
                 label: (
                   <>
-                    <AppText as="span" aria-hidden="true">{o.icon}</AppText> {t(o.key)}
+                    <AppText as="span" aria-hidden="true">
+                      {o.icon}
+                    </AppText>{" "}
+                    {t(o.key)}
                   </>
                 ),
               }))}

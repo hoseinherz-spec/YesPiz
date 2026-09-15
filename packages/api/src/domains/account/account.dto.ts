@@ -1,6 +1,6 @@
-export type UserRole = 'client' | 'provider' | 'courier' | 'admin';
-export type AuthMethod = 'password' | 'google' | 'otp';
-export type InviteRole = 'provider' | 'courier' | 'admin';
+export type UserRole = "client" | "provider" | "courier" | "admin";
+export type AuthMethod = "password" | "google" | "otp";
+export type InviteRole = "provider" | "courier" | "admin";
 
 export type LocationDto = {
   address?: string;
@@ -12,7 +12,7 @@ export type LocationDto = {
   longitude?: number;
   latitude?: number;
   coordinates?: {
-    type?: 'Point';
+    type?: "Point";
     coordinates?: [number, number];
   };
 };
@@ -36,8 +36,8 @@ export type AuthResponse = {
 
 export type SendOtpRequest = {
   phone: string;
-  role?: 'client' | 'customer';
-  channel?: 'sms';
+  role?: "client" | "customer";
+  channel?: "sms";
 };
 
 export type SendOtpResponse = {
@@ -50,14 +50,14 @@ export type SendOtpResponse = {
 export type ConfirmOtpRequest = {
   phone: string;
   code: string;
-  role?: 'client' | 'customer';
+  role?: "client" | "customer";
   firstName?: string;
   lastName?: string;
   location?: LocationDto;
 };
 
 export type LoginRequest = {
-  method: 'password' | 'google';
+  method: "password" | "google";
   role: UserRole;
   email?: string;
   password?: string;
@@ -73,7 +73,7 @@ export type RegisterRequest = {
   email: string;
   password: string;
   /** Public registration ignores privileged roles; customer only. */
-  role?: 'client' | 'customer';
+  role?: "client" | "customer";
   location?: LocationDto;
 };
 
@@ -124,6 +124,7 @@ export type ResetPasswordRequest = {
 };
 
 export type ProfileResponse = {
+  adminPermissions?: string[];
   id: string;
   firstName: string;
   lastName: string;

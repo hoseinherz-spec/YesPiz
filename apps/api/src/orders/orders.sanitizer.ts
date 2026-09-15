@@ -52,6 +52,7 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     menuVersion: plain.menuVersion,
     lines: lines.map((line) => ({
       menuItemId: String(line.menuItemId),
+      secondHalfItemId: line.secondHalfItemId,
       name: line.name,
       unitPriceCents: line.unitPriceCents,
       quantity: line.quantity,
@@ -66,6 +67,9 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     couponCode: plain.couponCode,
     deliveryFeeCents: plain.deliveryFeeCents,
     totalCents: plain.totalCents,
+    walletCents: plain.walletCents ?? 0,
+    deliveryWindowStart: plain.deliveryWindowStart,
+    deliveryWindowEnd: plain.deliveryWindowEnd,
     // Blind: never expose raw kitchen/ops status strings — use customerStatus only
     customerStatus: projection,
     orderState: [OrderStatus.CANCELLED, OrderStatus.FAILED_CASH].includes(

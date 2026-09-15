@@ -1,3 +1,4 @@
+import { Cron } from "@nestjs/schedule";
 import {
   BadRequestException,
   Body,
@@ -195,6 +196,21 @@ export class ReferralsService implements OnModuleInit {
         eligible: Boolean(await this.qualifyingOrder(row.inviteeId)),
       })),
     );
+  }
+  // Resume only approvals already authorized by an administrator.
+  @Cron("25 * * * * *")
+  async resumeApprovedRewards() {
+    const rows = await this.referrals
+      .find({ status: "approving", approvedBy: { $exists: true } })
+      .limit(50)
+      .exec();
+    for (const row of rows) {
+      try {
+        await this.approve(row.id, row.approvedBy!);
+      } catch {
+        /* Keep the durable approval in the review queue for retry. */
+      }
+    }
   }
   async approve(id: string, adminId: string) {
     if (!Types.ObjectId.isValid(id))

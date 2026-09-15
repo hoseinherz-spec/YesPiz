@@ -5,33 +5,186 @@
 @source "../../../../packages/api/src/components";
 @source "../../../../packages/ui/src";
 
-.account-shortcut { display: flex; min-height: 108px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px 6px; border: 1px solid var(--border); border-radius: 24px; background: var(--surface-secondary); color: var(--foreground); font-size: 12px; font-weight: 600; text-align: center; transition: background-color var(--app-motion-control) var(--app-motion-ease); }
-.account-shortcut-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 14px; background: var(--surface-tertiary); color: var(--accent); }
-.account-shortcut:hover { background: var(--surface-tertiary); }
-.account-shortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
-.referral-ticket::before { content: ''; pointer-events: none; position: absolute; right: -36px; top: -48px; width: 140px; height: 140px; border-radius: 50%; border: 22px solid color-mix(in oklab, var(--accent) 5%, transparent); }
+.account-shortcut {
+  display: flex;
+  min-height: 108px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 6px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface-secondary);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color var(--app-motion-control) var(--app-motion-ease);
+}
+.account-shortcut-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--surface-tertiary);
+  color: var(--accent);
+}
+.account-shortcut:hover {
+  background: var(--surface-tertiary);
+}
+.account-shortcut:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.referral-ticket::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  right: -36px;
+  top: -48px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 22px solid color-mix(in oklab, var(--accent) 5%, transparent);
+}
 
-.cart-dock-action { position: relative; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; flex-shrink: 0; border-radius: 50%; pointer-events: auto; background: var(--accent); color: var(--accent-foreground); border: 1px solid color-mix(in oklab, var(--foreground) 15%, transparent); box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 22%, transparent), 0 8px 24px color-mix(in oklab, var(--accent) 15%, transparent); transition: transform var(--app-motion-control) var(--app-motion-ease); }
-.cart-dock-action:active { transform: scale(.96); }
-.cart-dock-action:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
-.cart-dock-count { position: absolute; top: -3px; right: -3px; display: grid; place-items: center; min-width: 23px; height: 23px; padding-inline: 5px; border: 2px solid var(--background); border-radius: 12px; background: var(--foreground); color: var(--background); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.product-showcase { background: radial-gradient(ellipse at 65% 20%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 62%), var(--card); border: 1px solid var(--border); }
-.product-showcase-image { filter: drop-shadow(0 18px 16px color-mix(in oklab, var(--background) 50%, transparent)); }
-.product-showcase-caption { position: relative; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--surface-secondary) 88%, transparent); }
+.cart-dock-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  pointer-events: auto;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: 1px solid color-mix(in oklab, var(--foreground) 15%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--foreground) 22%, transparent),
+    0 8px 24px color-mix(in oklab, var(--accent) 15%, transparent);
+  transition: transform var(--app-motion-control) var(--app-motion-ease);
+}
+.cart-dock-action:active {
+  transform: scale(0.96);
+}
+.cart-dock-action:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.cart-dock-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  min-width: 23px;
+  height: 23px;
+  padding-inline: 5px;
+  border: 2px solid var(--background);
+  border-radius: 12px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.product-showcase {
+  background:
+    radial-gradient(
+      ellipse at 65% 20%,
+      color-mix(in oklab, var(--accent) 12%, transparent),
+      transparent 62%
+    ),
+    var(--card);
+  border: 1px solid var(--border);
+}
+.product-showcase-image {
+  filter: drop-shadow(
+    0 18px 16px color-mix(in oklab, var(--background) 50%, transparent)
+  );
+}
+.product-showcase-caption {
+  position: relative;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface-secondary) 88%, transparent);
+}
 
 /* Data and empty-state surfaces use the same light source and app palette. */
 .data-surface {
-  background: linear-gradient(145deg, color-mix(in oklab, var(--surface-secondary) 92%, var(--foreground)), var(--surface-secondary) 65%);
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--surface-secondary) 92%, var(--foreground)),
+    var(--surface-secondary) 65%
+  );
   border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 5%, transparent), 0 12px 32px color-mix(in oklab, var(--background) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--foreground) 5%, transparent),
+    0 12px 32px color-mix(in oklab, var(--background) 55%, transparent);
 }
-.empty-state-scene { position: relative; width: 200px; height: 156px; margin-bottom: 24px; }
-.empty-state-orbit { position: absolute; inset: 0 22px; border: 1px solid var(--border); border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--accent) 7%, transparent), transparent 70%); }
-.empty-state-preview { position: absolute; top: 33px; left: 24px; width: 132px; height: 90px; padding: 24px 20px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-secondary); transform: rotate(-9deg); }
-.empty-state-preview span { display: block; height: 5px; margin-bottom: 9px; border-radius: 4px; background: var(--border); }
-.empty-state-preview span:last-child { width: 55%; }
-.empty-state-icon { position: absolute; right: 18px; bottom: 10px; border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border)); background: var(--surface-tertiary); box-shadow: 0 10px 24px color-mix(in oklab, var(--background) 65%, transparent); }
-.empty-state-image { border-radius: 50%; position: absolute; top: 10px; left: 25px; width: 130px; height: 130px; object-fit: contain; filter: drop-shadow(0 12px 10px color-mix(in oklab, var(--background) 60%, transparent)); }
+.empty-state-scene {
+  position: relative;
+  width: 200px;
+  height: 156px;
+  margin-bottom: 24px;
+}
+.empty-state-orbit {
+  position: absolute;
+  inset: 0 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--accent) 7%, transparent),
+    transparent 70%
+  );
+}
+.empty-state-preview {
+  position: absolute;
+  top: 33px;
+  left: 24px;
+  width: 132px;
+  height: 90px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  transform: rotate(-9deg);
+}
+.empty-state-preview span {
+  display: block;
+  height: 5px;
+  margin-bottom: 9px;
+  border-radius: 4px;
+  background: var(--border);
+}
+.empty-state-preview span:last-child {
+  width: 55%;
+}
+.empty-state-icon {
+  position: absolute;
+  right: 18px;
+  bottom: 10px;
+  border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
+  background: var(--surface-tertiary);
+  box-shadow: 0 10px 24px
+    color-mix(in oklab, var(--background) 65%, transparent);
+}
+.empty-state-image {
+  border-radius: 50%;
+  position: absolute;
+  top: 10px;
+  left: 25px;
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 12px 10px color-mix(in oklab, var(--background) 60%, transparent)
+  );
+}
 
 @theme inline {
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
@@ -46,14 +199,14 @@
 [data-theme="light"] {
   --accent: #d8ff00;
   --accent-foreground: #08111f;
-  --background: #f5f7fa;
+  --background: #ffffff;
   --foreground: #101828;
   --border: #e4e7ec;
   --danger: #e5484d;
   --danger-foreground: #ffffff;
-  --default: #eef1f6;
+  --default: #f0f5f1;
   --default-foreground: #101828;
-  --field-background: #ffffff;
+  --field-background: #f0f5f1;
   --field-border: transparent;
   --field-foreground: #101828;
   --field-placeholder: #98a2b3;
@@ -67,7 +220,7 @@
   --surface-foreground: #101828;
   --surface-secondary: #ffffff;
   --surface-secondary-foreground: #101828;
-  --surface-tertiary: #eef1f6;
+  --surface-tertiary: #f0f5f1;
   --surface-tertiary-foreground: #101828;
   --warning: #e08a00;
   --warning-foreground: #08111f;
@@ -156,7 +309,7 @@ textarea,
   .button--primary {
     background-color: var(--accent);
     color: var(--accent-foreground);
-    box-shadow: 0 8px 24px rgba(216, 255, 0, 0.28);
+    box-shadow: 0 8px 24px rgba(216, 255, 0, 0.12);
   }
 
   .button--primary:hover {
@@ -166,20 +319,31 @@ textarea,
 
 @layer components {
   /* Preserve the surrounding design scale while routing all copy through HeroUI. */
-  .app-text { font-size: inherit; font-weight: inherit; line-height: inherit; color: inherit; text-align: inherit; }
-  strong.app-text { font-weight: bolder; }
-  small.app-text { font-size: .833em; }
+  .app-text {
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    color: inherit;
+    text-align: inherit;
+  }
+  strong.app-text {
+    font-weight: bolder;
+  }
+  small.app-text {
+    font-size: 0.833em;
+  }
 }
 
-
-
 /* Readable supporting copy and focus indicators on the light app surface. */
-:root, .light, [data-theme="light"] {
+:root,
+.light,
+[data-theme="light"] {
   --muted: #667085;
   --field-placeholder: #667085;
   --focus: #344054;
 }
-.dark, [data-theme="dark"] {
+.dark,
+[data-theme="dark"] {
   --muted: #a5afc0;
   --field-placeholder: #a5afc0;
   --focus: #d8ff00;
@@ -188,10 +352,18 @@ textarea,
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
-:where(h1, h2, h3) { text-wrap: balance; }
-:where(input[inputmode="decimal"], input[type="number"]) { font-variant-numeric: tabular-nums; }
+:where(h1, h2, h3) {
+  text-wrap: balance;
+}
+:where(input[inputmode="decimal"], input[type="number"]) {
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 600px) {
-  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: max(1rem, 1em); }
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: max(1rem, 1em);
+  }
 }
 
 /* Keep focused form controls clear of the fixed checkout action. */
@@ -199,7 +371,10 @@ textarea,
   scroll-margin-block: 24px 140px;
 }
 
-.account-shortcut-icon { background: var(--accent); color: var(--accent-foreground); }
+.account-shortcut-icon {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
 
 .button--secondary {
   --button-fg: var(--foreground);
@@ -209,6 +384,174 @@ textarea,
 }
 
 /* A five-point scale stays together instead of becoming a long vertical form. */
-.feedback-score { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.feedback-score > .label, .feedback-score > .field-error { grid-column: 1 / -1; }
-.feedback-score .radio { min-width: 0; min-height: 48px; justify-content: center; padding: 8px 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-secondary); }
+.feedback-score {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.feedback-score > .label,
+.feedback-score > .field-error {
+  grid-column: 1 / -1;
+}
+.feedback-score .radio {
+  min-width: 0;
+  min-height: 48px;
+  justify-content: center;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-secondary);
+}
+
+/* Yespiz navy and phosphor palette, preserving the reference layouts. */
+:root,
+.light,
+[data-theme="light"] {
+  --selection: #d8ff00;
+  --selection-foreground: #182000;
+  --selection-soft: #f4ffd0;
+  --selection-ink: #516500;
+  --muted: #647293;
+  --field-placeholder: #647293;
+  --text-secondary: #52617d;
+  --nav-background: #0b0e11;
+  --nav-muted: #a0acc2;
+  --reference-shadow: 0 12px 34px rgba(20, 30, 45, 0.055);
+  --focus: #344054;
+}
+.dark,
+[data-theme="dark"] {
+  --selection: #d8ff00;
+  --selection-foreground: #182000;
+  --selection-soft: #283620;
+  --selection-ink: #d8ff00;
+  --nav-background: #182338;
+  --nav-muted: #b5bfd1;
+  --reference-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+  --focus: #d8ff00;
+}
+
+nav:has(.cart-dock-action) [data-id][aria-current="page"] {
+  background: #354000;
+  color: white;
+}
+nav:has(.cart-dock-action) [data-id] {
+  position: relative;
+  z-index: 1;
+}
+.cart-dock-action {
+  background: var(--selection);
+  color: var(--selection-foreground);
+  box-shadow: var(--reference-shadow);
+}
+
+nav:has(.cart-dock-action) .app-selection-background {
+  background: #354000;
+}
+
+.reference-segments > button {
+  background: transparent;
+  box-shadow: none;
+  color: var(--nav-muted);
+  --button-bg: transparent;
+  --button-fg: var(--nav-muted);
+}
+.reference-segments > button[aria-pressed="true"] {
+  background: var(--selection);
+  color: var(--selection-foreground);
+  --button-bg: var(--selection);
+  --button-fg: var(--selection-foreground);
+}
+.reference-order-top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.reference-order-image {
+  width: 96px;
+  height: 104px;
+  flex-shrink: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface-tertiary);
+  display: grid;
+  place-items: center;
+}
+.reference-order-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.reference-order-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.reference-order-actions > button {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.reference-order-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.reference-order-meta strong {
+  color: var(--accent);
+  font-size: 22px;
+}
+.reference-order-status {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.dark .text-accent,
+[data-theme="dark"] .text-accent {
+  color: var(--accent);
+}
+
+.reference-sheet.drawer__dialog {
+  margin: 0;
+  width: 100%;
+  max-width: 473px;
+  border-radius: 26px 26px 0 0;
+  padding: 20px 18px max(24px, env(safe-area-inset-bottom));
+}
+.reference-sheet .drawer__header {
+  flex-direction: row;
+  align-items: center;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.reference-sheet .drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.reference-sheet .drawer__body > button {
+  min-height: 48px;
+  border-radius: 999px;
+}
+
+.reference-sheet .grid > button {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 999px;
+}
+
+.dark, [data-theme="dark"] { --muted:#b2bdd0; --field-placeholder:#b2bdd0; --text-secondary:#c2cad6; }
+
+/* Phosphor is a fill on light surfaces; standalone prices remain readable. */
+.light .text-accent, [data-theme="light"] .text-accent, .light .reference-order-meta strong, [data-theme="light"] .reference-order-meta strong { color:#516500; }

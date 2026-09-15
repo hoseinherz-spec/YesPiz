@@ -119,6 +119,7 @@ process.on("SIGINT", stop);
     seed.on("error", reject);
   });
   if (process.env.YESPIZZ_FEATURE_TEST === "1") await require("./feature-fixtures.cjs")(mongo.getUri());
+  if (process.env.YESPIZZ_EXPANSION_PREVIEW === "1") await require("./expansion-fixtures.cjs")(mongo.getUri());
   api = spawn(
     process.execPath,
     ["-r", "ts-node/register", "-r", "tsconfig-paths/register", "src/main.ts"],

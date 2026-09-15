@@ -1,4 +1,5 @@
 "use client";
+import { InviteFriends } from "@/components/InviteFriends";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { PageBanner } from "@/components/PageBanner";
@@ -43,7 +44,7 @@ export default function ReferralsPage() {
     };
   }, [accessToken, reload]);
   async function apply() {
-    if (!accessToken) return;
+    if (!accessToken || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -120,6 +121,7 @@ export default function ReferralsPage() {
                   : "New referral rewards are currently paused."}
             </AppText>
           </section>
+          <InviteFriends code={data.code} de={de} />
           <div className="my-6 grid grid-cols-2 gap-3">
             <AppText as="p" className="data-surface rounded-[22px] p-4">
               <Clock size={18} className="mb-3 text-muted" />

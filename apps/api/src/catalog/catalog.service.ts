@@ -446,7 +446,9 @@ export class CatalogService {
       .findOne({ version: menuVersion, published: true })
       .exec();
     if (!version) {
-      throw new BadRequestException("errors.badRequest");
+      throw new BadRequestException(
+        "The menu has changed. Please refresh your cart.",
+      );
     }
     const items = await this.items
       .find({

@@ -1,9 +1,14 @@
+import {
+  InventoryService,
+  hasIngredients,
+} from "../inventory/inventory.module";
 import { randomUUID } from "crypto";
 import { canReceiveOrder } from "../providers/availability";
 import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Optional,
   Logger,
   NotFoundException,
 } from "@nestjs/common";
@@ -33,6 +38,7 @@ export class DispatchService {
     private readonly realtime: RealtimeGateway,
     private readonly push: PushService,
     private readonly eta: EtaService,
+    @Optional() private readonly inventory?: InventoryService,
   ) {}
 
   async startDispatch(orderId: string) {
@@ -65,7 +71,10 @@ export class DispatchService {
         ? cfg.dispatchExpandedRadiusMeters
         : cfg.dispatchInitialRadiusMeters;
 
-    const requiredItems = order.lines.map((l) => String(l.menuItemId));
+    const requiredItems = order.lines.flatMap((l) => [
+      String(l.menuItemId),
+      ...(l.secondHalfItemId ? [l.secondHalfItemId] : []),
+    ]);
     const nearby = await this.providers.findNearby(
       lng,
       lat,
@@ -73,7 +82,7 @@ export class DispatchService {
       requiredItems,
     );
     const ranked = this.rankProviders(
-      nearby,
+      nearby.filter((p) => hasIngredients(p, order.lines)),
       lng,
       lat,
       cfg.w1Rating,
@@ -284,9 +293,13 @@ export class DispatchService {
         const provider = byId.get(String(bid.providerId));
         return (
           provider &&
+          hasIngredients(provider, order.lines) &&
           canReceiveOrder(
             provider,
-            order.lines.map((line) => String(line.menuItemId)),
+            order.lines.flatMap((line) => [
+              String(line.menuItemId),
+              ...(line.secondHalfItemId ? [line.secondHalfItemId] : []),
+            ]),
           )
         );
       });
@@ -307,28 +320,49 @@ export class DispatchService {
         1,
       );
 
-      let best = readyBids[0]!;
-      let bestScore = -Infinity;
-      for (const bid of readyBids) {
-        const p = byId.get(String(bid.providerId))!;
-        const prepScore = 1 - (bid.quotedPrepMinutes ?? maxPrep) / maxPrep;
-        const qualityScore = (p.qualityScore ?? 100) / 100;
-        const fairness =
-          (p.fairnessWeight ?? 1) *
-          (1 - (p.recentAcceptCount ?? 0) / maxRecent);
-        const base = bid.score ?? 0;
-        const score =
-          0.35 * base +
-          0.25 * prepScore +
-          (cfg.w5Quality ?? 0.25) * qualityScore +
-          (cfg.w4Fairness ?? 0.15) * fairness;
-        if (score > bestScore) {
-          bestScore = score;
-          best = bid;
+      const ranked = readyBids
+        .map((bid) => {
+          const p = byId.get(String(bid.providerId))!;
+          const prepScore = 1 - (bid.quotedPrepMinutes ?? maxPrep) / maxPrep;
+          const fairness =
+            (p.fairnessWeight ?? 1) *
+            (1 - (p.recentAcceptCount ?? 0) / maxRecent);
+          return {
+            bid,
+            score:
+              0.35 * (bid.score ?? 0) +
+              0.25 * prepScore +
+              ((cfg.w5Quality ?? 0.25) * (p.qualityScore ?? 100)) / 100 +
+              (cfg.w4Fairness ?? 0.15) * fairness,
+          };
+        })
+        .sort((a, b) => b.score - a.score);
+      let selected: (typeof ranked)[number] | undefined;
+      for (const candidate of ranked) {
+        if (
+          !this.inventory ||
+          (await this.inventory.reserve(
+            String(candidate.bid.providerId),
+            order.id,
+            order.lines,
+          ))
+        ) {
+          selected = candidate;
+          break;
         }
+        candidate.bid.status = OfferStatus.REJECTED;
       }
+      if (!selected) {
+        for (const offer of order.offers)
+          if (offer.status === OfferStatus.PENDING)
+            offer.status = OfferStatus.EXPIRED;
+        await order.save();
+        return this.afterNoPendingOffers(order);
+      }
+      const best = selected.bid,
+        bestScore = selected.score,
+        winnerId = String(best.providerId);
 
-      const winnerId = String(best.providerId);
       best.status = OfferStatus.ACCEPTED;
       for (const other of order.offers) {
         if (
@@ -340,6 +374,7 @@ export class DispatchService {
       }
       order.providerId = new Types.ObjectId(winnerId);
       order.status = OrderStatus.ACCEPTED_BY_PROVIDER;
+      order.acceptedAt = new Date();
       order.quotedPrepMinutes = best.quotedPrepMinutes;
       await this.eta.computeForOrder(order, {
         quotedPrepMinutes: best.quotedPrepMinutes,

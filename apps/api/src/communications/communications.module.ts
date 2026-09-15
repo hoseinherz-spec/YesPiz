@@ -1,6 +1,8 @@
+import { MediaService } from "../media/media.module";
 import { Schema as MongoSchema } from "mongoose";
 import {
   BadRequestException,
+  ConflictException,
   Body,
   Controller,
   Get,
@@ -21,7 +23,13 @@ import {
   SchemaFactory,
 } from "@nestjs/mongoose";
 import { Throttle } from "@nestjs/throttler";
-import { IsString, IsUUID, MaxLength, MinLength } from "class-validator";
+import {
+  IsString,
+  IsUUID,
+  MaxLength,
+  IsOptional,
+  IsMongoId,
+} from "class-validator";
 import { HydratedDocument, Model, Types } from "mongoose";
 import Twilio from "twilio";
 import {
@@ -45,12 +53,17 @@ class OrderMessage {
   @Prop({ required: true }) senderId!: string;
   @Prop({ required: true }) senderRole!: string;
   @Prop({ required: true }) clientId!: string;
-  @Prop({ required: true }) text!: string;
+  @Prop({ default: "" }) text!: string;
+  @Prop({ type: MongoSchema.Types.Mixed }) attachment?: {
+    id: string;
+    contentType: string;
+  };
 }
 const MessageSchema = SchemaFactory.createForClass(OrderMessage);
 MessageSchema.index({ orderId: 1, senderId: 1, clientId: 1 }, { unique: true });
 class MessageDto {
-  @IsString() @MinLength(1) @MaxLength(1000) text!: string;
+  @IsString() @MaxLength(1000) text!: string;
+  @IsOptional() @IsMongoId() mediaId?: string;
   @IsUUID() clientId!: string;
 }
 @Injectable()
@@ -62,6 +75,7 @@ class CommunicationsService {
     private readonly messages: Model<HydratedDocument<OrderMessage>>,
     private readonly config: ConfigService,
     private readonly push: PushService,
+    private readonly media: MediaService,
   ) {}
   private async authorize(userId: string, id: string) {
     if (!Types.ObjectId.isValid(id)) throw new NotFoundException();
@@ -98,6 +112,7 @@ class CommunicationsService {
     return rows.reverse().map((row) => ({
       id: row.id,
       text: row.text,
+      attachment: row.attachment,
       mine: row.senderId === userId,
       senderRole: row.senderRole,
     }));
@@ -106,17 +121,34 @@ class CommunicationsService {
     const order = await this.authorize(userId, id);
     this.active(order);
     const text = dto.text.trim();
-    if (!text) throw new BadRequestException("Enter a message.");
+    if (!text && !dto.mediaId)
+      throw new BadRequestException("Enter a message or attach a file.");
+    const attachment = dto.mediaId
+      ? await this.media.chatAttachment(userId, id, dto.mediaId)
+      : undefined;
     const customer = String(order.customerId) === userId;
     const result = await this.messages
       .updateOne(
         { orderId: id, senderId: userId, clientId: dto.clientId },
         {
-          $setOnInsert: { text, senderRole: customer ? "customer" : "courier" },
+          $setOnInsert: {
+            text,
+            attachment,
+            senderRole: customer ? "customer" : "courier",
+          },
         },
         { upsert: true },
       )
       .exec();
+    const stored = await this.messages.findOne({
+      orderId: id,
+      senderId: userId,
+      clientId: dto.clientId,
+    });
+    if (stored?.text !== text || stored?.attachment?.id !== attachment?.id)
+      throw new ConflictException(
+        "This message reference was already used. Start a new message.",
+      );
     if (result.upsertedCount)
       await this.push.notify({
         userId: String(customer ? order.courierId : order.customerId),

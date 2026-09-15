@@ -1,6 +1,7 @@
 export type CheckoutSchedule = "asap" | "45" | "1hour" | "later";
 
 export type CheckoutPrefs = {
+  deliverySlotId?: string;
   schedule: CheckoutSchedule;
   scheduledAt?: string;
   leaveAtDoor: boolean;
@@ -12,6 +13,7 @@ export type CheckoutPrefs = {
 };
 
 const KEYS = {
+  deliverySlotId: "yespizz_delivery_slot",
   schedule: "yespizz_checkout_schedule",
   scheduledAt: "yespizz_checkout_scheduled_at",
   leaveAtDoor: "yespizz_checkout_leave_at_door",
@@ -28,6 +30,7 @@ export function readCheckoutPrefs(): CheckoutPrefs {
     const schedule = sessionStorage.getItem(KEYS.schedule);
     const leaveRaw = sessionStorage.getItem(KEYS.leaveAtDoor);
     return {
+      deliverySlotId: sessionStorage.getItem(KEYS.deliverySlotId) || undefined,
       schedule:
         schedule === "45" || schedule === "1hour" || schedule === "later"
           ? schedule
@@ -51,6 +54,7 @@ export function writeCheckoutPrefs(
   paymentMethod?: "card" | "cash",
 ) {
   try {
+    sessionStorage.setItem(KEYS.deliverySlotId, prefs.deliverySlotId ?? "");
     sessionStorage.setItem(KEYS.schedule, prefs.schedule);
     sessionStorage.setItem(KEYS.scheduledAt, prefs.scheduledAt ?? "");
     sessionStorage.setItem(KEYS.leaveAtDoor, String(prefs.leaveAtDoor));

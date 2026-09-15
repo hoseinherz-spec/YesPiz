@@ -6,6 +6,16 @@ export type ProviderDocument = HydratedDocument<Provider>;
 
 @Schema({ timestamps: true, collection: "providers" })
 export class Provider {
+  @Prop({ default: false }) inventoryEnabled!: boolean;
+  @Prop({ default: 0 }) inventoryRevision!: number;
+  @Prop({ type: MongoSchema.Types.Mixed, default: {} })
+  ingredientStock!: Record<string, number>;
+  @Prop({ type: [String], default: [] }) inventoryReceipts!: string[];
+  @Prop({ type: Object, default: {} }) inventoryReservations!: Record<
+    string,
+    { demand: Record<string, number>; reservedAt: Date }
+  >;
+
   @Prop({ default: false }) hoursEnabled!: boolean;
   @Prop({ default: "Europe/Vienna" }) timezone!: string;
   @Prop({

@@ -11,10 +11,10 @@ export const tabBar = tv({
   variants: {
     focused: {
       true: {
-        label: "text-accent-foreground",
+        label: "text-white",
       },
       false: {
-        label: "text-muted",
+        label: "text-[var(--nav-muted)]",
       },
     },
   },

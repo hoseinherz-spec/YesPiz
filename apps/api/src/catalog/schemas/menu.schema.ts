@@ -1,3 +1,4 @@
+import type { RecipeChoice } from "../recipe-coverage";
 import type { PizzaPresentation } from "../presentation";
 import type { PizzaCustomization } from "../customization";
 import { Schema as MongoSchema } from "mongoose";
@@ -61,6 +62,8 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 @Schema({ timestamps: true, collection: "menu_items" })
 export class MenuItem {
+  @Prop({type:[MongoSchema.Types.Mixed],default:[]}) recipeChoices!:RecipeChoice[];
+  @Prop({default:0}) recipeRevision!:number;
   @Prop({ type: [MongoSchema.Types.ObjectId], default: [] })
   additionalCategoryIds!: Types.ObjectId[];
   @Prop({ type: MongoSchema.Types.Mixed }) presentation?: PizzaPresentation;

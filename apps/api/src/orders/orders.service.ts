@@ -1,6 +1,9 @@
+import { selectedRecipe } from "../catalog/recipe-coverage";
+import { RewardPolicyService } from "../rewards/policy.module";
 import { priceCustomization } from "../catalog/customization";
 import { GrowthService } from "../growth/growth.module";
 import { ConfigService } from "@nestjs/config";
+import { SlotsService } from "../slots/slots.module";
 import { linePrice, pricingOptions } from "./pricing";
 import {
   BadRequestException,
@@ -84,6 +87,8 @@ export class OrdersService implements OnModuleInit {
     private readonly providersService: ProvidersService,
     private readonly environment: ConfigService,
     @Optional() private readonly growth?: GrowthService,
+    @Optional() private readonly slots?: SlotsService,
+    @Optional() private readonly rewardPolicy?: RewardPolicyService,
   ) {}
 
   async onModuleInit() {
@@ -160,12 +165,30 @@ export class OrdersService implements OnModuleInit {
       if (exists) return existingOrder();
     }
     const data = await this.prepareOrder(userId, dto);
+    if (
+      dto.expectedTotalCents != null &&
+      dto.expectedTotalCents !== data.totalCents
+    ) {
+      throw new ConflictException(
+        "The price changed. Review the updated total, then submit again.",
+      );
+    }
+    const loyaltyPolicy=await this.rewardPolicy?.current();
     try {
-      const order = await this.orders.create({
-        ...data,
-        idempotencyKey,
-        checkoutFingerprint: fingerprint,
-      });
+      const persist = () =>
+        this.orders.create({
+          ...data,
+          idempotencyKey,
+          checkoutFingerprint: fingerprint,
+          loyaltyPolicy,
+        });
+      const order = dto.deliverySlotId
+        ? await this.slots!.reserve(
+            dto.deliverySlotId,
+            dto.lines.reduce((n, l) => n + l.quantity, 0),
+            persist,
+          )
+        : await persist();
       return toCustomerView(order);
     } catch (error) {
       if (idempotencyKey && (error as { code?: number }).code === 11000)
@@ -182,10 +205,24 @@ export class OrdersService implements OnModuleInit {
       subtotalCents: order.subtotalCents,
       deliveryFeeCents: order.deliveryFeeCents,
       totalCents: order.totalCents,
+      walletCents: order.walletCents,
+      cardCents: order.totalCents - order.walletCents,
+      deliveryWindowStart: order.deliveryWindowStart,
+      deliveryWindowEnd: order.deliveryWindowEnd,
     };
   }
 
   private async prepareOrder(userId: string, dto: CreateOrderDto) {
+    if (dto.deliverySlotId && !this.slots)
+      throw new BadRequestException("Delivery reservations are unavailable.");
+    const slot = dto.deliverySlotId
+      ? await this.slots!.details(dto.deliverySlotId)
+      : null;
+    const scheduledAt = slot
+      ? new Date(
+          slot.startsAt.getTime() - slot.leadMinutes * 60000,
+        ).toISOString()
+      : dto.scheduledAt;
     const user = await this.accounts.findById(userId);
     if (!user) throw new ForbiddenException("errors.forbidden");
 
@@ -220,14 +257,19 @@ export class OrdersService implements OnModuleInit {
         );
     }
 
-    const itemIds = dto.lines.map((l) => l.menuItemId);
+    const itemIds = dto.lines.flatMap((l) => [
+      l.menuItemId,
+      ...(l.secondHalfItemId ? [l.secondHalfItemId] : []),
+    ]);
     const { items } = await this.catalog.getActiveItemsByIds(
       itemIds,
       dto.menuVersion,
-      dto.scheduledAt ? new Date(dto.scheduledAt) : new Date(),
+      scheduledAt ? new Date(scheduledAt) : new Date(),
     );
     if (items.length !== new Set(itemIds).size) {
-      throw new BadRequestException("errors.badRequest");
+      throw new BadRequestException(
+        "A pizza is no longer available at the selected time. Please review your cart.",
+      );
     }
 
     const pricingConfig = await this.appConfig.get();
@@ -235,6 +277,19 @@ export class OrdersService implements OnModuleInit {
     let subtotalCents = 0;
     const lines = dto.lines.map((line) => {
       const item = byId.get(line.menuItemId)!;
+      const secondHalf = line.secondHalfItemId
+        ? byId.get(line.secondHalfItemId)
+        : undefined;
+      if (
+        line.secondHalfItemId &&
+        (!secondHalf ||
+          item.customization ||
+          secondHalf.customization ||
+          line.secondHalfItemId === line.menuItemId)
+      )
+        throw new BadRequestException(
+          "Choose two different standard pizzas for half & half.",
+        );
       const size = line.size ?? "medium";
       const extras = line.extras ?? [];
       if (
@@ -256,35 +311,81 @@ export class OrdersService implements OnModuleInit {
         : undefined;
       const unitPriceCents =
         custom?.unitPriceCents ??
-        linePrice(item.priceCents, size, extras, pricingConfig);
+        linePrice(
+          secondHalf
+            ? Math.round((item.priceCents + secondHalf.priceCents) / 2) + 100
+            : item.priceCents,
+          size,
+          extras,
+          pricingConfig,
+        );
       subtotalCents += unitPriceCents * line.quantity;
+      const recipe=selectedRecipe(item,size,extras,custom?.variantId,custom?.selections);
+      const otherRecipe=secondHalf?selectedRecipe(secondHalf,size,extras):undefined;
       return {
         menuItemId: item._id,
+        secondHalfItemId: secondHalf?.id,
         pizzaId: item.pizzaId ?? item.id,
         variantId: custom?.variantId,
         selections: custom?.selections ?? [],
         selectionLabels: custom?.selectionLabels ?? [],
         recipeSnapshot: {
-          recipeIngredients: item.recipeIngredients ?? [],
-          checklistTemplate: item.checklistTemplate ?? [],
-          requiresNumberedSeal: item.requiresNumberedSeal !== false,
-          requiresReadyPhoto: item.requiresReadyPhoto === true,
-          handoffTempC: item.handoffTempC ?? 65,
+          inventoryComplete:recipe.complete&&(!otherRecipe||otherRecipe.complete),
+          recipeIngredients:otherRecipe?[...recipe.ingredients,...otherRecipe.ingredients].map(i=>({name:i.name,weightGrams:i.weightGrams/2})):recipe.ingredients,
+          checklistTemplate: [
+            ...new Set([
+              ...(item.checklistTemplate ?? []),
+              ...(secondHalf?.checklistTemplate ?? []),
+            ]),
+          ],
+          requiresNumberedSeal:
+            item.requiresNumberedSeal !== false ||
+            (secondHalf ? secondHalf.requiresNumberedSeal !== false : false),
+          requiresReadyPhoto:
+            item.requiresReadyPhoto === true ||
+            secondHalf?.requiresReadyPhoto === true,
+          handoffTempC: Math.max(
+            item.handoffTempC ?? 65,
+            secondHalf?.handoffTempC ?? 0,
+          ),
         },
-        name: item.name,
+        name: secondHalf ? `${item.name} / ${secondHalf.name}` : item.name,
         unitPriceCents,
         size,
         extras,
         quantity: line.quantity,
-        prepWeight: item.prepWeight,
-        cookTimeSeconds: item.cookTimeSeconds ?? 0,
+        prepWeight: secondHalf
+          ? Math.max(item.prepWeight, secondHalf.prepWeight)
+          : item.prepWeight,
+        cookTimeSeconds: Math.max(
+          item.cookTimeSeconds ?? 0,
+          secondHalf?.cookTimeSeconds ?? 0,
+        ),
       };
     });
 
-    const deliveryFeeCents = pricingOptions(pricingConfig).deliveryFeeCents;
+    const memberDelivery =
+      user.membershipUntil &&
+      user.membershipUntil.getTime() > Date.now() &&
+      subtotalCents >= 1500;
+    const deliveryFeeCents = memberDelivery
+      ? 0
+      : pricingOptions(pricingConfig).deliveryFeeCents;
     const discountCents =
       (await this.growth?.discount(dto.couponCode, subtotalCents)) ?? 0;
     const totalCents = subtotalCents - discountCents + deliveryFeeCents;
+
+    const walletCents = dto.walletCents ?? 0;
+    if (
+      walletCents > 0 &&
+      (dto.paymentMethod !== PaymentMethod.CARD ||
+        walletCents > totalCents ||
+        walletCents > (user.creditCents ?? 0))
+    ) {
+      throw new BadRequestException(
+        "Your credit changed. Review your payment split.",
+      );
+    }
 
     if (dto.paymentMethod === PaymentMethod.CASH) {
       const cfg = await this.appConfig.get();
@@ -293,8 +394,8 @@ export class OrdersService implements OnModuleInit {
       }
     }
 
-    if (dto.scheduledAt) {
-      const delay = new Date(dto.scheduledAt).getTime() - Date.now();
+    if (scheduledAt) {
+      const delay = new Date(scheduledAt).getTime() - Date.now();
       if (
         !Number.isFinite(delay) ||
         delay < 15 * 60_000 ||
@@ -308,7 +409,13 @@ export class OrdersService implements OnModuleInit {
 
     return {
       customerId: new Types.ObjectId(userId),
-      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+      walletCents,
+      deliverySlotId: slot?.id,
+      deliveryWindowStart: slot?.startsAt,
+      deliveryWindowEnd: slot?.endsAt,
+      promisedDeliveryAt: slot?.endsAt,
+      slotHoldUntil: slot ? new Date(Date.now() + 15 * 60000) : undefined,
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
       campaignCode: await this.growth?.campaignSource(dto.campaignCode),
       couponCode: dto.couponCode,
       discountCents,
@@ -536,7 +643,7 @@ export class OrdersService implements OnModuleInit {
         continue;
       }
 
-      if (line.variantId || match.customization) {
+      if (line.secondHalfItemId || line.variantId || match.customization) {
         unavailable.push({
           menuItemId: match.id,
           name: match.name,
@@ -616,6 +723,7 @@ export class OrdersService implements OnModuleInit {
       throw new BadRequestException("errors.badRequest");
     }
     order.status = dto.status;
+    if (dto.status === OrderStatus.PREPARING) order.preparingAt = new Date();
     await order.save();
 
     if (dto.status === OrderStatus.CANCELLED && order.providerId) {

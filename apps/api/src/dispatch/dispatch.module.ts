@@ -1,3 +1,4 @@
+import { InventoryModule } from "../inventory/inventory.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { EtaModule } from "../eta/eta.module";
@@ -10,6 +11,7 @@ import { DispatchService } from "./dispatch.service";
   imports: [
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     ProvidersModule,
+    InventoryModule,
     EtaModule,
   ],
   controllers: [DispatchController],

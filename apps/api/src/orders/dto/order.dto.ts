@@ -100,6 +100,7 @@ export class PizzaSelectionDto {
 }
 
 export class OrderLineDto {
+  @IsOptional() @IsMongoId() secondHalfItemId?: string;
   @IsOptional() @IsString() @MaxLength(60) variantId?: string;
   @IsOptional()
   @IsArray()
@@ -133,6 +134,22 @@ export class OrderLineDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional() @IsMongoId() deliverySlotId?: string;
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000000)
+  walletCents?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Total reviewed by the customer; reject changes before creating an order",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  expectedTotalCents?: number;
+
   @IsOptional() @IsString() @Matches(/^[A-Z0-9-]{3,32}$/) couponCode?: string;
   @IsOptional()
   @IsString()

@@ -17,17 +17,20 @@ import {
 } from "@/components/AccountScreen";
 import { useApp } from "@/context/AppContext";
 import { AuthScreen } from "@/components/AuthScreen";
+import { useAuthDestination } from "@/lib/auth-destination";
 import { hx } from "@/lib/heroui-classes";
 
 type LoginMethod = "password" | "otp";
 
 export default function LoginPage() {
   const router = useRouter();
+  const destination = useAuthDestination();
   const {
     t,
     sendOtp,
     loginWithOtp,
     loginWithPassword,
+    loginWithPasskey,
     authLoading,
     authError,
     clearAuthError,
@@ -40,17 +43,7 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [validation, setValidation] = useState<string | null>(null);
 
-  const completeLogin = () => {
-    const next =
-      typeof window === "undefined"
-        ? null
-        : new URLSearchParams(window.location.search).get("next");
-    router.replace(
-      next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
-        ? next
-        : "/home/",
-    );
-  };
+  const completeLogin = () => router.replace(destination);
 
   const submitPassword = async () => {
     clearAuthError();
@@ -94,12 +87,22 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthScreen variant="welcome" title={t("login.signIn")} backHref="/onboarding/">
+    <AuthScreen
+      variant="welcome"
+      title={t("login.signIn")}
+      backHref="/onboarding/"
+    >
       <AccountHero
         title={t("login.welcome")}
         description={t("login.subtitle")}
       />
 
+      <Link
+        href="/home/"
+        className="mb-6 inline-flex min-h-11 items-center justify-center rounded-full border border-border px-5 text-sm font-semibold text-foreground"
+      >
+        {t("common.browseMenu")}
+      </Link>
       <div className="mb-7 grid grid-cols-2 rounded-full bg-card p-1">
         {(["password", "otp"] as const).map((value) => (
           <Button
@@ -199,7 +202,9 @@ export default function LoginPage() {
                   setCode(event.target.value.replace(/\D/g, ""))
                 }
               />
-              <AppText as="p" className="text-sm text-muted">{t("login.otpHint")}</AppText>
+              <AppText as="p" className="text-sm text-muted">
+                {t("login.otpHint")}
+              </AppText>
             </>
           ) : null}
           <Button
@@ -214,21 +219,34 @@ export default function LoginPage() {
         </Form>
       )}
 
-      <AppText as="p" className="mt-6 text-center text-sm font-medium text-muted">
+      <AppText
+        as="p"
+        className="mt-6 text-center text-sm font-medium text-muted"
+      >
         {t("login.noAccount")}{" "}
-        <Link href="/signup/" className="font-bold text-foreground">
+        <Link
+          href={`/signup/?next=${encodeURIComponent(destination)}`}
+          className="font-bold text-foreground"
+        >
           {t("login.signupLink")}
         </Link>
       </AppText>
 
-      <div className="mt-auto pt-10">
-        <div className="flex items-center gap-3 text-muted">
-          <span className="h-px flex-1 bg-border" />
-          <AppText as="span" className="text-sm font-semibold">{t("login.orUse")}</AppText>
-          <span className="h-px flex-1 bg-border" />
+      {(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        (process.env.NEXT_PUBLIC_APPLE_CLIENT_ID &&
+          process.env.NEXT_PUBLIC_APPLE_REDIRECT_URI)) && (
+        <div className="mt-auto pt-10">
+          <div className="flex items-center gap-3 text-muted">
+            <span className="h-px flex-1 bg-border" />
+            <AppText as="span" className="text-sm font-semibold">
+              {t("login.orUse")}
+            </AppText>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Button variant="secondary" isDisabled={authLoading} className="min-h-12 w-full rounded-full" onPress={()=>{void loginWithPasskey().then(completeLogin).catch(()=>undefined);}}>Sign in with a passkey</Button>
+          <SocialLogin onSuccess={completeLogin} />
         </div>
-        <SocialLogin onSuccess={completeLogin} />
-      </div>
+      )}
     </AuthScreen>
   );
 }

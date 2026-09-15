@@ -32,7 +32,7 @@ export function AccountScreen({
     <AppFrame padded={false}>
       <div
         className={cn(
-          "flex min-h-dvh flex-col px-[clamp(20px,8vw,38px)] pt-[max(28px,env(safe-area-inset-top))] pb-[max(30px,env(safe-area-inset-bottom))]",
+          "reference-screen flex min-h-dvh flex-col px-[16px] pt-[max(28px,env(safe-area-inset-top))] pb-[max(30px,env(safe-area-inset-bottom))]",
           className,
         )}
       >
@@ -156,7 +156,8 @@ export function AccountNotice({
   tone?: "muted" | "danger" | "success";
 }) {
   return (
-    <AppText as="p"
+    <AppText
+      as="p"
       role={tone === "danger" ? "alert" : "status"}
       className={cn(
         "rounded-[18px] border border-border bg-card px-4 py-3 text-sm leading-relaxed",

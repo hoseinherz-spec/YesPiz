@@ -52,7 +52,12 @@ export class PaymentsService implements OnModuleInit {
         "Stripe sandbox mode requires a sandbox test secret key.",
       );
     }
-    if (key) {
+    if (
+      key &&
+      ["sandbox", "live"].includes(
+        this.config.get<string>("STRIPE_MODE") ?? "mock",
+      )
+    ) {
       this.stripe = new Stripe(key, { timeout: 15_000, maxNetworkRetries: 1 });
     }
   }
@@ -64,6 +69,10 @@ export class PaymentsService implements OnModuleInit {
   /** Test helper — inject a mock Stripe client. */
   setStripeClient(client: Stripe | null) {
     this.stripe = client;
+  }
+
+  isMockGateway() {
+    return !this.stripe && this.config.get("NODE_ENV") !== "production";
   }
 
   async cashAvailability(userId: string) {
@@ -89,7 +98,9 @@ export class PaymentsService implements OnModuleInit {
 
   async initiate(userId: string, dto: InitiatePaymentDto) {
     return this.withOrderLock(dto.orderId, async () => {
-      const result = await this.initiateOnce(userId, dto);
+      const result = await this.withSlotLock(userId, dto.orderId, () =>
+        this.initiateOnce(userId, dto),
+      );
       // Dispatch ranking and kitchen identities are operations-only data.
       return {
         ...result,
@@ -101,6 +112,27 @@ export class PaymentsService implements OnModuleInit {
           : null,
       };
     });
+  }
+
+  private async withSlotLock<T>(
+    userId: string,
+    orderId: string,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const order = await this.orders.findById(orderId).exec();
+    if (!order || String(order.customerId) !== userId) return work(); // Existing ownership errors remain authoritative.
+    if (!order.deliverySlotId) return work();
+    const key = `slot:${order.deliverySlotId}`,
+      owner = randomUUID();
+    if (!(await this.redis.acquireLock(key, owner, 120000)))
+      throw new ConflictException(
+        "Your delivery window is updating. Please retry.",
+      );
+    try {
+      return await work();
+    } finally {
+      await this.redis.releaseLock(key, owner);
+    }
   }
 
   private async withOrderLock<T>(
@@ -134,6 +166,16 @@ export class PaymentsService implements OnModuleInit {
     if (order.status === OrderStatus.CANCELLED)
       throw new BadRequestException("Order is cancelled.");
     const existing = await this.payments.findOne({ orderId: order._id }).exec();
+    if (
+      order.deliverySlotId &&
+      (!order.slotHoldUntil || order.slotHoldUntil.getTime() <= Date.now()) &&
+      ![PaymentStatus.CAPTURED, PaymentStatus.AUTHORIZED].includes(
+        existing?.status as PaymentStatus,
+      )
+    )
+      throw new BadRequestException(
+        "Your delivery reservation expired. Return to checkout and choose a new window.",
+      );
     if (existing) {
       if (existing.method !== method)
         throw new BadRequestException("Payment method cannot be changed.");
@@ -255,6 +297,13 @@ export class PaymentsService implements OnModuleInit {
       };
     }
 
+    // The reviewed split is persisted on the order, never recomputed on retry.
+    const walletCents = order.walletCents ?? 0;
+    if (walletCents > 0 && this.stripe) {
+      throw new BadRequestException(
+        "Split credit payments are available in mock mode only.",
+      );
+    }
     const stripeKey = this.config.get<string>("STRIPE_SECRET_KEY");
     if (stripeKey && this.stripe) {
       return this.initiateStripe(order, method);
@@ -263,6 +312,16 @@ export class PaymentsService implements OnModuleInit {
     if (this.config.get<string>("NODE_ENV") === "production") {
       throw new BadRequestException(
         "Card payments are unavailable. Please choose cash.",
+      );
+    }
+    if (walletCents > 0) {
+      if (!this.wallet)
+        throw new BadRequestException("Yespizz credit is unavailable.");
+      await this.wallet.change(
+        userId,
+        `payment:${order.id}`,
+        -walletCents,
+        order.id,
       );
     }
     // Mock capture when Stripe is not configured
@@ -274,7 +333,8 @@ export class PaymentsService implements OnModuleInit {
       status,
       amountCents: order.totalCents,
       mock: true,
-      providerRef: `mock_${Date.now()}`,
+      providerRef: `mock_${order.id}`,
+      walletCents,
     });
 
     order.paymentMethod = method;
@@ -527,7 +587,10 @@ export class PaymentsService implements OnModuleInit {
   private async refundCancelled(order: OrderDocument) {
     const payment = await this.payments.findOne({ orderId: order._id }).exec();
     if (!payment) {
-      if (order.paymentMethod === PaymentMethod.WALLET)
+      if (
+        order.paymentMethod === PaymentMethod.WALLET ||
+        (order.walletCents ?? 0) > 0
+      )
         await this.wallet?.refundPurchase(String(order.customerId), order.id);
       order.paymentStatus = PaymentStatus.CANCELLED;
       await order.save();
@@ -548,6 +611,10 @@ export class PaymentsService implements OnModuleInit {
       } else if (payment.method === PaymentMethod.CASH) {
         payment.status = PaymentStatus.CANCELLED;
       } else if (payment.mock) {
+        if ((payment.walletCents ?? 0) > 0) {
+          if (!this.wallet) throw new Error("Credit service unavailable.");
+          await this.wallet.refundPurchase(String(order.customerId), order.id);
+        }
         if (this.config.get<string>("NODE_ENV") === "production")
           throw new Error("Mock payment in production requires review.");
         payment.status = PaymentStatus.REFUNDED;
