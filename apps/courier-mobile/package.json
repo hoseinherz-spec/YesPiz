@@ -30,6 +30,7 @@
     "@heroui/react": "^3.0.0",
     "@heroui/styles": "^3.0.0",
     "@repo/api": "*",
+    "@repo/animated-icons": "*",
     "@repo/i18n": "*",
     "@repo/icons": "*",
     "@repo/theme": "*",

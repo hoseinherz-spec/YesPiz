@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/google/oauth2/v3/certs",
+      "destination": "/api/google-jwks"
+    }
+  ]
+}

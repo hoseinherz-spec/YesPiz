@@ -32,7 +32,7 @@ function OrderProofPageInner() {
 
 export default function CourierOrderPage() {
   return (
-    <AppFrame>
+    <AppFrame className="courier-screen">
       <Suspense fallback={<p className="text-sm text-muted">Loading order…</p>}>
         <OrderProofPageInner />
       </Suspense>

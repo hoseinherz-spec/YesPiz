@@ -1,5 +1,7 @@
 # Completion verification — 15 September 2026
 
+Historical report. Payment/membership/group follow-up: [22 September status](RELEASE-FOLLOWUP.md).
+
 ## Implemented
 
 - Navy background and phosphor accent remain the customer theme; reference-inspired layouts and prior animation work retained.

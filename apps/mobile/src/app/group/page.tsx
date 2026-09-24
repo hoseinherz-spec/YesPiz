@@ -1,9 +1,16 @@
 "use client";
+import { PageIntro } from "@/components/PageIntro";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import { openHostedCheckout } from "@/lib/hosted-checkout";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@heroui/react";
-import { Check, Clock, Gift, ArrowRight } from "@repo/icons";
+import {
+  Check,
+  Clock,
+  Gift,
+  ArrowRight,
+} from "@/components/animated-icon/icons";
 import { groupsClient, type GroupCartView } from "@repo/api";
 import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -12,6 +19,7 @@ import { useApp } from "@/context/AppContext";
 import { useCart } from "@/context/CartContext";
 import { useMenuCatalog } from "@/lib/catalog";
 import { formatPrice } from "@/constants/pizzas";
+import { pizzaCraftAsset } from "@/constants/media";
 function GroupPageInner() {
   const params = useSearchParams(),
     router = useRouter(),
@@ -80,6 +88,7 @@ function GroupPageInner() {
                   extras,
                   variantId,
                   selections,
+                  ingredientChanges,
                   secondHalfItemId,
                 }) => ({
                   menuItemId,
@@ -88,6 +97,7 @@ function GroupPageInner() {
                   extras,
                   variantId,
                   selections,
+                  ingredientChanges,
                   secondHalfItemId,
                 }),
               ),
@@ -125,6 +135,9 @@ function GroupPageInner() {
           );
       }
       setGroup(next);
+      if (next.checkoutUrl) await openHostedCheckout(next.checkoutUrl, load);
+      else if (kind === "submit" && next.orderId && !next.mock && !next.split)
+        router.push(`/payment/?orderId=${next.orderId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
@@ -149,16 +162,19 @@ function GroupPageInner() {
       open: de ? "Auswahl offen" : "Choosing pizzas",
       locked: de ? "Bereit zur Bestätigung" : "Ready for confirmation",
       ordered: de ? "Bestellung aufgegeben" : "Order placed",
+      cancelling: de ? "Rückerstattung läuft" : "Refund in progress",
       cancelled: de ? "Abgebrochen" : "Cancelled",
     })[state];
   return (
     <AppFrame withTabs className="reference-screen">
-      <ScreenHeader
+      <ScreenHeader title={de ? "Gruppenbestellung" : "Group order"} />
+      <PageIntro
+        icon={<Gift />}
         title={
           group?.title ||
           (de ? "Zusammen schmeckt’s besser" : "Better together")
         }
-        subtitle={
+        description={
           de
             ? "Eine Lieferung. Jeder wählt seine Pizza."
             : "One delivery. Everyone gets their favourite."
@@ -167,13 +183,14 @@ function GroupPageInner() {
       {!accessToken ? (
         <EmptyState
           icon={<Gift size={28} />}
+          image={pizzaCraftAsset("Pizza Cutting")}
           title={de ? "Gemeinsam bestellen" : "Bring everyone to the table"}
           body={
             de
               ? "Melde dich an, um eine Gruppe zu starten oder beizutreten."
               : "Sign in to start or join a pizza night."
           }
-          actionHref={`/login/?next=${encodeURIComponent(token ? `/group/?id=${token}` : "/group/")}`}
+          actionHref={`/auth/sign-in/?next=${encodeURIComponent(token ? `/group/?id=${token}` : "/group/")}`}
           actionLabel={de ? "Anmelden" : "Sign in"}
         />
       ) : (
@@ -232,7 +249,7 @@ function GroupPageInner() {
                   <span>
                     {de
                       ? "Kosten anteilig teilen (Mock)"
-                      : "Split proportionally (mock)"}
+                      : "Split proportionally"}
                     <small className="mt-1 block leading-5 text-muted">
                       {de
                         ? "Anteil nach Warenwert, inklusive Lieferkosten. Keine echte Abbuchung."
@@ -448,10 +465,17 @@ function GroupPageInner() {
                   </p>
                   <p className="mt-2 text-xs text-muted">
                     {de
-                      ? "Inklusive Lieferung. Zahlung ist simuliert."
-                      : "Includes delivery. Payment is simulated."}
+                      ? "Inklusive Lieferung. Nicht abgeschlossene Gruppen werden nach Ablauf erstattet."
+                      : "Includes delivery. Payments for unfinished groups are refunded after the deadline."}
                   </p>
                 </section>
+              )}
+              {group.refundPending && (
+                <p role="status" className="mt-4">
+                  {de
+                    ? "Rückerstattung läuft. Bitte später erneut prüfen."
+                    : "Refunds are being processed. Check back shortly."}
+                </p>
               )}
               {group.state === "locked" && (
                 <div className="mt-5 space-y-3">
@@ -461,10 +485,8 @@ function GroupPageInner() {
                       isDisabled={busy}
                       onPress={() => void action("pay")}
                     >
-                      {de
-                        ? "Meinen Anteil bestätigen"
-                        : "Confirm my mock share"}{" "}
-                      · {formatPrice(me.shareCents / 100)}
+                      {de ? "Meinen Anteil bestätigen" : "Pay my share"} ·{" "}
+                      {formatPrice(me.shareCents / 100)}
                     </Button>
                   )}
                   {group.owner && (
@@ -476,20 +498,28 @@ function GroupPageInner() {
                       }
                       onPress={() => void action("submit")}
                     >
-                      {de
-                        ? "Gruppenbestellung aufgeben (Mock)"
-                        : "Place group order (mock)"}
+                      {de ? "Gruppenbestellung aufgeben" : "Place group order"}
                     </Button>
                   )}
                 </div>
               )}
               {group.state === "ordered" && (
                 <Link
-                  href="/orders/"
+                  href={
+                    !group.split && !group.mock && group.orderId
+                      ? `/payment/?orderId=${group.orderId}`
+                      : "/orders/"
+                  }
                   className="mt-5 flex min-h-12 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground"
                 >
-                  {de ? "Bestellung aufgegeben" : "Order placed"} ·{" "}
-                  {de ? "Bestellungen" : "View orders"}
+                  {!group.split && !group.mock
+                    ? de
+                      ? "Zur Zahlung"
+                      : "Continue to payment"
+                    : de
+                      ? "Bestellung aufgegeben"
+                      : "Order placed"}{" "}
+                  · {de ? "Bestellungen" : "View orders"}
                 </Link>
               )}
               {group.owner && group.state === "locked" && !group.orderId && (

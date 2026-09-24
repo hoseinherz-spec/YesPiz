@@ -45,7 +45,9 @@ test("admin creates, publishes, edits and hides a menu item; responsive menu wor
   await page.getByLabel("Name", { exact: true }).fill("Summer pizza");
   await page.getByLabel("Price (€)", { exact: true }).fill("12.50");
   await page.getByRole("button", { name: "Add item", exact: true }).click();
-  await expect(page.getByText("Summer pizza", { exact: true })).toBeVisible();
+  await expect(
+    page.locator("div.font-semibold").filter({ hasText: /^Summer pizza$/ }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Publish", exact: true }).click();
   const menu = async () =>
     (await request.get("http://localhost:8158/api/v1/catalog/menu")).json();
@@ -70,7 +72,9 @@ test("admin creates, publishes, edits and hides a menu item; responsive menu wor
     .toBe("Summer pizza deluxe");
   await page.reload();
   await expect(
-    page.getByText("Summer pizza deluxe", { exact: true }),
+    page
+      .locator("div.font-semibold")
+      .filter({ hasText: /^Summer pizza deluxe$/ }),
   ).toBeVisible();
   await page.screenshot({ path: ".qa/ui/admin-menu.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

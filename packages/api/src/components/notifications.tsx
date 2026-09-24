@@ -15,6 +15,14 @@ export async function disableNotifications(accessToken: string) {
 export function Notifications({ accessToken }: { accessToken: string | null }) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setEnabled(Boolean(sessionStorage.getItem("yespizz_push_token"))),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => {
     if (!accessToken) return;
     let disposed = false;
@@ -42,8 +50,10 @@ export function Notifications({ accessToken }: { accessToken: string | null }) {
             }),
           )
             .then(() => {
-              if (!disposed)
+              if (!disposed) {
                 sessionStorage.setItem("yespizz_push_token", token);
+                setEnabled(true);
+              }
             })
             .catch(() => {
               if (!disposed)
@@ -130,11 +140,25 @@ export function Notifications({ accessToken }: { accessToken: string | null }) {
       );
       sessionStorage.setItem("yespizz_push_token", result.token);
       sessionStorage.setItem("yespizz_push_platform", platform);
+      setEnabled(true);
       setStatus("Notifications enabled.");
     } catch (err) {
       setStatus(
         err instanceof Error ? err.message : "Unable to enable notifications.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function disable() {
+    if (!accessToken) return;
+    setBusy(true);
+    try {
+      await disableNotifications(accessToken);
+      setEnabled(false);
+      setStatus("Notifications disabled.");
+    } catch {
+      setStatus("Unable to disable notifications. Please retry.");
     } finally {
       setBusy(false);
     }
@@ -145,26 +169,18 @@ export function Notifications({ accessToken }: { accessToken: string | null }) {
       <button
         type="button"
         disabled={busy}
-        className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
-        onClick={() => void enable()}
-      >
-        Enable order notifications
-      </button>
-      <button
-        type="button"
-        disabled={busy}
+        aria-pressed={enabled}
         className="min-h-11 rounded-full border border-border bg-card px-4 py-2 disabled:opacity-50"
         onClick={() => {
-          setBusy(true);
-          void disableNotifications(accessToken)
-            .then(() => setStatus("Notifications disabled."))
-            .catch(() =>
-              setStatus("Unable to disable notifications. Please retry."),
-            )
-            .finally(() => setBusy(false));
+          if (enabled) void disable();
+          else void enable();
         }}
       >
-        Disable notifications
+        {busy
+          ? "Updating notifications…"
+          : enabled
+            ? "Disable notifications"
+            : "Enable order notifications"}
       </button>
       {status && <p role="status">{status}</p>}
     </div>

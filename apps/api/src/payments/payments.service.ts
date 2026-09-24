@@ -1,3 +1,4 @@
+import { BillingService } from "../billing/billing.service";
 import { WalletService } from "../wallet/wallet.module";
 import {
   BadRequestException,
@@ -42,6 +43,7 @@ export class PaymentsService implements OnModuleInit {
     private readonly appConfig: AppConfigService,
     private readonly redis: RedisService,
     @Optional() private readonly wallet?: WalletService,
+    @Optional() private readonly billing?: BillingService,
   ) {
     const key = this.config.get<string>("STRIPE_SECRET_KEY");
     if (
@@ -73,6 +75,280 @@ export class PaymentsService implements OnModuleInit {
 
   isMockGateway() {
     return !this.stripe && this.config.get("NODE_ENV") !== "production";
+  }
+
+  async createGroupCheckout(
+    token: string,
+    round: number,
+    userId: string,
+    amountCents: number,
+  ) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException("Group payments require Stripe.");
+    if (!Number.isInteger(amountCents) || amountCents < 50)
+      throw new BadRequestException("Each card share must be at least €0.50.");
+    const customer = await this.cardCustomer(userId);
+    const origin = new URL(
+      this.config.get<string>("CUSTOMER_APP_URL") || "http://localhost:8051",
+    ).origin;
+    const metadata = {
+      purpose: "group_share",
+      token,
+      round: String(round),
+      userId,
+    };
+    return this.stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer,
+        metadata,
+        payment_intent_data: { metadata },
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "eur",
+              unit_amount: amountCents,
+              product_data: { name: "Your share of the Yespiz group order" },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${origin}/group/?id=${token}`,
+        cancel_url: `${origin}/group/?id=${token}`,
+      },
+      { idempotencyKey: `group-share:${token}:${round}:${userId}` },
+    );
+  }
+
+  async groupCheckoutState(
+    sessionId: string,
+    token: string,
+    round: number,
+    userId: string,
+    amountCents: number,
+  ) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException("Group payments require Stripe.");
+    const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+    if (
+      session.metadata?.purpose !== "group_share" ||
+      session.metadata.token !== token ||
+      session.metadata.round !== String(round) ||
+      session.metadata.userId !== userId ||
+      session.amount_total !== amountCents ||
+      session.currency !== "eur"
+    )
+      throw new BadRequestException("Group payment mismatch.");
+    const intentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
+    return {
+      paid: session.payment_status === "paid",
+      intentId,
+      checkoutUrl: session.status === "open" ? session.url : null,
+      status: session.status,
+    };
+  }
+
+  async refundGroupShare(
+    sessionId: string,
+    token: string,
+    round: number,
+    userId: string,
+    amountCents: number,
+  ) {
+    const state = await this.groupCheckoutState(
+      sessionId,
+      token,
+      round,
+      userId,
+      amountCents,
+    );
+    if (state.status === "open") {
+      // If checkout wins this race, retry retrieves the completed session and refunds it.
+      await this.stripe!.checkout.sessions.expire(sessionId);
+      return false;
+    }
+    if (!state.intentId) return true;
+    const intent = await this.stripe!.paymentIntents.retrieve(state.intentId);
+    if (intent.status === "canceled") return true;
+    if (intent.status !== "succeeded") {
+      await this.stripe!.paymentIntents.cancel(
+        intent.id,
+        {},
+        { idempotencyKey: `group-cancel:${intent.id}` },
+      );
+      return true;
+    }
+    return this.refundGroupIntent(intent.id);
+  }
+
+  private async refundGroupIntent(intentId: string) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException("Stripe is unavailable.");
+    const refunds = await this.stripe.refunds.list({
+      payment_intent: intentId,
+      limit: 100,
+    });
+    const existing = refunds.data.find(
+      (r) => r.metadata?.purpose === "group_refund",
+    );
+    const refund =
+      existing ??
+      (await this.stripe.refunds.create(
+        { payment_intent: intentId, metadata: { purpose: "group_refund" } },
+        { idempotencyKey: `group-refund:${intentId}` },
+      ));
+    if (["failed", "canceled"].includes(refund.status || ""))
+      throw new Error("Group refund requires operator review.");
+    return refund.status === "succeeded";
+  }
+
+  async captureGroupOrder(
+    userId: string,
+    orderId: string,
+    token: string,
+    round: number,
+    shares: { userId: string; amountCents: number; intentId: string }[],
+  ) {
+    return this.withOrderLock(orderId, async () => {
+      if (!this.stripe)
+        throw new ServiceUnavailableException("Stripe is unavailable.");
+      const order = await this.orders.findById(orderId).exec();
+      if (!order || String(order.customerId) !== userId)
+        throw new NotFoundException("Order not found.");
+      if (
+        shares.reduce((n, s) => n + s.amountCents, 0) !== order.totalCents ||
+        new Set(shares.map((s) => s.intentId)).size !== shares.length
+      )
+        throw new BadRequestException(
+          "Group shares do not match the order total.",
+        );
+      for (const share of shares) {
+        const intent = await this.stripe.paymentIntents.retrieve(
+          share.intentId,
+          { expand: ["latest_charge"] },
+        );
+        const charge =
+          typeof intent.latest_charge === "object"
+            ? intent.latest_charge
+            : null;
+        if (charge && (charge.amount_refunded > 0 || charge.disputed))
+          throw new BadRequestException(
+            "A group payment was refunded or disputed. Review the group before ordering.",
+          );
+        if (
+          intent.status !== "succeeded" ||
+          intent.amount_received !== share.amountCents ||
+          intent.currency !== "eur" ||
+          intent.metadata.purpose !== "group_share" ||
+          intent.metadata.token !== token ||
+          intent.metadata.round !== String(round) ||
+          intent.metadata.userId !== share.userId ||
+          (this.config.get("STRIPE_MODE") === "sandbox" && intent.livemode)
+        )
+          throw new BadRequestException("Group share has not been paid.");
+      }
+      let payment = await this.payments.findOne({ orderId: order._id }).exec();
+      if (payment && payment.providerRef !== `group:${token}:${round}`)
+        throw new ConflictException(
+          "This order already has a different payment.",
+        );
+      if (!payment)
+        payment = await this.payments.create({
+          orderId: order._id,
+          customerId: order.customerId,
+          method: PaymentMethod.CARD,
+          amountCents: order.totalCents,
+          status: PaymentStatus.CAPTURED,
+          providerRef: `group:${token}:${round}`,
+          groupShares: shares,
+          mock: false,
+        });
+      if (order.status === OrderStatus.CANCELLED) {
+        await this.refundCancelled(order);
+        return;
+      }
+      order.paymentStatus = PaymentStatus.CAPTURED;
+      await order.save();
+      if (order.status === OrderStatus.PENDING_PAYMENT)
+        await this.dispatch.startDispatch(order.id);
+    });
+  }
+
+  private async cardCustomer(userId: string) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException(
+        "Card saving requires Stripe to be configured.",
+      );
+    const user = await this.accounts.findById(userId);
+    if (!user) throw new NotFoundException("Account not found.");
+    if (!user.stripeCustomerId) {
+      const customer = await this.stripe.customers.create(
+        { metadata: { userId } },
+        { idempotencyKey: `saved-cards:${userId}` },
+      );
+      user.stripeCustomerId = customer.id;
+      await user.save();
+    }
+    return user.stripeCustomerId;
+  }
+
+  async savedCards(userId: string) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException(
+        "Card saving requires Stripe to be configured.",
+      );
+    const user = await this.accounts.findById(userId);
+    if (!user) throw new NotFoundException("Account not found.");
+    if (!user.stripeCustomerId) return [];
+    const cards = [];
+    for await (const method of this.stripe.paymentMethods.list({
+      customer: user.stripeCustomerId,
+      type: "card",
+      limit: 100,
+    })) {
+      if (method.card)
+        cards.push({
+          id: method.id,
+          brand: method.card.brand,
+          last4: method.card.last4,
+          expMonth: method.card.exp_month,
+          expYear: method.card.exp_year,
+        });
+    }
+    return cards;
+  }
+
+  async setupCard(userId: string) {
+    const customer = await this.cardCustomer(userId);
+    const intent = await this.stripe!.setupIntents.create({
+      customer,
+      payment_method_types: ["card"],
+      usage: "on_session",
+      metadata: { userId },
+    });
+    return { clientSecret: intent.client_secret };
+  }
+
+  async removeCard(userId: string, paymentMethodId: string) {
+    if (!this.stripe)
+      throw new ServiceUnavailableException(
+        "Card saving requires Stripe to be configured.",
+      );
+    const user = await this.accounts.findById(userId);
+    if (!user?.stripeCustomerId) throw new NotFoundException("Card not found.");
+    const method = await this.stripe.paymentMethods.retrieve(paymentMethodId);
+    const customer =
+      typeof method.customer === "string"
+        ? method.customer
+        : method.customer?.id;
+    if (customer !== user.stripeCustomerId)
+      throw new NotFoundException("Card not found.");
+    await this.stripe.paymentMethods.detach(paymentMethodId);
+    return { ok: true };
   }
 
   async cashAvailability(userId: string) {
@@ -176,6 +452,13 @@ export class PaymentsService implements OnModuleInit {
       throw new BadRequestException(
         "Your delivery reservation expired. Return to checkout and choose a new window.",
       );
+    if (existing?.groupShares?.length)
+      return {
+        payment: existing.toObject(),
+        mock: false,
+        orderId: order.id,
+        status: existing.status,
+      };
     if (existing) {
       if (existing.method !== method)
         throw new BadRequestException("Payment method cannot be changed.");
@@ -354,11 +637,13 @@ export class PaymentsService implements OnModuleInit {
   }
 
   private async initiateStripe(order: OrderDocument, method: PaymentMethod) {
+    const user = await this.accounts.findById(String(order.customerId));
     const intent = await this.stripe!.paymentIntents.create(
       {
         amount: order.totalCents,
         currency: "eur",
         payment_method_types: ["card", "klarna"],
+        ...(user?.stripeCustomerId ? { customer: user.stripeCustomerId } : {}),
         capture_method: "automatic",
         metadata: {
           orderId: order.id,
@@ -619,6 +904,15 @@ export class PaymentsService implements OnModuleInit {
           throw new Error("Mock payment in production requires review.");
         payment.status = PaymentStatus.REFUNDED;
         payment.refundStatus = "succeeded";
+      } else if (payment.groupShares?.length) {
+        const results: boolean[] = [];
+        for (const share of payment.groupShares)
+          results.push(await this.refundGroupIntent(share.intentId));
+        payment.refundStatus = results.every(Boolean) ? "succeeded" : "pending";
+        if (results.every(Boolean)) {
+          payment.status = PaymentStatus.REFUNDED;
+          payment.refundedAt = new Date();
+        }
       } else {
         if (!this.stripe || !payment.providerRef)
           throw new Error("Stripe is not configured.");
@@ -722,12 +1016,23 @@ export class PaymentsService implements OnModuleInit {
       }
     }
 
+    if (this.stripe && webhookSecret)
+      await this.billing?.handleEvent(event as Stripe.Event);
+
     if (event.type === "payment_intent.succeeded") {
       const intentId = event.data?.object?.id;
       if (!intentId) {
         throw new BadRequestException("errors.badRequest");
       }
       const result = await this.captureFromStripeIntent(intentId);
+      if (!result.ok && result.reason === "payment_not_found" && this.stripe) {
+        const intent = await this.stripe.paymentIntents.retrieve(intentId);
+        if (
+          intent.metadata.purpose === "group_share" ||
+          !intent.metadata.orderId
+        )
+          return { received: true, ignored: "non_order_payment" };
+      }
       if (!result.ok)
         throw new ServiceUnavailableException(
           "Payment reconciliation pending.",

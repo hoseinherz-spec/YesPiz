@@ -15,18 +15,19 @@ import {
   type CustomerOrderView,
 } from "@repo/api";
 import { useCart } from "@/context/CartContext";
-import { Button, Card, Spinner, Typography } from "@heroui/react";
-import { Clock, ShoppingBag } from "@repo/icons";
+import { PizzaLoader } from "@/components/PizzaLoader";
+import { Button, Card, Typography } from "@heroui/react";
+import { MapPin, Pizza, ShoppingBag } from "@/components/animated-icon/icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { OrderProgress } from "@/components/OrderProgress";
+import { ArrowRepeatClockwise1 } from "@repo/icons";
+import "./orders.css";
 import { AppFrame } from "@/components/AppFrame";
-import { EmptyState } from "@/components/EmptyState";
 import { useMenuCatalog } from "@/lib/catalog";
 import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
 import { ORDER_STEPS, useApp } from "@/context/AppContext";
-import { cn } from "@/lib/cn";
+import { pizzaCraftAsset } from "@/constants/media";
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -54,7 +55,10 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function reviewReorder(id: string) {
-    if (!accessToken) return;
+    if (!accessToken) {
+      router.push("/auth/sign-in/");
+      return;
+    }
     setActionBusy(true);
     setError(null);
     try {
@@ -66,7 +70,10 @@ export default function OrdersPage() {
     }
   }
   async function reviewCancel(id: string) {
-    if (!accessToken) return;
+    if (!accessToken) {
+      router.push("/auth/sign-in/");
+      return;
+    }
     setActionBusy(true);
     setError(null);
     try {
@@ -117,15 +124,22 @@ export default function OrdersPage() {
   }, [accessToken, refreshOrders, t]);
 
   const list = useMemo(() => {
+    if (!accessToken) return [];
     if (tab === "active") return orders.filter((o) => o.status === "active");
     return orders.filter((o) => o.status === tab);
-  }, [orders, tab]);
+  }, [accessToken, orders, tab]);
+  const emptyArtwork =
+    tab === "active"
+      ? pizzaCraftAsset("Pizza Delivery")
+      : tab === "completed"
+        ? pizzaCraftAsset("Pizza Box")
+        : pizzaCraftAsset("Digital Food Receipt");
 
   return (
     <FormScope>
       {
         <FormScope>
-          <AppFrame withTabs className="reference-screen">
+          <AppFrame withTabs className="reference-screen orders-screen">
             <ReferenceHeader />
             <h1 className="sr-only">{t("orders.title")}</h1>
             {preview && (
@@ -158,7 +172,9 @@ export default function OrdersPage() {
                         type="button"
                         className="ml-2 underline"
                         onPress={() =>
-                          router.push(`/pizza/?id=${line.menuItemId}`)
+                          router.push(
+                            `/menu/${encodeURIComponent(line.menuItemId)}/`,
+                          )
                         }
                       >
                         Choose options
@@ -244,7 +260,11 @@ export default function OrdersPage() {
                 </ReferenceSheet>
               </FormScope>
             )}
-            <div className="reference-segments mt-3">
+            <div
+              className="reference-segments orders-tabs"
+              role="group"
+              aria-label={t("orders.title")}
+            >
               {(["active", "completed", "cancelled"] as const).map((key) => (
                 <Button
                   key={key}
@@ -292,39 +312,59 @@ export default function OrdersPage() {
                 className="flex flex-1 items-center justify-center py-20"
                 aria-label={t("orders.loading")}
               >
-                <Spinner />
+                <PizzaLoader size="lg" label={t("orders.loading")} />
               </div>
-            ) : list.length === 0 ? (
-              <EmptyState
-                icon={<ShoppingBag size={28} />}
-                image="/images/pizza-margherita.png"
-                title={
-                  tab === "active" ? t("orders.noActive") : t("orders.noPast")
-                }
-                body={t("orders.emptyBody")}
-                actionLabel={t("common.browseMenu")}
-                actionHref="/menu/"
-              />
+            ) : error && list.length === 0 ? null : list.length === 0 ? (
+              <div className="orders-empty" role="status">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={emptyArtwork}
+                  alt=""
+                  width={240}
+                  height={240}
+                />
+                <h2>
+                  {language === "de" ? "Noch keine Bestellungen" : "Empty"}
+                </h2>
+                <p>
+                  {language === "de"
+                    ? tab === "active"
+                      ? "Du hast gerade keine aktive Bestellung."
+                      : tab === "completed"
+                        ? "Deine abgeschlossenen Bestellungen erscheinen hier."
+                        : "Du hast keine stornierten Bestellungen."
+                    : tab === "active"
+                      ? "You do not have an active order at this time"
+                      : tab === "completed"
+                        ? "Your completed orders will appear here"
+                        : "You do not have any cancelled orders"}
+                </p>
+              </div>
             ) : (
-              <div className="mt-5 flex flex-col gap-3 pb-4">
+              <div className="orders-list">
                 {list.map((order) => {
-                  const statusClass =
-                    order.status === "cancelled"
-                      ? "bg-[color-mix(in_oklab,var(--danger)_13%,transparent)] text-danger"
-                      : order.status === "completed"
-                        ? "bg-[color-mix(in_oklab,var(--success)_13%,transparent)] text-success"
-                        : "bg-[color-mix(in_oklab,var(--warning)_13%,transparent)] text-warning";
                   const statusLabel =
                     order.status === "cancelled"
                       ? t("orders.cancelled")
                       : order.status === "completed"
-                        ? t("orders.delivered")
+                        ? language === "de"
+                          ? "Abgeschlossen"
+                          : "Completed"
                         : order.awaitingPayment
-                          ? "Payment needed"
+                          ? language === "de"
+                            ? "Zahlung offen"
+                            : "Payment needed"
                           : t(
                               `step.${ORDER_STEPS[order.stepIndex]?.key ?? "received"}.label`,
                             );
-
+                  const step = Math.max(
+                    0,
+                    Math.min(order.stepIndex, ORDER_STEPS.length - 1),
+                  );
+                  const quantity = order.items.reduce(
+                    (sum, item) => sum + item.quantity,
+                    0,
+                  );
                   const shortId =
                     order.id.length > 8
                       ? order.id.slice(-6)
@@ -343,12 +383,12 @@ export default function OrdersPage() {
                     (p) => p.name === order.items[0]?.name,
                   );
                   const image =
-                    order.thumbnail || pizza?.imageUrl || pizza?.image;
+                    order.thumbnail ||
+                    pizza?.imageUrl ||
+                    pizza?.image ||
+                    "/images/pizza-margherita.png";
                   return (
-                    <Card
-                      key={order.id}
-                      className="data-surface rounded-[28px] p-4"
-                    >
+                    <Card key={order.id} className="data-surface orders-card">
                       <Card.Content className="p-0">
                         <div className="reference-order-top">
                           <div className="reference-order-image">
@@ -363,29 +403,43 @@ export default function OrdersPage() {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h2 className="text-[16px] font-bold">
-                              {t("orders.orderNum", { id: shortId })}
+                            <h2
+                              className="orders-name"
+                              title={order.items
+                                .map((item) => item.name)
+                                .join(", ")}
+                            >
+                              {order.items[0]?.name ||
+                                t("orders.orderNum", { id: shortId })}
                             </h2>
-                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">
-                              {order.items
-                                .map((i) => `${i.quantity} × ${i.name}`)
-                                .join(" · ")}
+                            <p className="orders-details">
+                              {quantity}{" "}
+                              {language === "de"
+                                ? "Artikel"
+                                : quantity === 1
+                                  ? "item"
+                                  : "items"}
+                              <span aria-hidden="true"> | </span>
+                              <time
+                                dateTime={new Date(
+                                  order.placedAt,
+                                ).toISOString()}
+                              >
+                                {new Date(order.placedAt).toLocaleDateString(
+                                  language === "de" ? "de-DE" : "en-IE",
+                                  { day: "numeric", month: "short" },
+                                )}
+                              </time>
                             </p>
-                            <p className="mt-1 flex items-center gap-1 text-[11px] text-muted">
-                              <Clock size={12} />
-                              {new Date(order.placedAt).toLocaleDateString(
-                                language === "de" ? "de-DE" : "en-IE",
-                              )}
-                            </p>
+                            <span className="sr-only">
+                              {t("orders.orderNum", { id: shortId })}
+                            </span>
                             <div className="reference-order-meta">
                               <strong>
                                 <AnimatedNumber currency value={order.total} />
                               </strong>
                               <span
-                                className={cn(
-                                  "reference-order-status",
-                                  statusClass,
-                                )}
+                                className={`reference-order-status orders-status-${order.status}`}
                               >
                                 {statusLabel}
                               </span>
@@ -394,11 +448,29 @@ export default function OrdersPage() {
                         </div>
                         {order.status === "active" &&
                           !order.awaitingPayment && (
-                            <div className="mt-4">
-                              <OrderProgress
-                                stepIndex={order.stepIndex}
-                                compact
+                            <div
+                              className="orders-progress"
+                              role="progressbar"
+                              aria-label={statusLabel}
+                              aria-valuemin={0}
+                              aria-valuemax={ORDER_STEPS.length - 1}
+                              aria-valuenow={step}
+                              aria-valuetext={statusLabel}
+                            >
+                              <div
+                                className="orders-progress-fill"
+                                style={{
+                                  width: `${((step + 0.5) / ORDER_STEPS.length) * 100}%`,
+                                }}
                               />
+                              <span
+                                className="orders-progress-marker"
+                                style={{
+                                  left: `${((step + 0.5) / ORDER_STEPS.length) * 100}%`,
+                                }}
+                              >
+                                <Pizza size={22} />
+                              </span>
                             </div>
                           )}
                         {Boolean(order.compensationCents) && (
@@ -422,68 +494,65 @@ export default function OrdersPage() {
                                 : order.refundStatus}
                           </p>
                         )}
-                        <div className="reference-order-actions">
-                          {order.status === "active" ? (
-                            <>
-                              <Button
-                                variant="secondary"
-                                isDisabled={actionBusy}
-                                onPress={() => void reviewCancel(order.id)}
-                              >
-                                {language === "de"
-                                  ? "Optionen"
-                                  : "Order options"}
-                              </Button>
-                              <Button variant="primary" onPress={track}>
-                                {order.awaitingPayment
-                                  ? "Resume payment"
-                                  : t("orders.track")}
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="secondary"
-                                onPress={() =>
-                                  router.push(
-                                    order.status === "completed"
-                                      ? `/feedback/?order=${encodeURIComponent(order.id)}`
-                                      : `/help/?order=${encodeURIComponent(order.id)}`,
-                                  )
-                                }
-                              >
-                                {order.status === "completed"
-                                  ? language === "de"
-                                    ? "Feedback"
-                                    : "Leave feedback"
-                                  : language === "de"
-                                    ? "Hilfe"
-                                    : "Get help"}
-                              </Button>
-                              <Button
-                                variant="primary"
-                                isDisabled={actionBusy}
-                                onPress={() => void reviewReorder(order.id)}
-                              >
-                                {t("orders.reorder")}
-                              </Button>
-                            </>
-                          )}
-                        </div>
                         {order.status !== "cancelled" && (
-                          <Button
-                            variant="ghost"
-                            className="mt-2 h-10 w-full text-xs text-muted"
-                            onPress={() =>
-                              router.push(
-                                `/help/?order=${encodeURIComponent(order.id)}`,
-                              )
-                            }
-                          >
-                            {language === "de"
-                              ? "Hilfe zur Bestellung"
-                              : "Help with this order"}
-                          </Button>
+                          <div className="reference-order-actions">
+                            {order.status === "active" ? (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  isDisabled={actionBusy}
+                                  onPress={() => {
+                                    setReason("");
+                                    void reviewCancel(order.id);
+                                  }}
+                                >
+                                  {language === "de"
+                                    ? "Stornieren"
+                                    : "Cancel Order"}
+                                </Button>
+                                <Button
+                                  className="orders-track"
+                                  variant="secondary"
+                                  onPress={track}
+                                >
+                                  {order.awaitingPayment
+                                    ? language === "de"
+                                      ? "Jetzt bezahlen"
+                                      : "Resume payment"
+                                    : language === "de"
+                                      ? "Verfolgen"
+                                      : "Track Driver"}
+                                  <MapPin size={22} />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  onPress={() =>
+                                    router.push(
+                                      `/feedback/?order=${encodeURIComponent(order.id)}`,
+                                    )
+                                  }
+                                >
+                                  {language === "de"
+                                    ? "Bewerten"
+                                    : "Leave a Review"}
+                                </Button>
+                                <Button
+                                  className="orders-reorder"
+                                  variant="primary"
+                                  isDisabled={actionBusy}
+                                  onPress={() => void reviewReorder(order.id)}
+                                >
+                                  {language === "de"
+                                    ? "Nochmal bestellen"
+                                    : "Order Again"}
+                                  <ArrowRepeatClockwise1 size={22} />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </Card.Content>
                     </Card>

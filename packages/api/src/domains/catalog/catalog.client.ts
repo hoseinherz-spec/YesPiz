@@ -3,8 +3,11 @@ import {
   withAuth,
   type ApiRequestOptions,
   type AuthRequestOptions,
-} from '../../core';
+} from "../../core";
 import type {
+  Ingredient,
+  CreateIngredientRequest,
+  UpdateIngredientRequest,
   Category,
   CreateCategoryRequest,
   CreateMenuItemRequest,
@@ -14,42 +17,85 @@ import type {
   MenuVersionDetail,
   PublishedMenuResponse,
   UpdateMenuItemRequest,
-} from './catalog.dto';
-import { catalogEndpoints } from './catalog.endpoint';
+} from "./catalog.dto";
+import { catalogEndpoints } from "./catalog.endpoint";
 
 export const catalogClient = {
+  getIngredient(id: string, options?: AuthRequestOptions) {
+    return apiRequest<Ingredient>(
+      `/api/v1/catalog/ingredients/${encodeURIComponent(id)}`,
+      withAuth({ ...options, method: "GET" }),
+    );
+  },
+  listIngredients(options?: AuthRequestOptions) {
+    return apiRequest<Ingredient[]>(
+      "/api/v1/catalog/ingredients",
+      withAuth({ ...options, method: "GET" }),
+    );
+  },
+  createIngredient(
+    body: CreateIngredientRequest,
+    options?: AuthRequestOptions,
+  ) {
+    return apiRequest<Ingredient>(
+      "/api/v1/catalog/ingredients",
+      withAuth({ ...options, method: "POST", body }),
+    );
+  },
+  updateIngredient(
+    id: string,
+    body: UpdateIngredientRequest,
+    options?: AuthRequestOptions,
+  ) {
+    return apiRequest<Ingredient>(
+      `/api/v1/catalog/ingredients/${encodeURIComponent(id)}`,
+      withAuth({ ...options, method: "PATCH", body }),
+    );
+  },
+  deleteIngredient(id: string, options?: AuthRequestOptions) {
+    return apiRequest<{ deleted: boolean }>(
+      `/api/v1/catalog/ingredients/${encodeURIComponent(id)}`,
+      withAuth({ ...options, method: "DELETE" }),
+    );
+  },
   getPublishedMenu(options?: ApiRequestOptions) {
     return apiRequest<PublishedMenuResponse>(catalogEndpoints.menu, {
       ...options,
-      method: 'GET',
+      method: "GET",
     });
+  },
+  getPublishedCombo(id: string, options?: ApiRequestOptions) {
+    return apiRequest<import("./catalog.dto").PublishedComboResponse>(
+      catalogEndpoints.combo(id),
+      { ...options, method: "GET" },
+    );
   },
 
   listVersions(options?: AuthRequestOptions) {
     return apiRequest<MenuVersion[]>(
       catalogEndpoints.versions,
-      withAuth({ ...options, method: 'GET' }),
+      withAuth({ ...options, method: "GET" }),
     );
   },
 
   getVersion(versionId: string, options?: AuthRequestOptions) {
     return apiRequest<MenuVersionDetail>(
       catalogEndpoints.version(versionId),
-      withAuth({ ...options, method: 'GET' }),
+      withAuth({ ...options, method: "GET" }),
     );
   },
 
   createVersion(body: CreateMenuVersionRequest, options?: AuthRequestOptions) {
     return apiRequest<MenuVersion>(
       catalogEndpoints.versions,
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
   publish(versionId: string, options?: AuthRequestOptions) {
     return apiRequest<MenuVersion>(
       catalogEndpoints.publish(versionId),
-      withAuth({ ...options, method: 'POST' }),
+      withAuth({ ...options, method: "POST" }),
     );
   },
 
@@ -60,7 +106,7 @@ export const catalogClient = {
   ) {
     return apiRequest<Category>(
       catalogEndpoints.categories(versionId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
@@ -71,7 +117,7 @@ export const catalogClient = {
   ) {
     return apiRequest<MenuItem>(
       catalogEndpoints.items(versionId),
-      withAuth({ ...options, method: 'POST', body }),
+      withAuth({ ...options, method: "POST", body }),
     );
   },
 
@@ -82,7 +128,7 @@ export const catalogClient = {
   ) {
     return apiRequest<MenuItem>(
       catalogEndpoints.updateItem(itemId),
-      withAuth({ ...options, method: 'PATCH', body }),
+      withAuth({ ...options, method: "PATCH", body }),
     );
   },
 };

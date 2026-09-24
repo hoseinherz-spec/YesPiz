@@ -1,9 +1,21 @@
-/* Keep these millisecond tokens in sync with the Motion adapter's fallbacks. */
+@import "./motion-tokens.css";
+@import "./transitions.css";
+
+/* One motion vocabulary across customer, kitchen, courier and operations. */
 :root {
-  --app-motion-fast: 140ms;
-  --app-motion-control: 220ms;
-  --app-motion-page: 360ms;
-  --app-motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --app-motion-fast: var(--duration-quick);
+  --app-motion-control: var(--duration-fast);
+  --app-motion-page: var(--duration-fast);
+  --app-motion-ease: var(--ease-smooth-out);
+  --acc-expand: var(--duration-fast);
+  --acc-collapse: var(--duration-fast);
+  --acc-chevron: var(--duration-fast);
+  --acc-ease: var(--ease-smooth-out);
+  --stagger-dur: var(--duration-very-slow);
+  --stagger-stagger: var(--duration-stagger);
+  --stagger-distance: var(--distance-medium);
+  --stagger-blur: var(--blur-medium);
+  --stagger-ease: var(--ease-in-out);
   --default-transition-duration: var(--app-motion-control);
   --default-transition-timing-function: var(--app-motion-ease);
 }
@@ -38,8 +50,8 @@
 }
 
 .drawer__dialog {
-  --drawer-enter-duration: var(--app-motion-page);
-  --drawer-exit-duration: var(--app-motion-page);
+  --drawer-enter-duration: var(--duration-slow);
+  --drawer-exit-duration: var(--duration-medium);
   --drawer-enter-ease: var(--app-motion-ease);
   --drawer-exit-ease: var(--app-motion-ease);
 }
@@ -62,3 +74,11 @@
     animation-delay: 0s !important;
   }
 }
+
+.modal__dialog {
+  --modal-enter-duration: var(--duration-fast);
+  --modal-exit-duration: var(--duration-quick);
+}
+/* SSR content is visible until enhancement; motion never gates access to text. */
+.t-stagger:not([data-motion-ready]) .t-stagger-line { opacity: 1; transform: none; filter: none; }
+.t-stagger.is-shown .t-stagger-line { will-change: auto; }

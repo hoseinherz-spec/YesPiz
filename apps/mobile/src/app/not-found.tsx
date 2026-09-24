@@ -3,13 +3,15 @@ import { AppText } from "@/components/Text";
 
 
 import { Button, Typography } from '@heroui/react';
-import { ArrowRight, MapPin } from '@repo/icons';
+import { ArrowRight } from '@/components/animated-icon/icons';
 import { useRouter } from 'next/navigation';
 
 import { AppFrame } from '@/components/AppFrame';
 import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
+import { ProductImage } from '@/features/catalog/components/ProductImage/ProductImage';
+import { pizzaCraftAsset } from '@/constants/media';
 
 export default function NotFound() {
   const router = useRouter();
@@ -20,9 +22,11 @@ export default function NotFound() {
       <div className="flex min-h-dvh flex-col items-center justify-center bg-black px-8 py-[max(40px,env(safe-area-inset-top))] text-center text-white">
         <div className="relative">
           <AppText as="p" aria-hidden="true" className="text-[116px] leading-none font-black tracking-[-0.12em] text-white">404</AppText>
-          <span className="absolute top-1/2 left-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-accent-foreground">
-            <MapPin size={27} />
-          </span>
+          <ProductImage
+            src={pizzaCraftAsset('Pizza Delivery Pin')}
+            alt=""
+            className="absolute top-1/2 left-1/2 size-24 -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-2xl"
+          />
         </div>
         <Typography type="h1" className="mt-7 text-[29px] font-extrabold text-white">
           {t('notFound.title')}

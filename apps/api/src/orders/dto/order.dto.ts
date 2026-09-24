@@ -1,3 +1,4 @@
+import { IngredientChangeDto } from "../../catalog/ingredient-options";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
@@ -100,6 +101,7 @@ export class PizzaSelectionDto {
 }
 
 export class OrderLineDto {
+  @IsOptional() @IsArray() @ArrayMaxSize(40) @ValidateNested({ each: true }) @Type(() => IngredientChangeDto) ingredientChanges?: IngredientChangeDto[];
   @IsOptional() @IsMongoId() secondHalfItemId?: string;
   @IsOptional() @IsString() @MaxLength(60) variantId?: string;
   @IsOptional()

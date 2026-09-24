@@ -1,4 +1,10 @@
 "use client";
+import { presentNativePayment } from "@/lib/native-payment";
+import { ReferenceSheet } from "@/components/ReferenceSheet";
+import { OrderReceipt } from "@/features/checkout/OrderReceipt";
+import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
+import { OrderTotal } from "@/features/checkout/OrderSummary";
+import styles from "@/features/checkout/checkout.module.css";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { AppText } from "@/components/Text";
@@ -18,7 +24,12 @@ import {
   type CustomerOrderView,
   type OrderQuote,
 } from "@repo/api";
-import { Banknote, CreditCard, ShoppingBag } from "@repo/icons";
+import {
+  Banknote,
+  CreditCard,
+  ShoppingBag,
+  Check,
+} from "@/components/animated-icon/icons";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -40,18 +51,12 @@ import {
   clearCheckoutPrefs,
   readCheckoutPrefs,
   readPaymentMethod,
+  writePaymentMethod,
 } from "@/lib/checkout-storage";
 import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
 
 const METHODS = [
-  {
-    id: "wallet",
-    icon: CreditCard,
-    titleKey: "payment.wallet",
-    detailKey: "payment.walletDetail",
-    api: "wallet" as PaymentMethod,
-  },
   {
     id: "card",
     icon: CreditCard,
@@ -66,12 +71,20 @@ const METHODS = [
     detailKey: "payment.cashDetail",
     api: "cash" as PaymentMethod,
   },
+  {
+    id: "wallet",
+    icon: CreditCard,
+    titleKey: "payment.wallet",
+    detailKey: "payment.walletDetail",
+    api: "wallet" as PaymentMethod,
+  },
 ] as const;
 
 export default function PaymentPage() {
   const router = useRouter();
   const {
     t,
+    language,
     addOrder,
     accessToken,
     selectedAddressId,
@@ -122,6 +135,9 @@ export default function PaymentPage() {
     (pendingOrder?.deliveryFeeCents ?? quote?.deliveryFeeCents ?? 0) / 100;
   const discount =
     (pendingOrder?.discountCents ?? quote?.discountCents ?? 0) / 100;
+  const [offersOpen, setOffersOpen] = useState(false);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const checkoutRequest = useMemo<CreateOrderRequest>(
@@ -148,12 +164,14 @@ export default function PaymentPage() {
           extras,
           variantId,
           selections,
+          ingredientChanges,
           secondHalfItemId,
         }) => ({
           menuItemId,
           secondHalfItemId,
           variantId,
           selections,
+          ingredientChanges,
           quantity,
           size,
           extras,
@@ -277,14 +295,14 @@ export default function PaymentPage() {
     } catch {
       /* optional storage */
     }
-    router.replace("/order-success/");
+    router.replace(`/order-success/?orderId=${encodeURIComponent(orderId)}`);
   };
 
   const pay = async () => {
     if (inFlight.current) return;
     setError(null);
     if (!authed || !accessToken) {
-      router.push("/login/?next=/payment/");
+      router.push("/auth/sign-in/?next=/payment/");
       return;
     }
     if (
@@ -368,6 +386,17 @@ export default function PaymentPage() {
           throw new Error(
             "Card payment is temporarily unavailable. Your order has not been submitted.",
           );
+        if (await presentNativePayment(result.clientSecret)) {
+          const verified = await paymentsClient.confirm(order.id, {
+            accessToken,
+          });
+          if (!verified.ok)
+            throw new Error(
+              "Payment is being verified. Refresh this order shortly.",
+            );
+          await finishOrder(order.id);
+          return;
+        }
         setStripeSecret(result.clientSecret);
         return;
       }
@@ -418,14 +447,138 @@ export default function PaymentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId, accessToken, pendingOrder, search]);
 
+  if (error && pendingOrder && !stripeSecret) {
+    return (
+      <FormScope>
+        <AppFrame className={styles.screen}>
+          <ScreenHeader
+            title={language === "de" ? "Zahlungsdetails" : "Payment details"}
+            backHref="/orders/"
+          />
+          <OrderReceipt order={pendingOrder} failed message={error} />
+          <div className="mt-4 flex flex-wrap gap-3">
+            {pendingOrder.orderState !== "cancelled" && (
+              <Button
+                variant="secondary"
+                isDisabled={busy}
+                onPress={() => void onStripeSuccess()}
+              >
+                {t("payment.checkStatus")}
+              </Button>
+            )}
+            <Button variant="ghost" onPress={() => router.push("/cart/")}>
+              {t("payment.reviewCart")}
+            </Button>
+          </div>
+          {pendingOrder.orderState !== "cancelled" && (
+            <MobileActionBar
+              className={styles.action}
+              leading={<OrderTotal total={total} />}
+              isDisabled={busy}
+              isPending={busy}
+              onPress={() => void pay()}
+              label={t("payment.pay", { amount: formatPrice(total) })}
+            />
+          )}
+        </AppFrame>
+      </FormScope>
+    );
+  }
+
   return (
     <FormScope>
-      <AppFrame className="!pb-36">
-        <ScreenHeader
-          title={t("payment.title")}
-          subtitle={t("payment.subtitle")}
-          backHref="/checkout/"
-        />
+      <AppFrame className={styles.screen}>
+        <ScreenHeader title={t("payment.title")} backHref="/checkout/" />
+        <CheckoutSteps step="payment" />
+        <div className={styles.intro}>
+          <h1>{language === "de" ? "Fast geschafft." : "One last thing."}</h1>
+          <p>
+            {language === "de"
+              ? "Zahlungsart wählen und den Gesamtbetrag prüfen."
+              : "Choose how to pay and review your total."}
+          </p>
+        </div>
+
+        <ReferenceSheet
+          open={offersOpen}
+          onClose={() => {
+            if (!couponBusy) setOffersOpen(false);
+          }}
+          title={language === "de" ? "Angebote" : "Offers"}
+        >
+          <Form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!accessToken || couponBusy) return;
+              const code = couponInput.trim().toUpperCase();
+              setCouponBusy(true);
+              setCouponError(null);
+              try {
+                const checked = await ordersClient.quote(
+                  { ...checkoutRequest, couponCode: code || undefined },
+                  { accessToken },
+                );
+                setCouponCode(code);
+                setQuote(checked);
+                setOffersOpen(false);
+              } catch (cause) {
+                setCouponError(
+                  cause instanceof Error ? cause.message : t("payment.error"),
+                );
+              } finally {
+                setCouponBusy(false);
+              }
+            }}
+          >
+            <Input
+              label={<>{language === "de" ? "Rabattcode" : "Discount code"}</>}
+              autoComplete="off"
+              maxLength={32}
+              value={couponInput}
+              onChange={(event) => setCouponInput(event.target.value)}
+              className="mt-2 w-full rounded-2xl bg-surface-secondary p-4"
+            />
+            {couponError && (
+              <p role="alert" className="mt-3 text-sm text-danger">
+                {couponError}
+              </p>
+            )}
+            <div className="mt-5 flex gap-3">
+              <FormButton
+                type="button"
+                variant="secondary"
+                className="flex-1 rounded-full"
+                isDisabled={couponBusy}
+                onPress={() => setOffersOpen(false)}
+              >
+                {language === "de" ? "Abbrechen" : "Cancel"}
+              </FormButton>
+              <FormButton
+                type="submit"
+                className="flex-1 rounded-full"
+                isPending={couponBusy}
+                isDisabled={couponBusy || !accessToken}
+              >
+                {language === "de" ? "Speichern" : "Save"}
+              </FormButton>
+            </div>
+            {couponCode && (
+              <FormButton
+                type="button"
+                variant="ghost"
+                className="mt-2 w-full"
+                isDisabled={couponBusy}
+                onPress={() => {
+                  setCouponCode("");
+                  setCouponInput("");
+                  setOffersOpen(false);
+                }}
+              >
+                {language === "de" ? "Code entfernen" : "Remove code"}
+              </FormButton>
+            )}
+          </Form>
+        </ReferenceSheet>
 
         {stripeSecret ? (
           <StripePaymentSheet
@@ -442,39 +595,78 @@ export default function PaymentPage() {
             onSuccess={onStripeSuccess}
           />
         ) : (
-          <RadioField
-            name="paymentMethod"
-            label={t("checkout.payment")}
-            required
-            disabled={busy || Boolean(pendingOrder)}
-            value={pendingOrder?.paymentMethod ?? selectedMethod}
-            onChange={(v) => setMethod(v as typeof selectedMethod)}
-            options={METHODS.map((item) => ({
-              id: item.id,
-              disabled:
-                (item.id === "cash" && cashDisabled) ||
-                (item.id === "wallet" &&
-                  (creditCents === null ||
-                    creditCents < Math.round(total * 100))),
-              label: (
-                <AppText as="span">
-                  <AppText as="strong">
-                    {item.id === "wallet" ? "Yespizz credit" : t(item.titleKey)}
-                  </AppText>
-                  <AppText as="span" className="block text-xs text-muted">
-                    {item.id === "wallet"
-                      ? `${creditCents === null ? "—" : formatPrice(creditCents / 100)} available · full-order payment`
-                      : t(item.detailKey)}
-                  </AppText>
-                  {item.id === "cash" && cashReasonLabel && (
-                    <AppText as="span" className="text-xs text-warning">
-                      {cashReasonLabel}
+          <div className={`${styles.offer} ${styles.paymentOptions}`}>
+            <RadioField
+              name="paymentMethod"
+              label={t("checkout.payment")}
+              required
+              disabled={busy || Boolean(pendingOrder)}
+              value={pendingOrder?.paymentMethod ?? selectedMethod}
+              onChange={(v) => {
+                const next = v as typeof selectedMethod;
+                setMethod(next);
+                writePaymentMethod(next);
+              }}
+              options={METHODS.map((item) => ({
+                id: item.id,
+                disabled:
+                  (item.id === "cash" && cashDisabled) ||
+                  (item.id === "wallet" &&
+                    (creditCents === null ||
+                      creditCents < Math.round(total * 100))),
+                label: (
+                  <AppText as="span">
+                    <AppText as="strong">
+                      {item.id === "wallet"
+                        ? "Yespizz credit"
+                        : t(item.titleKey)}
                     </AppText>
-                  )}
-                </AppText>
-              ),
-            }))}
-          />
+                    <AppText as="span" className="block text-xs text-muted">
+                      {item.id === "wallet"
+                        ? `${creditCents === null ? "—" : formatPrice(creditCents / 100)} available · full-order payment`
+                        : t(item.detailKey)}
+                    </AppText>
+                    {item.id === "cash" && cashReasonLabel && (
+                      <AppText as="span" className="text-xs text-warning">
+                        {cashReasonLabel}
+                      </AppText>
+                    )}
+                  </AppText>
+                ),
+              }))}
+            />
+          </div>
+        )}
+
+        {!pendingOrder && !resumeId && !stripeSecret && (
+          <section className={styles.offer}>
+            <div className={styles.offerHeader}>
+              <span>
+                <ShoppingBag size={18} />
+                {language === "de" ? "Angebote" : "Offers"}
+              </span>
+              <Button
+                variant="secondary"
+                onPress={() => {
+                  setCouponInput(couponCode);
+                  setCouponError(null);
+                  setOffersOpen(true);
+                }}
+              >
+                {couponCode
+                  ? t("checkout.edit")
+                  : language === "de"
+                    ? "Hinzufügen +"
+                    : "Add +"}
+              </Button>
+            </div>
+            {couponCode && quote && (
+              <div className={styles.applied}>
+                {couponCode}
+                <Check size={18} />
+              </div>
+            )}
+          </section>
         )}
 
         {!stripeSecret &&
@@ -510,47 +702,6 @@ export default function PaymentPage() {
           </Typography>
         ) : null}
 
-        {!pendingOrder && !resumeId && (
-          <Form
-            className="my-4 rounded-2xl border border-border p-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setCouponCode(couponInput.trim().toUpperCase());
-            }}
-          >
-            <Input
-              label={<>Discount code</>}
-              wrapperClassName="text-sm"
-              className="mt-2 w-full rounded-xl bg-field-background p-3"
-              maxLength={32}
-              value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value)}
-            />
-            <div className="mt-3 flex gap-3">
-              <FormButton
-                variant="ghost"
-                type="submit"
-                isDisabled={busy || quoteBusy}
-                className="underline"
-              >
-                Apply code
-              </FormButton>
-              {couponCode && (
-                <FormButton
-                  variant="ghost"
-                  type="button"
-                  className="underline"
-                  onPress={() => {
-                    setCouponCode("");
-                    setCouponInput("");
-                  }}
-                >
-                  Remove code
-                </FormButton>
-              )}
-            </div>
-          </Form>
-        )}
         {quoteBusy ? (
           <AppText as="p" role="status" className="mt-4 text-sm text-muted">
             Checking your order…
@@ -559,7 +710,7 @@ export default function PaymentPage() {
         {!authed ? (
           <Button
             className="mt-4"
-            onPress={() => router.push("/login/?next=/payment/")}
+            onPress={() => router.push("/auth/sign-in/?next=/payment/")}
           >
             Sign in to order
           </Button>
@@ -695,6 +846,8 @@ export default function PaymentPage() {
 
         {!stripeSecret ? (
           <MobileActionBar
+            className={styles.action}
+            leading={<OrderTotal total={total} />}
             onPress={() => void pay()}
             icon={<ShoppingBag size={20} />}
             isDisabled={
@@ -707,7 +860,11 @@ export default function PaymentPage() {
             label={
               busy || quoteBusy
                 ? t("payment.processing")
-                : t("payment.pay", { amount: formatPrice(total) })
+                : (pendingOrder?.paymentMethod ?? selectedMethod) === "cash"
+                  ? language === "de"
+                    ? "Bestellung aufgeben"
+                    : "Place order · pay on delivery"
+                  : t("payment.pay", { amount: formatPrice(total) })
             }
           />
         ) : null}

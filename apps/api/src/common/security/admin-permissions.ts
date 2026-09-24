@@ -17,8 +17,12 @@ export function requiredAdminPermission(
 ): string | null {
   const path = url.split("?")[0].replace(/^\/api\/v1\//, "");
   let area: AdminArea | undefined;
-  if (/^(finance|payments\/(refunds|reconcile))/.test(path)) area = "finance";
-  else if (/^(catalog|pizzas|growth\/menu)/.test(path)) area = "catalog";
+  if (
+    /^(groups\/admin\/refunds|finance|payments\/(refunds|reconcile))/.test(path)
+  )
+    area = "finance";
+  else if (/^(catalog|products|menus|pizzas|growth\/menu)(\/|$)/.test(path))
+    area = "catalog";
   else if (/^(care|support|feedback)/.test(path)) area = "support";
   else if (/^(growth|referrals)/.test(path)) area = "growth";
   else if (

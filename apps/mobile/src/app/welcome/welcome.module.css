@@ -1,0 +1,70 @@
+.root { min-height: 100svh; display: grid; place-items: center; background: var(--background); color: var(--foreground); padding: 16px; }
+.shell { --welcome-ease: cubic-bezier(.22,1,.36,1); position: relative; isolation: isolate; width: 100%; max-width: 480px; height: min(940px, calc(100svh - 32px)); min-height: 690px; overflow: hidden; border-radius: 36px; background: var(--background); border: 1px solid var(--border); display: flex; flex-direction: column; touch-action: pan-y; }
+.header { position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: max(22px, env(safe-area-inset-top)) 26px 12px; }
+.brand { font-size: 31px; font-weight: 850; letter-spacing: -2px; color: white; text-shadow: 0 2px 16px #0005; }
+.brand span { color: var(--accent); }
+.brand i { font-size: 10px; font-style: normal; vertical-align: top; letter-spacing: 0; margin-left: 4px; }
+.skip { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 14px; border: 1px solid #ffffff40; border-radius: 99px; background: #07152640; backdrop-filter: blur(16px); color: white; font-size: 12px; cursor: pointer; }
+.stage { flex: 1; min-height: 530px; }
+.slide { overflow: hidden; }
+.photo { position: absolute; inset: 0 0 8%; overflow: hidden; }
+.photo img { object-fit: cover; object-position: center 34%; transform: scale(1.04); }
+.slide[data-page-id="2"] .photo img { object-position: 69% center; }
+.slide[data-page-id="3"] .photo img { object-position: 66% center; }
+.slide[data-active="true"] .photo img { animation: photoSettle 1400ms var(--welcome-ease) both; }
+.shade { position: absolute; inset: 0; background: linear-gradient(180deg,#06132738 0%, transparent 26%, #0613270a 39%, color-mix(in srgb,var(--background) 88%,transparent) 65%, var(--background) 88%); }
+.copy { position: absolute; bottom: 0; left: 0; right: 0; padding: 0 28px; }
+.eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 17px; font-size: 9px; font-weight: 600; letter-spacing: .16em; color: #e9eedc; }
+.eyebrow > span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.title { margin: 0; font-size: clamp(44px, 12.9vw, 63px); line-height: .99; font-weight: 750; letter-spacing: -.055em; }
+.title > span { white-space: nowrap; }
+.root:lang(de) .title { font-size: clamp(30px, 10vw, 48px); }
+.title > span:last-child { color: var(--accent); }
+.body { max-width: 350px; min-height: 44px; margin: 19px 0 0; color: #adb7c5; font-size: 13px; line-height: 1.65; }
+.detail { position: absolute; top: 35%; left: 28px; right: 28px; opacity: 0; }
+.slide[data-active="true"] .detail { animation: detailReveal 500ms var(--welcome-ease) 80ms both; }
+.freshStamp { width: 92px; height: 92px; margin-left: auto; border-radius: 50%; background: var(--accent); color: var(--accent-foreground); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(12deg); box-shadow: 0 4px 30px #0002; }
+.freshStamp > span { font-size: 29px; font-weight: 750; letter-spacing: -1.5px; }
+.freshStamp small { font-size: 7px; letter-spacing: .07em; font-weight: 650; }
+.freshStamp svg { width: 19px; height: 19px; margin-top: 3px; stroke-dasharray: 30; stroke-dashoffset: 30; }
+.slide[data-active="true"] .freshStamp svg { animation: drawCheck 500ms var(--welcome-ease) 160ms forwards; }
+.orderCard, .trackingCard { padding: 17px 18px; border: 1px solid #ffffff35; background: #061327a6; backdrop-filter: blur(24px); border-radius: 21px; color: white; box-shadow: 0 12px 34px #0002; }
+.orderCard { max-width: 255px; transform: rotate(-4deg); }
+.orderCard small, .trackingCard small { font-size: 7px; letter-spacing: .14em; color: #c9d0d8; display: block; }
+.orderCard strong { display: block; font-size: 23px; letter-spacing: -.04em; margin: 3px 0; }
+.orderCard div > span { font-size: 10px; color: #c9d0d8; }
+.sizes { display: flex; align-items: center; gap: 7px; margin-top: 13px; }
+.sizes > span { width: 36px; height: 27px; display: flex; align-items: center; justify-content: center; gap: 3px; border: 1px solid #ffffff25; border-radius: 8px; }
+.sizes > .selectedSize { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); }
+.slide[data-active="true"] .selectedSize { animation: sizeSelect 500ms var(--welcome-ease) 160ms both; }
+.trackingCard { display: flex; align-items: center; gap: 13px; transform: rotate(3deg); }
+.trackingIcon { display: grid; place-items: center; flex-shrink: 0; width: 43px; height: 43px; border-radius: 50%; background: var(--accent); color: var(--accent-foreground); }
+.trackingCard strong { display: block; font-size: 12px; font-weight: 550; margin-top: 4px; }
+.trackingCard > div { flex: 1; }
+.deliverySteps { display: flex; align-items: center; margin-top: 11px; }
+.deliverySteps i { height: 6px; width: 6px; border-radius: 50%; background: var(--accent); }
+.deliverySteps span { height: 1px; flex: 1; margin: 0 4px; background: var(--accent); transform-origin: left; }
+.slide[data-active="true"] .deliverySteps span { animation: routeDraw 500ms var(--welcome-ease) 160ms both; }
+.slide[data-active="true"] .deliverySteps span:nth-of-type(2) { animation-delay: 240ms; }
+.footer { padding: 13px 28px max(26px, env(safe-area-inset-bottom)); position: relative; z-index: 5; }
+.progress { display: flex; align-items: center; min-height: 40px; margin-bottom: 10px; gap: 0; }
+.dot { display: grid; place-items: center; width: 32px; height: 40px; border: 0; background: none; cursor: pointer; padding: 0 4px; }
+.dot span { display: block; width: 18px; height: 3px; background: #ffffff35; border-radius: 99px; transition: transform 250ms var(--welcome-ease), background-color 250ms var(--welcome-ease); transform: scaleX(.55); }
+.dot[aria-current] span { background: var(--accent); transform: scaleX(1); }
+.counter { margin-left: auto; color: var(--foreground); font-size: 10px; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.counter span { color: var(--muted); }
+.actions { display: flex; gap: 10px; }
+.next { flex: 1; display: flex; align-items: center; justify-content: space-between; min-height: 62px; background: var(--accent); color: var(--accent-foreground); padding: 7px 19px 7px 24px; border: 0; border-radius: 99px; cursor: pointer; font-weight: 650; font-size: 15px; transition: transform 150ms var(--welcome-ease); }
+.next:active, .back:active { transform: scale(.98); }
+.arrow { display: grid; place-items: center; transition: transform 250ms var(--welcome-ease); }
+.next:hover .arrow { transform: translateX(4px); }
+.back { width: 62px; height: 62px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--foreground); cursor: pointer; animation: detailReveal 250ms var(--welcome-ease) both; }
+.shell button:focus-visible, .shell:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@keyframes photoSettle { from { transform: scale(1.04); } to { transform: scale(1); } }
+@keyframes detailReveal { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+@keyframes routeDraw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sizeSelect { from { opacity: .4; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@media (max-width: 520px) { .root { padding: 0; } .shell { border-radius: 0; border: 0; height: 100svh; min-height: 680px; } }
+@media (max-height: 740px) { .title { font-size: min(45px, 11.7vw); } .detail { top: 24%; } .freshStamp { width: 76px; height: 76px; } .copy { padding-inline: 25px; } .eyebrow { margin-bottom: 12px; } .body { margin-top: 14px; } }
+@media (prefers-reduced-motion: reduce) { .slide[data-active="true"] .photo img, .slide[data-active="true"] .detail, .slide[data-active="true"] .freshStamp svg, .slide[data-active="true"] .selectedSize, .slide[data-active="true"] .deliverySteps span, .back { animation: none; } .photo img { transform: none; } .slide[data-active="true"] .detail { opacity: 1; transform: none; } .freshStamp svg { stroke-dashoffset: 0; } .dot span, .next, .arrow { transition: none; } }

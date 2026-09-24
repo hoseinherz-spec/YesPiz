@@ -20,15 +20,13 @@ export function MobilePageTransition({
   app: TransitionApp;
 }) {
   const route = normalizeRoute(pathname);
-  const [navigation, setNavigation] = useState({
-    route,
-    motion: "fade" as RouteMotion,
-  });
-  let motion = navigation.motion;
-  if (navigation.route !== route) {
-    motion = mobileRouteMotion(navigation.route, route, app);
-    setNavigation({ route, motion });
-  }
+  const [navigation, setNavigation] = useState<{ route: string; motion: RouteMotion }>({ route, motion: "fade" });
+  const motion = navigation.route === route
+    ? navigation.motion
+    : mobileRouteMotion(navigation.route, route, app);
+  // Keep the route pair across render retries. Mutating a ref during render
+  // consumed the old route before commit and silently changed motion to fade.
+  if (navigation.route !== route) setNavigation({ route, motion });
   return (
     <ViewTransition
       key={route}

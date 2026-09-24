@@ -1,0 +1,13 @@
+{
+  "name": "yespizz-google-jwks-relay",
+  "private": true,
+  "scripts": {
+    "check": "tsc --noEmit && wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types worker-configuration.d.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "wrangler": "latest"
+  }
+}

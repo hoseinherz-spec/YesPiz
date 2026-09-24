@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import {
   CurrentUser,
@@ -18,6 +26,21 @@ import { PaymentsService } from "./payments.service";
 @Controller("payments")
 export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
+
+  @Get("cards")
+  cards(@CurrentUser() user: JwtPayloadUser) {
+    return this.payments.savedCards(user.userId);
+  }
+
+  @Post("cards/setup")
+  setupCard(@CurrentUser() user: JwtPayloadUser) {
+    return this.payments.setupCard(user.userId);
+  }
+
+  @Delete("cards/:id")
+  removeCard(@CurrentUser() user: JwtPayloadUser, @Param("id") id: string) {
+    return this.payments.removeCard(user.userId, id);
+  }
 
   @Post("cancel-order")
   cancel(

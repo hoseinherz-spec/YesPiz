@@ -38,6 +38,9 @@ class DeliveryController {
       apiKey: key,
       format: "json",
       limit: "5",
+      filter: "countrycode:at",
+      bias: "countrycode:at",
+      lang: "de",
     }).toString();
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!response.ok)
@@ -57,7 +60,8 @@ class DeliveryController {
     };
     return (data.results ?? []).map((row) => ({
       label: row.formatted,
-      street: [row.street, row.housenumber].filter(Boolean).join(" "),
+      street: row.street ?? "",
+      houseNumber: row.housenumber ?? "",
       city: row.city ?? "",
       zipcode: row.postcode ?? "",
       latitude: row.lat,

@@ -1,15 +1,29 @@
-'use client';
+"use client";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { AppFrame } from '@/components/AppFrame';
-import { PizzaDetail } from '@/features/catalog/components/PizzaDetail';
+import { AppFrame } from "@/components/AppFrame";
 
 function PizzaPageInner() {
   const params = useSearchParams();
-  const id = params.get('id') ?? '';
-  return <PizzaDetail id={id} />;
+  const router = useRouter();
+  const id = params.get("id") ?? "";
+  useEffect(() => {
+    const remaining = new URLSearchParams(params.toString());
+    remaining.delete("id");
+    const query = remaining.toString();
+    router.replace(
+      id
+        ? `/menu/${encodeURIComponent(id)}/${query ? `?${query}` : ""}`
+        : "/menu/",
+    );
+  }, [id, params, router]);
+  return (
+    <AppFrame>
+      <p role="status">Opening menu…</p>
+    </AppFrame>
+  );
 }
 
 export default function PizzaPage() {
@@ -17,7 +31,10 @@ export default function PizzaPage() {
     <Suspense
       fallback={
         <AppFrame padded={false}>
-          <div className="h-dvh animate-pulse bg-card" aria-label="Loading pizza details" />
+          <div
+            className="h-dvh animate-pulse bg-card"
+            aria-label="Loading pizza details"
+          />
         </AppFrame>
       }
     >

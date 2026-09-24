@@ -1,482 +1,256 @@
 "use client";
-import { AppText } from "@/components/Text";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, MapPin } from "@/components/animated-icon/icons";
+import { DeliveryTrackingMap } from "@repo/api/components/delivery-tracking-map";
+import { useApp, ORDER_STEPS, mapCustomerOrder } from "@/context/AppContext";
+import { useOrderTracking } from "@/features/tracking/useOrderTracking";
+import { TrackingJourney } from "@/features/tracking/TrackingJourney";
+import { RiderSheet } from "@/features/tracking/RiderSheet";
+import { RiderAvatar } from "@/features/tracking/RiderAvatar";
+import { TrackingActions } from "@/features/tracking/TrackingActions";
+import { TrackingOrderDetails } from "@/features/tracking/TrackingOrderDetails";
+import { PizzaLoader } from "@/components/PizzaLoader";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
+import { pizzaCraftAsset } from "@/constants/media";
+import "@/features/tracking/tracking.css";
 
-import { LocationMap } from "@repo/api/components/location-map";
-
-import { Button, Card, Typography } from "@heroui/react";
-import { ordersClient, type CourierLocationView } from "@repo/api";
-import {
-  ArrowLeft,
-  Check,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Truck,
-} from "@repo/icons";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-
-import { OrderProgress } from "@/components/OrderProgress";
-import { AppFrame } from "@/components/AppFrame";
-import { mapCustomerOrder, ORDER_STEPS, useApp } from "@/context/AppContext";
-import { etaArrivalTimestamp, formatEtaRange, isEtaStale } from "@/lib/eta";
-import { cn } from "@/lib/cn";
-import { hx } from "@/lib/heroui-classes";
-
-const MASKED_COMMS_ENABLED = true;
-
-export default function TrackingPage() {
-  const router = useRouter();
-  const {
-    t,
-    orders,
-    addresses,
-    activeOrderId,
-    advanceActiveOrder,
+function TrackingScreen() {
+  const { orders, activeOrderId, accessToken, hydrated, language, t } =
+    useApp();
+  const requestedId = useSearchParams().get("orderId");
+  const [expanded, setExpanded] = useState(false),
+    [recenter, setRecenter] = useState(0);
+  const id =
+    requestedId ||
+    activeOrderId ||
+    orders.find((order) => order.status === "active")?.id;
+  const { data, loading, error, live, refresh, now } = useOrderTracking(
+    id,
     accessToken,
-    addOrder,
-  } = useApp();
-  const [courierSnapshot, setCourierSnapshot] = useState<{
-    orderId: string;
-    location: CourierLocationView | null;
-  } | null>(null);
-  const [connectionLost, setConnectionLost] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const order = useMemo(() => {
-    if (activeOrderId) return orders.find((item) => item.id === activeOrderId);
-    return orders.find((item) => item.status === "active");
-  }, [orders, activeOrderId]);
-  const address = addresses.find((item) => item.id === order?.addressId);
-  const orderId = order?.id;
-  const orderStatus = order?.status;
-  const orderStep = order?.stepIndex;
-  const isLocalOrder = Boolean(orderId?.startsWith("o-"));
-
-  useEffect(() => {
-    if (!accessToken || !orderId || isLocalOrder || orderStatus !== "active")
-      return;
-    if ((orderStep ?? 0) >= ORDER_STEPS.length - 1) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const view = await ordersClient.get(orderId, { accessToken });
-        if (!cancelled) {
-          addOrder(mapCustomerOrder(view));
-          setConnectionLost(false);
-        }
-      } catch {
-        if (!cancelled) setConnectionLost(true);
-      }
-    };
-    void tick();
-    const timer = setInterval(() => void tick(), 3000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [accessToken, orderId, isLocalOrder, orderStatus, orderStep, addOrder]);
-
-  useEffect(() => {
-    if (!accessToken || !orderId || isLocalOrder || (orderStep ?? 0) < 3)
-      return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const location = await ordersClient.getCourierLocation(orderId, {
-          accessToken,
-        });
-        if (!cancelled) setCourierSnapshot({ orderId, location });
-      } catch {
-        if (!cancelled) setCourierSnapshot({ orderId, location: null });
-      }
-    };
-    void tick();
-    const timer = setInterval(() => void tick(), 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [accessToken, orderId, isLocalOrder, orderStep]);
-
-  useEffect(() => {
-    if (!isLocalOrder || !order || order.status !== "active") return;
-    if (order.stepIndex >= ORDER_STEPS.length - 1) return;
-    const timer = setInterval(() => advanceActiveOrder(), 3500);
-    return () => clearInterval(timer);
-  }, [isLocalOrder, order, advanceActiveOrder]);
-
-  if (!order) {
+  );
+  const de = language === "de";
+  const terminal = data && data.order.orderState !== "active";
+  if (!hydrated || loading)
     return (
-      <AppFrame>
-        <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
-          <span className="flex size-24 items-center justify-center rounded-full bg-surface-secondary text-muted">
-            <MapPin size={38} />
-          </span>
-          <Typography type="h2" className={cn(hx.h2, "mt-6")}>
-            {t("tracking.noActive")}
-          </Typography>
-          <Typography type="body-sm" className={cn(hx.bodySm, "mt-2 max-w-xs")}>
-            {t("tracking.noActiveBody")}
-          </Typography>
-          <Button
-            variant="primary"
-            onPress={() => router.push("/orders/")}
-            className={cn(hx.btnPrimary, "mt-8")}
-          >
-            {t("tracking.viewOrders")}
-          </Button>
-        </div>
-      </AppFrame>
+      <div className="tracking-fallback">
+        <PizzaLoader
+          size="lg"
+          showLabel
+          label={de ? "Bestellung wird geladen…" : "Loading your delivery…"}
+        />
+      </div>
     );
-  }
-
-  if (order.status === "cancelled" || order.awaitingPayment) {
+  if (
+    !accessToken ||
+    !id ||
+    !data ||
+    (terminal && data.order.orderState !== "completed")
+  )
     return (
-      <AppFrame>
-        <Typography type="h2" className={hx.h2}>
-          {order.awaitingPayment ? "Payment needed" : t("orders.cancelled")}
-        </Typography>
-        <Typography type="body" className="mt-3 text-muted">
-          {order.awaitingPayment
-            ? "Complete payment to submit this order."
-            : "This order is no longer being delivered."}
-        </Typography>
-        <Button
-          className="mt-6"
-          onPress={() =>
-            router.push(
-              order.awaitingPayment
-                ? `/payment/?orderId=${encodeURIComponent(order.id)}`
-                : "/orders/",
-            )
+      <div className="tracking-fallback">
+        <BrandLogo />
+        <ProductImage
+          src={pizzaCraftAsset("Scooter")}
+          alt=""
+          className="tracking-fallback-artwork"
+        />
+        <h1>
+          {error
+            ? de
+              ? "Tracking nicht verfügbar"
+              : "Tracking unavailable"
+            : data?.order.orderState === "completed"
+              ? t("tracking.arrived")
+              : data?.order.orderState === "cancelled"
+                ? t("orders.cancelled")
+                : data?.order.orderState === "awaiting_payment"
+                  ? de
+                    ? "Zahlung offen"
+                    : "Payment needed"
+                  : t("tracking.noActive")}
+        </h1>
+        <p role={error ? "alert" : undefined}>
+          {error ||
+            (!accessToken
+              ? de
+                ? "Melde dich an, um deine Lieferung zu verfolgen."
+                : "Sign in to track your delivery."
+              : t("tracking.noActiveBody"))}
+        </p>
+        {error && (
+          <button onClick={refresh}>
+            {de ? "Erneut versuchen" : "Try again"}
+          </button>
+        )}
+        <Link
+          href={
+            !accessToken
+              ? `/auth/sign-in/?next=${encodeURIComponent(`/tracking/${id ? `?orderId=${encodeURIComponent(id)}` : ""}`)}`
+              : data?.order.orderState === "awaiting_payment"
+                ? `/payment/?orderId=${encodeURIComponent(data.order.id)}`
+                : "/orders/"
           }
         >
-          {order.awaitingPayment ? "Resume payment" : t("tracking.viewOrders")}
-        </Button>
-      </AppFrame>
-    );
-  }
-
-  const safeStep = Math.max(
-    0,
-    Math.min(order.stepIndex, ORDER_STEPS.length - 1),
-  );
-  const delivered = safeStep >= ORDER_STEPS.length - 1;
-  const currentStep = ORDER_STEPS[safeStep];
-  const courierLoc =
-    courierSnapshot && courierSnapshot.orderId === orderId
-      ? courierSnapshot.location
-      : null;
-  const locationAge = courierLoc?.updatedAt
-    ? now - new Date(courierLoc.updatedAt).getTime()
-    : Infinity;
-  const latitude = courierLoc?.latitude;
-  const longitude = courierLoc?.longitude;
-  const hasLiveLocation =
-    !delivered &&
-    !connectionLost &&
-    safeStep >= 3 &&
-    locationAge >= 0 &&
-    locationAge <= 90_000 &&
-    latitude != null &&
-    longitude != null;
-  const coordinateLabel = hasLiveLocation
-    ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-    : null;
-  const osmHref = hasLiveLocation
-    ? `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=15/${latitude}/${longitude}`
-    : null;
-
-  const etaLabel = delivered
-    ? t("tracking.arrived")
-    : formatEtaRange(order.eta, t);
-  const etaStale =
-    !delivered &&
-    Boolean(order.eta.computedAt) &&
-    isEtaStale(order.eta.computedAt, now);
-  const arrivalAt = etaArrivalTimestamp(order.eta.computedAt, order.eta.max);
-  const showPinHandoff =
-    !delivered &&
-    (order.requiresDeliveryPin ||
-      order.customerStatus === "onway" ||
-      order.customerStatus === "driver");
-
-  return (
-    <AppFrame padded={false} className="bg-surface">
-      <div
-        className={cn(
-          "relative overflow-hidden bg-surface-secondary",
-          hasLiveLocation ? "min-h-[42dvh]" : "min-h-[260px]",
-        )}
-      >
-        {hasLiveLocation ? (
-          <div className="absolute inset-0">
-            <LocationMap
-              latitude={latitude}
-              longitude={longitude}
-              label="Courier location"
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-x-5 top-28 text-center" role="status">
-            <AppText as="p" className="text-2xl font-bold text-foreground">
-              {etaLabel}
-            </AppText>
-            <AppText as="p" className="mt-2 text-sm text-muted">
-              {t(`step.${currentStep.key}.hint`)}
-            </AppText>
-          </div>
-        )}
-
-        <Button
-          isIconOnly
-          variant="secondary"
-          aria-label={t("common.backToHome")}
-          onPress={() => router.back()}
-          className="absolute top-[max(18px,env(safe-area-inset-top))] left-5 z-20 size-14 min-w-14 rounded-full border-0 bg-surface text-foreground shadow-none"
-        >
-          <ArrowLeft size={21} />
-        </Button>
-        <div className="absolute top-[max(22px,env(safe-area-inset-top))] inset-x-20 z-10 text-center">
-          <AppText as="p" className="text-[12px] font-semibold text-muted">
-            {t("tracking.title")}
-          </AppText>
-          <AppText as="p" className="text-[16px] font-bold text-foreground">
-            {t(`step.${currentStep.key}.label`)}
-          </AppText>
-        </div>
-
-        {osmHref ? (
-          <a
-            href={osmHref}
-            target="_blank"
-            rel="noreferrer"
-            className="absolute bottom-5 left-5 z-20 rounded-full bg-surface px-4 py-2 text-[11px] font-semibold text-foreground"
-          >
-            {t("tracking.openMap")} · {coordinateLabel}
-          </a>
-        ) : (
-          <AppText
-            as="span"
-            className="absolute bottom-5 left-5 z-20 rounded-full bg-surface px-4 py-2 text-[11px] font-semibold text-muted"
-          >
-            {delivered
-              ? t("tracking.arrived")
-              : isLocalOrder
-                ? t("tracking.demoMap")
-                : t("tracking.awaitingLocation")}
-          </AppText>
-        )}
+          {!accessToken
+            ? de
+              ? "Anmelden"
+              : "Sign in"
+            : data?.order.orderState === "awaiting_payment"
+              ? de
+                ? "Jetzt bezahlen"
+                : "Resume payment"
+              : t("tracking.viewOrders")}
+        </Link>
       </div>
-
-      <div className="-mt-3 relative z-20 rounded-t-[42px] bg-surface px-[clamp(20px,8vw,38px)] pt-5 pb-[max(28px,env(safe-area-inset-bottom))]">
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-tertiary" />
-        {connectionLost && (
-          <AppText
-            as="p"
-            role="status"
-            className="mb-4 rounded-2xl bg-warning/10 p-4 text-sm text-foreground"
-          >
-            {t("tracking.connectionLost")}
-          </AppText>
-        )}
-        {order.deliveryWindowStart && order.deliveryWindowEnd && (
-          <p className="my-4 rounded-2xl border border-border p-4 text-sm">
-            {t("payment.arrivalWindow")}
-            <br />
-            <strong>
-              {new Date(order.deliveryWindowStart).toLocaleString()} –{" "}
-              {new Date(order.deliveryWindowEnd).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </strong>
+    );
+  if (data.order.customerStatus !== "onway")
+    return (
+      <main className="tracking-screen tracking-preparation">
+        <TrackingJourney data={data} accessToken={accessToken} hero />
+        {error && (
+          <p role="alert" className="journey-error">
+            {error}{" "}
+            <button onClick={refresh}>
+              {de ? "Erneut versuchen" : "Try again"}
+            </button>
           </p>
         )}
-        {order.scheduledAt && order.isScheduled && (
-          <AppText as="p" className="mb-4 rounded-2xl bg-card p-4 text-sm">
-            Order starts {new Date(order.scheduledAt).toLocaleString()}.
-            Preparation and delivery follow this time.
-          </AppText>
-        )}
-        {order.promisedDeliveryAt && (
-          <AppText as="p" className="mb-4 text-sm text-muted">
-            Original delivery promise: by{" "}
-            {new Date(order.promisedDeliveryAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </AppText>
-        )}
-        <Button
-          variant="ghost"
-          className="mb-3"
-          onPress={() =>
-            router.push(`/help/?order=${encodeURIComponent(order.id)}`)
-          }
-        >
-          Get help from Yespizz
-        </Button>
-
-        <Card className="rounded-[26px] border-0 bg-surface-secondary p-3 shadow-none">
-          <Card.Content className="flex items-center gap-3 p-0">
-            <span className="flex size-13 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-              <Truck size={21} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <Typography type="body-xs" className={hx.caption}>
-                {t("tracking.courier")}
-              </Typography>
-              <Typography type="h6" className={cn(hx.title, "truncate")}>
-                {t(
-                  safeStep >= 3
-                    ? "tracking.courierAssigned"
-                    : "tracking.courierPending",
-                )}
-              </Typography>
-            </div>
-            {MASKED_COMMS_ENABLED && safeStep >= 3 && !delivered ? (
-              <>
-                <Button
-                  isIconOnly
-                  variant="secondary"
-                  aria-label={t("tracking.callCourier")}
-                  onPress={() => router.push("/call/")}
-                  className="size-11 min-w-11 rounded-full border-0 bg-accent text-accent-foreground shadow-none"
-                >
-                  <Phone size={18} />
-                </Button>
-                <Button
-                  isIconOnly
-                  variant="secondary"
-                  aria-label={t("tracking.chatCourier")}
-                  onPress={() => router.push("/chat/")}
-                  className="size-11 min-w-11 rounded-full border border-border bg-card text-foreground shadow-none"
-                >
-                  <MessageCircle size={18} />
-                </Button>
-              </>
-            ) : null}
-          </Card.Content>
-        </Card>
-
-        <div className="mt-6 rounded-[30px] bg-[var(--canvas-inverse)] p-5 text-[var(--canvas-inverse-foreground)]">
-          <Typography
-            type="body-sm"
-            className="text-[13px] font-medium opacity-60"
-          >
-            {t("tracking.deliveryAddress")}
-          </Typography>
-          <div className="mt-2 flex items-start gap-3">
-            <MapPin size={21} className="mt-0.5 shrink-0" />
-            <AppText as="p" className="text-[17px] font-bold">
-              {order.deliveryAddress ||
-                address?.detail ||
-                t("tracking.savedAddress")}
-            </AppText>
-          </div>
-
-          {order.deliveryInstructions ? (
-            <AppText as="p" className="mt-3 text-sm opacity-80">
-              {order.deliveryInstructions}
-            </AppText>
-          ) : null}
-
-          {order.leaveAtDoor ? (
-            <Typography
-              type="body-xs"
-              className="mt-3 text-[12px] font-semibold text-warning"
+        <div className="journey-details">
+          <TrackingOrderDetails data={data} now={now} />
+          {data.order.orderState === "completed" ? (
+            <Link
+              className="journey-complete-action"
+              href={`/feedback/?order=${encodeURIComponent(data.order.id)}`}
             >
-              {t("tracking.leaveAtDoorNote")}
-            </Typography>
-          ) : null}
-
-          {showPinHandoff ? (
-            <div className="mt-5 rounded-[20px] bg-current/10 px-4 py-3">
-              <Typography
-                type="body-sm"
-                className="text-[13px] font-semibold opacity-80"
-              >
-                {t("tracking.pinTitle")}
-              </Typography>
-              {order.deliveryPin ? (
-                <AppText
-                  as="p"
-                  data-testid="delivery-pin"
-                  className="mt-2 text-2xl font-bold tracking-widest"
-                >
-                  {order.deliveryPin}
-                </AppText>
-              ) : null}
-              <Typography
-                type="body-xs"
-                className="mt-1 text-[12px] opacity-70"
-              >
-                {order.deliveryPin
-                  ? t("tracking.pinBodyWithCode", { pin: order.deliveryPin })
-                  : t("tracking.pinBodyPending")}
-              </Typography>
-            </div>
-          ) : null}
-
-          <Typography
-            type="body-sm"
-            className="mt-6 text-[13px] font-medium opacity-60"
-          >
-            {delivered ? t("step.delivered.label") : t("tracking.estimate")}
-          </Typography>
-          <AppText as="p" className="mt-1 text-[25px] font-bold">
-            {etaLabel}
-          </AppText>
-          {arrivalAt && arrivalAt.getTime() > now && !delivered ? (
-            <Typography type="body-xs" className="mt-1 text-[12px] opacity-70">
-              {t("tracking.arrivalBy", {
-                time: arrivalAt.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              })}
-            </Typography>
-          ) : null}
-          {etaStale ? (
-            <Typography
-              type="body-xs"
-              className="mt-2 text-[12px] font-semibold text-warning"
-            >
-              {t("tracking.etaStale")}
-            </Typography>
-          ) : null}
-          {order.hasShortExtraStop ? (
-            <Typography
-              type="body-xs"
-              className="mt-2 text-[12px] font-semibold text-warning"
-            >
-              {t("tracking.delayNotice")}
-            </Typography>
-          ) : null}
-          <div className="mt-5 rounded-2xl bg-surface-secondary p-4 text-foreground">
-            <OrderProgress stepIndex={safeStep} />
-          </div>
-          <AppText as="p" className="mt-3 text-[12px] font-semibold opacity-70">
-            {t(`step.${currentStep.key}.hint`)}
-          </AppText>
+              {de ? "Bestellung bewerten" : "Rate your order"}
+            </Link>
+          ) : (
+            <TrackingActions
+              data={data}
+              accessToken={accessToken}
+              refresh={refresh}
+              de={de}
+            />
+          )}
         </div>
-
-        <Button
-          variant="secondary"
-          fullWidth
-          onPress={() => router.push(delivered ? "/home/" : "/orders/")}
-          className={cn(hx.btnSecondary, "mt-5")}
+      </main>
+    );
+  const order = mapCustomerOrder(data.order);
+  const step =
+    ORDER_STEPS[
+      Math.max(0, Math.min(order.stepIndex, ORDER_STEPS.length - 1))
+    ]!;
+  const riderPoint = live
+    ? { latitude: data.location.latitude!, longitude: data.location.longitude! }
+    : null;
+  const status =
+    data.order.customerStatus === "onway"
+      ? de
+        ? "Dein Fahrer ist auf dem Weg zu dir…"
+        : "Your rider is on the way to you…"
+      : t(`step.${step.key}.label`);
+  const showDetails = expanded && Boolean(data.rider);
+  return (
+    <main className="tracking-screen">
+      <div className="tracking-map-area" inert={showDetails}>
+        {riderPoint || data.destination ? (
+          <DeliveryTrackingMap
+            key={data.order.id}
+            destination={data.destination}
+            rider={riderPoint}
+            route={live ? data.route : null}
+            recenter={recenter}
+            label={de ? "Live-Lieferkarte" : "Live delivery map"}
+            marker={
+              <button
+                className="rider-map-button"
+                onClick={() => setExpanded(true)}
+                aria-label={
+                  de ? "Fahrerinformationen öffnen" : "Open rider information"
+                }
+                disabled={!data.rider}
+              >
+                <RiderAvatar
+                  name={data.rider?.name || "Rider"}
+                  src={data.rider?.avatarUrl}
+                />
+              </button>
+            }
+          />
+        ) : (
+          <div className="tracking-map-placeholder">
+            <MapPin size={44} />
+            <p>{t("tracking.awaitingLocation")}</p>
+          </div>
+        )}
+        <Link
+          href="/orders/"
+          className="tracking-back"
+          aria-label={t("tracking.viewOrders")}
         >
-          {delivered ? <Check size={19} /> : null}
-          {delivered ? t("common.backToHome") : t("tracking.viewOrders")}
-        </Button>
+          <ChevronLeft size={26} />
+        </Link>
+        <p className="tracking-connection" role="status">
+          {error
+            ? de
+              ? "Verbindung unterbrochen. Neuer Versuch…"
+              : "Connection interrupted. Retrying…"
+            : live
+              ? de
+                ? "Live-Standort"
+                : "Live location"
+              : data.location.updatedAt
+                ? de
+                  ? "Standort wird aktualisiert…"
+                  : "Waiting for a fresh location…"
+                : de
+                  ? "Standort erscheint unterwegs zu dir"
+                  : "Location appears on the way to you"}
+        </p>
+        <button
+          className="tracking-recenter"
+          onClick={() => setRecenter((value) => value + 1)}
+          aria-label={de ? "Karte zentrieren" : "Recenter map"}
+          disabled={!riderPoint && !data.destination}
+        >
+          <MapPin size={25} />
+        </button>
       </div>
-    </AppFrame>
+      <RiderSheet
+        rider={data.rider}
+        status={status}
+        de={de}
+        expanded={showDetails}
+        onExpandedChange={setExpanded}
+        actions={
+          <TrackingActions
+            data={data}
+            accessToken={accessToken}
+            refresh={refresh}
+            de={de}
+          />
+        }
+      >
+        <TrackingJourney data={data} accessToken={accessToken} />
+        <TrackingOrderDetails data={data} now={now} />
+      </RiderSheet>
+    </main>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="tracking-fallback">
+          <PizzaLoader size="lg" showLabel label="Loading your delivery…" />
+        </div>
+      }
+    >
+      <TrackingScreen />
+    </Suspense>
   );
 }

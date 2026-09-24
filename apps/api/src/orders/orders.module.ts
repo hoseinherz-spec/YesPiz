@@ -1,3 +1,4 @@
+import { OrderTrackingService } from "./order-tracking.service";
 import { SlotsModule } from "../slots/slots.module";
 import { GrowthModule } from "../growth/growth.module";
 import { Module } from "@nestjs/common";
@@ -5,6 +6,8 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AccountModule } from "../account/account.module";
 import { CatalogModule } from "../catalog/catalog.module";
 import {
+  CourierProfile,
+  CourierProfileSchema,
   CourierSession,
   CourierSessionSchema,
 } from "../couriers/schemas/courier.schema";
@@ -25,6 +28,7 @@ import { Incident, IncidentSchema } from "../incidents/schemas/incident.schema";
     GrowthModule,
     SlotsModule,
     MongooseModule.forFeature([
+      { name: CourierProfile.name, schema: CourierProfileSchema },
       { name: Order.name, schema: OrderSchema },
       { name: DeliveryAddress.name, schema: DeliveryAddressSchema },
       { name: CourierSession.name, schema: CourierSessionSchema },
@@ -37,7 +41,7 @@ import { Incident, IncidentSchema } from "../incidents/schemas/incident.schema";
     EtaModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, OrderTrackingService],
   exports: [OrdersService, MongooseModule],
 })
 export class OrdersModule {}

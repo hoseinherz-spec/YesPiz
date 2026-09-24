@@ -3,7 +3,7 @@ import { AppText } from "@/components/Text";
 
 
 import { buttonVariants, Typography } from "@heroui/react";
-import { ArrowRight } from "@repo/icons";
+import { ArrowRight } from "@/components/animated-icon/icons";
 import Link from "next/link";
 import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
 

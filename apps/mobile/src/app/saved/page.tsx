@@ -1,124 +1,139 @@
 "use client";
 import { UsualPizzas } from "@/components/UsualPizzas";
-import { AppText } from "@/components/Text";
-
-import { Button, Typography } from "@heroui/react";
-import { Heart, GridFour, ListThreeBullet } from "@repo/icons";
-import { useMemo, useState } from "react";
-
+import { Button, Card } from "@heroui/react";
+import { Heart, Search, Truck } from "@/components/animated-icon/icons";
+import Link from "next/link";
+import { useState } from "react";
 import { AppFrame } from "@/components/AppFrame";
 import { EmptyState } from "@/components/EmptyState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useApp } from "@/context/AppContext";
-import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { useCart } from "@/context/CartContext";
 import { useMenuCatalog } from "@/lib/catalog";
-import { cn } from "@/lib/cn";
-import { hx } from "@/lib/heroui-classes";
+import { formatPrice, resolveProductImage } from "@/constants/pizzas";
+import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
+import { pizzaCraftAsset } from "@/constants/media";
+import { reviewMetrics } from "@/features/catalog/components/PizzaDetail/review-metrics";
+import { ReviewStar } from "@/features/catalog/components/PizzaDetail/PizzaComments";
+import { FavoritesSkeleton } from "@/features/profile/components/ProfileSkeletons";
+import styles from "@/features/profile/components/Profile.module.css";
 
 export default function SavedPage() {
-  const [view, setView] = useState<"grid" | "row">("grid");
-  const { favorites, t, language } = useApp();
+  const [search, setSearch] = useState("");
+  const { favorites, toggleFavorite, language, t } = useApp();
+  const { baseDeliveryFee } = useCart();
   const { items, isLoading, isOffline } = useMenuCatalog();
-
-  const saved = useMemo(
-    () =>
-      items.filter((pizza) => favorites.includes(pizza.pizzaId ?? pizza.id)),
-    [favorites, items],
+  const de = language === "de";
+  const saved = items.filter((pizza) =>
+    favorites.includes(pizza.pizzaId ?? pizza.id),
   );
-
+  const filtered = saved.filter((pizza) =>
+    pizza.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
   return (
-    <AppFrame withTabs className="reference-screen">
+    <AppFrame padded={false} className={styles.subpage}>
       <ScreenHeader
-        title="Saved"
-        subtitle={saved.length ? `${saved.length} pizzas` : undefined}
-        backHref="/home/"
+        title={de ? "Meine Favoriten" : "My Favorite"}
+        backHref="/profile/"
       />
-
-      <UsualPizzas editable />
-      {isOffline ? (
-        <div className="mt-4 rounded-[18px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-4 py-3">
-          <Typography type="body-xs" className={cn(hx.caption, "text-warning")}>
-            {t("login.offlineBanner")}
-          </Typography>
-        </div>
-      ) : null}
-
-      {isLoading && items.length === 0 ? (
-        <div
-          className="mt-7 grid grid-cols-2 gap-3"
-          aria-label="Loading saved pizzas"
-        >
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-[250px] animate-pulse rounded-[28px] bg-card"
-            />
-          ))}
-        </div>
-      ) : saved.length > 0 ? (
-        <section className="mt-6">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <AppText as="h2" className="text-lg font-semibold">
-                {language === "de" ? "Deine Favoriten" : "Your favorites"}
-              </AppText>
-              <AppText as="p" className="mt-1 text-xs text-muted">
-                {language === "de"
-                  ? "Für den nächsten Pizzaabend"
-                  : "Ready for your next pizza night"}
-              </AppText>
-            </div>
-            <div className="flex gap-1 rounded-full border border-border bg-surface-secondary p-1">
-              {(
-                [
-                  {
-                    value: "grid",
-                    Icon: GridFour,
-                    label: language === "de" ? "Rasteransicht" : "Grid view",
-                  },
-                  {
-                    value: "row",
-                    Icon: ListThreeBullet,
-                    label: language === "de" ? "Listenansicht" : "List view",
-                  },
-                ] as const
-              ).map(({ value, Icon, label }) => (
-                <Button
-                  key={value}
-                  isIconOnly
-                  aria-label={label}
-                  aria-pressed={view === value}
-                  onPress={() => setView(value)}
-                  variant={view === value ? "primary" : "ghost"}
-                  className="size-10 min-w-10 rounded-full"
-                >
-                  <Icon size={18} />
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div
-            className={
-              view === "grid"
-                ? "grid grid-cols-2 gap-x-3 gap-y-6 pb-4"
-                : "flex flex-col gap-3 pb-4"
-            }
-          >
-            {saved.map((pizza) => (
-              <ProductCard key={pizza.id} pizza={pizza} variant={view} />
-            ))}
-          </div>
-        </section>
-      ) : (
+      <label className={styles.search}>
+        <Search size={20} />
+        <input
+          aria-label={de ? "Favoriten durchsuchen" : "Search favorites"}
+          placeholder={de ? "Suchen" : "Search"}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </label>
+      {isOffline && (
+        <p role="status" className={styles.note}>
+          {t("login.offlineBanner")}
+        </p>
+      )}
+      {isLoading ? (
+        <FavoritesSkeleton />
+      ) : !saved.length ? (
         <EmptyState
           icon={<Heart size={28} />}
-          image="/images/pizza-margherita.png"
-          title="Nothing saved yet"
-          body="Tap the heart on any pizza to keep it close."
+          image={pizzaCraftAsset("Pizza Slice")}
+          title={de ? "Noch keine Favoriten" : "Nothing saved yet"}
+          body={
+            de
+              ? "Speichere deine Lieblingspizza mit dem Herz."
+              : "Tap the heart on any pizza to keep it close."
+          }
           actionLabel={t("common.browseMenu")}
           actionHref="/menu/"
         />
+      ) : (
+        <div className={styles.cards}>
+          {!filtered.length && (
+            <p role="status" className={styles.note}>
+              {de
+                ? "Keine passenden Favoriten."
+                : "No favorites match your search."}
+            </p>
+          )}
+          {filtered.map((pizza) => {
+            const { rating, reviewCount } = reviewMetrics(pizza.presentation);
+            return (
+              <Card key={pizza.id} className={styles.card}>
+                <Card.Content className="flex gap-4">
+                  <Link
+                    href={`/menu/${encodeURIComponent(pizza.id)}/`}
+                    className="size-[120px] max-[360px]:size-[96px] shrink-0 overflow-hidden rounded-[20px] bg-surface-secondary"
+                  >
+                    <ProductImage
+                      src={resolveProductImage(pizza)}
+                      alt={pizza.name}
+                      className="size-full object-cover"
+                    />
+                  </Link>
+                  <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
+                    <Link
+                      className="truncate text-base font-bold"
+                      href={`/menu/${encodeURIComponent(pizza.id)}/`}
+                    >
+                      {pizza.name}
+                    </Link>
+                    <div className="flex items-center gap-1 text-xs text-muted">
+                      <ReviewStar />
+                      {rating === null
+                        ? de
+                          ? "Noch keine Bewertung"
+                          : "Not yet rated"
+                        : `${rating.toFixed(1)}${reviewCount === null ? "" : ` (${reviewCount})`}`}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <strong className="rounded-lg bg-surface-secondary px-1 text-xl text-accent">
+                        {formatPrice(pizza.price)}
+                      </strong>
+                      <span className="flex items-center gap-1 text-xs text-muted">
+                        <Truck size={15} />
+                        {formatPrice(baseDeliveryFee)}
+                      </span>
+                      <Button
+                        isIconOnly
+                        className="ms-auto size-10 min-w-10 rounded-full"
+                        aria-label={`${de ? "Entfernen" : "Remove"} ${pizza.name}`}
+                        onPress={() =>
+                          toggleFavorite(pizza.pizzaId ?? pizza.id)
+                        }
+                      >
+                        <Heart size={20} fill="currentColor" />
+                      </Button>
+                    </div>
+                  </div>
+                </Card.Content>
+              </Card>
+            );
+          })}
+        </div>
       )}
+      <details className="mt-6 text-sm text-muted">
+        <summary className="cursor-pointer py-3">{de ? "Deine üblichen Bestellungen" : "Your usual orders"}</summary>
+        <UsualPizzas editable />
+      </details>
     </AppFrame>
   );
 }

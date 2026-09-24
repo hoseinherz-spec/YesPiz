@@ -1,0 +1,109 @@
+.page {
+  background: var(--background);
+  color: var(--foreground);
+  padding: max(24px, env(safe-area-inset-top)) 20px
+    max(24px, env(safe-area-inset-bottom));
+}
+.page button[aria-label="Back"] {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+.row {
+  padding: 18px;
+  margin-bottom: 12px;
+  border-radius: 26px;
+  background: var(--surface-secondary);
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.icon {
+  --tone: var(--success);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 9%, var(--surface));
+}
+.icon[data-tone="danger"] {
+  --tone: var(--danger);
+}
+.icon[data-tone="accent"] {
+  --tone: var(--accent);
+}
+.icon[data-tone="warning"] {
+  --tone: var(--warning);
+}
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+.heading h2 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 6px;
+}
+.heading time {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.badge {
+  background: var(--danger);
+  color: var(--danger-foreground);
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.body {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 80px 20px;
+  text-align: center;
+}
+.empty h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.empty p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.empty a {
+  color: var(--selection-ink);
+}
+.feedback {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+  color: var(--danger);
+  font-size: 14px;
+}
+.preferences {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.preferences summary {
+  cursor: pointer;
+  padding-block: 12px;
+}

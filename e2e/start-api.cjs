@@ -33,7 +33,7 @@ process.on("SIGINT", stop);
   const env = {
     ...process.env,
     MONGODB_URI: mongo.getUri(),
-    PORT: "8158",
+    PORT: process.env.API_PORT || "8158",
     NODE_ENV: "test",
     TS_NODE_TRANSPILE_ONLY: "true",
     JWT_SECRET: "browser-order-flow-test-secret",
@@ -118,8 +118,10 @@ process.on("SIGINT", stop);
     );
     seed.on("error", reject);
   });
-  if (process.env.YESPIZZ_FEATURE_TEST === "1") await require("./feature-fixtures.cjs")(mongo.getUri());
-  if (process.env.YESPIZZ_EXPANSION_PREVIEW === "1") await require("./expansion-fixtures.cjs")(mongo.getUri());
+  if (process.env.YESPIZZ_FEATURE_TEST === "1")
+    await require("./feature-fixtures.cjs")(mongo.getUri());
+  if (process.env.YESPIZZ_EXPANSION_PREVIEW === "1")
+    await require("./expansion-fixtures.cjs")(mongo.getUri());
   api = spawn(
     process.execPath,
     ["-r", "ts-node/register", "-r", "tsconfig-paths/register", "src/main.ts"],

@@ -3,7 +3,9 @@ import { AppText } from "@/components/Text";
 
 import { Form } from "@repo/ui/forms";
 
-import { Button } from "@heroui/react";
+import { Avatar, Button } from "@heroui/react";
+import { ProfileFormSkeleton } from "@/features/profile/components/ProfileSkeletons";
+import styles from "@/features/profile/components/Profile.module.css";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -28,16 +30,18 @@ function EditProfileForm({
 }: {
   user: AppUser;
   t: Translator;
-  updateLocalUser: (patch: Partial<EditableProfile>) => void;
+  updateLocalUser: (patch: Partial<EditableProfile>) => Promise<void>;
 }) {
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
-  const [email, setEmail] = useState(user.email ?? "");
-  const [phone, setPhone] = useState(user.phone ?? "");
+  const [email] = useState(user.email ?? "");
+  const [phone] = useState(user.phone ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const save = () => {
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (saving) return;
     setError(null);
     setStatus(null);
     if (
@@ -48,57 +52,82 @@ function EditProfileForm({
       setError(t("login.errorGeneric"));
       return;
     }
-    updateLocalUser({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim() || undefined,
-      phone: phone.trim() || undefined,
-    });
-    setStatus(t("editProfile.saved"));
+    setSaving(true);
+    try {
+      await updateLocalUser({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      });
+      setStatus(t("editProfile.saved"));
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not save. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
-      <div className="mb-8 flex flex-col items-center">
-        <div className="flex size-32 items-center justify-center rounded-full border-8 border-card bg-accent text-[44px] font-extrabold text-accent-foreground">
-          {(firstName || "Y").slice(0, 1).toUpperCase()}
-        </div>
-        <AppText as="h1" className="mt-4 text-[28px] font-bold text-foreground">
-          {[firstName, lastName].filter(Boolean).join(" ") || "YesPizz"}
-        </AppText>
-        <AppText as="p" className="text-sm text-muted">{email}</AppText>
+      <div className={styles.editAvatar}>
+        <Avatar
+          className={styles.avatar}
+          aria-label={[firstName, lastName].join(" ")}
+        >
+          <Avatar.Fallback>
+            {(firstName || "Y").slice(0, 1).toUpperCase()}
+          </Avatar.Fallback>
+        </Avatar>
       </div>
 
       {error ? <AccountNotice tone="danger">{error}</AccountNotice> : null}
       {status ? <AccountNotice tone="success">{status}</AccountNotice> : null}
 
       <Form
-        className="mt-4 grid gap-5"
+        className={styles.form}
         onSubmit={(event) => {
           event.preventDefault();
           save();
         }}
       >
-        <div className="grid grid-cols-2 gap-3">
-          <AccountField
-            label={t("login.firstName")}
-            name="firstName"
-            autoComplete="given-name"
-            placeholder={t("login.firstName")}
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            className="px-4"
-          />
-          <AccountField
-            label={t("login.lastName")}
-            name="lastName"
-            autoComplete="family-name"
-            placeholder={t("login.lastName")}
-            value={lastName}
-            onChange={(event) => setLastName(event.target.value)}
-            className="px-4"
-          />
+        <div className="grid gap-5">
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="firstName">
+              {t("login.firstName")}
+            </label>
+            <AccountField
+              label={t("login.firstName")}
+              name="firstName"
+              autoComplete="given-name"
+              placeholder={t("login.firstName")}
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              className="px-4"
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor="lastName">
+              {t("login.lastName")}
+            </label>
+            <AccountField
+              label={t("login.lastName")}
+              name="lastName"
+              autoComplete="family-name"
+              placeholder={t("login.lastName")}
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              className="px-4"
+            />
+          </div>
         </div>
+        <label className={styles.fieldLabel} htmlFor="email">
+          {t("login.emailLabel")}
+        </label>
         <AccountField
           label={t("login.emailLabel")}
           name="email"
@@ -107,7 +136,7 @@ function EditProfileForm({
           autoComplete="email"
           placeholder={t("login.emailLabel")}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          readOnly
         />
         <AccountField
           label={t("editProfile.phone")}
@@ -117,13 +146,20 @@ function EditProfileForm({
           autoComplete="tel"
           placeholder={t("login.phonePlaceholder")}
           value={phone}
-          onChange={(event) => setPhone(event.target.value)}
+          readOnly
         />
         <AppText as="p" className="text-center text-xs text-muted">
-          {t("common.localOnly")}
+          Names are saved to your account and synced across devices. Contact
+          changes require verification.
         </AppText>
         <Button
           type="submit"
+          isDisabled={
+            saving ||
+            (firstName.trim() === user.firstName &&
+              lastName.trim() === user.lastName)
+          }
+          aria-busy={saving}
           variant="primary"
 
           className={hx.btnPrimary}
@@ -141,17 +177,19 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     if (hydrated && !authed) {
-      router.replace("/login/?next=/profile/edit/");
+      router.replace("/auth/sign-in/?next=/profile/edit/");
     }
   }, [authed, hydrated, router]);
 
   return (
     <AccountScreen
       title={t("editProfile.title")}
-      subtitle={t("editProfile.subtitle")}
+      className={styles.subpage}
       backHref="/profile/"
     >
-      {user ? (
+      {!hydrated ? (
+        <ProfileFormSkeleton />
+      ) : user ? (
         <EditProfileForm user={user} t={t} updateLocalUser={updateLocalUser} />
       ) : (
         <AppText as="p" className="text-center text-sm text-muted">

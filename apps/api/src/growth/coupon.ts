@@ -2,9 +2,12 @@ import { BadRequestException } from "@nestjs/common";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import {
   IsBoolean,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
+  IsMongoId,
+  IsOptional,
   IsString,
   Matches,
   Max,
@@ -22,6 +25,11 @@ export class Coupon {
   @Prop({ required: true }) maxDiscountCents!: number;
   @Prop({ required: true }) startAt!: Date;
   @Prop({ required: true }) endAt!: Date;
+  @Prop({ default: "all" }) userScope!: "all" | "specific";
+  @Prop({ type: [String], default: [] }) eligibleUserIds!: string[];
+  @Prop({ default: "all" }) productScope!: "all" | "specific";
+  @Prop({ type: [String], default: [] }) eligibleProductIds!: string[];
+  @Prop({ default: 1 }) minimumEligibleQuantity!: number;
   @Prop({ default: true }) active!: boolean;
   @Prop({ required: true }) createdBy!: string;
 }
@@ -35,6 +43,25 @@ export class CreateCouponDto {
   @IsInt() @Min(1) @Max(1000000) maxDiscountCents!: number;
   @IsDateString() startAt!: string;
   @IsDateString() endAt!: string;
+  @IsOptional()
+  @IsIn(["all", "specific"])
+  userScope?: "all" | "specific";
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
+  eligibleUserIds?: string[];
+  @IsOptional()
+  @IsIn(["all", "specific"])
+  productScope?: "all" | "specific";
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
+  eligibleProductIds?: string[];
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  minimumEligibleQuantity?: number;
 }
 export class CouponStatusDto {
   @IsBoolean() active!: boolean;
@@ -52,6 +79,7 @@ export function couponDiscount(
   >,
   subtotal: number,
   now = new Date(),
+  discountableSubtotal = subtotal,
 ) {
   if (!coupon.active || now < coupon.startAt || now >= coupon.endAt)
     throw new BadRequestException("This discount code is not active.");
@@ -60,10 +88,10 @@ export function couponDiscount(
       `This code requires a pizza subtotal of €${(coupon.minSubtotalCents / 100).toFixed(2)}.`,
     );
   return Math.min(
-    subtotal,
+    discountableSubtotal,
     coupon.maxDiscountCents,
     coupon.kind === "percent"
-      ? Math.floor((subtotal * coupon.value) / 100)
+      ? Math.floor((discountableSubtotal * coupon.value) / 100)
       : coupon.value,
   );
 }

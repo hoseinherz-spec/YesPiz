@@ -2,7 +2,7 @@ export type TransitionApp =
   "customer" | "courier" | "admin" | "provider" | "website";
 export type RouteMotion =
   | "fade"
-  | `${"zoom" | "drill" | "sheet"}-${"in" | "out"}`
+  | `${"zoom" | "drill" | "sheet" | "product" | "food"}-${"in" | "out"}`
   | `${"axis" | "slide" | "strip" | "scroll"}-${"forward" | "back"}`;
 export const normalizeRoute = (path: string) =>
   path.split(/[?#]/)[0]!.replace(/\/+$/, "") || "/";
@@ -68,6 +68,16 @@ export function mobileRouteMotion(
   const authMotion = ordered(from, to, auth, "axis");
   if (authMotion) return authMotion;
   if (app === "customer") {
+    const isProduct = (route: string) => /^\/menu\/[^/]+$/.test(route);
+    const isCatalog = (route: string) =>
+      ["/home", "/menu", "/saved"].includes(route);
+    if (isCatalog(from) && isProduct(to)) return "product-in";
+    if (isProduct(from) && isCatalog(to)) return "product-out";
+    if (to === "/tracking") return "food-in";
+    if (from === "/tracking") return "food-out";
+    if (to === "/cart" && (isCatalog(from) || isProduct(from)))
+      return "food-in";
+    if (from === "/cart" && (isCatalog(to) || isProduct(to))) return "food-out";
     const checkout = ordered(
       from,
       to,
@@ -83,8 +93,14 @@ export function mobileRouteMotion(
     if (from === "/checkout" || from === "/payment") return "sheet-out";
     if (to === "/partner") return "zoom-in";
     if (from === "/partner") return "zoom-out";
-    if (to === "/pizza" || to === "/tracking") return "drill-in";
-    if (from === "/pizza" || from === "/tracking") return "drill-out";
+    if (to === "/pizza" || /^\/menu\/[^/]+$/.test(to) || to === "/tracking")
+      return "drill-in";
+    if (
+      from === "/pizza" ||
+      /^\/menu\/[^/]+$/.test(from) ||
+      from === "/tracking"
+    )
+      return "drill-out";
   }
   const tabMotion = ordered(
     from,

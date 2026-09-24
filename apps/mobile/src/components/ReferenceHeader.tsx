@@ -1,19 +1,24 @@
 "use client";
+import { BrandLogo } from "@/components/BrandLogo";
+import { ScrollHeader } from "@/components/ScrollHeader";
 import Link from "next/link";
-import { Bell1 } from "@repo/icons";
+import { IconBadgeButton } from "@/components/IconBadgeButton";
+import { Bell1 } from "@/components/animated-icon/icons";
 import { useApp } from "@/context/AppContext";
 export function ReferenceHeader() {
-  const { t } = useApp();
+  const { t, unreadCount } = useApp();
   return (
-    <header className="reference-brand">
+    <ScrollHeader className="reference-brand">
       <Link href="/home/" aria-label="Yespiz">
-        <span className="text-[26px] font-extrabold italic tracking-tight text-foreground">
-          Yespiz<span className="text-accent">.</span>
-        </span>
+        <BrandLogo />
       </Link>
-      <Link href="/notifications/" aria-label={t("notifications.title")}>
+      <IconBadgeButton
+        badge={unreadCount}
+        href="/notifications/"
+        aria-label={t("notifications.title")}
+      >
         <Bell1 size={22} />
-      </Link>
-    </header>
+      </IconBadgeButton>
+    </ScrollHeader>
   );
 }

@@ -5,7 +5,7 @@ import { AppText } from "@/components/Text";
 
 
 import Link from "next/link";
-import { ArrowRight, ShoppingBag } from "@repo/icons";
+import { ArrowRight, ShoppingBag } from "@/components/animated-icon/icons";
 import { useCart } from "@/context/CartContext";
 import { useApp } from "@/context/AppContext";
 

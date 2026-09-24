@@ -1,169 +1,157 @@
 "use client";
-import { AppText } from "@/components/Text";
 
-import { Button, Card } from "@heroui/react";
-import { Gift, Info, Truck } from "@repo/icons";
-
+import { Button, Skeleton } from "@heroui/react";
+import { Bell, Gift, ShoppingBag, X, Wallet, User } from "lucide-react";
+import { Notifications } from "@repo/api/components/notifications";
 import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { useApp } from "@/context/AppContext";
-import { cn } from "@/lib/cn";
-
-function PreferenceRow({
-  title,
-  detail,
-  selected,
-  onChange,
-}: {
-  title: string;
-  detail: string;
-  selected: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-4 border-b border-border py-6">
-      <div className="min-w-0 flex-1">
-        <AppText as="h2" className="text-[16px] font-semibold text-foreground">
-          {title}
-        </AppText>
-        <AppText as="p" className="mt-1 text-sm leading-relaxed text-muted">
-          {detail}
-        </AppText>
-      </div>
-      <ThemeSwitch
-        isSelected={selected}
-        onChange={onChange}
-        aria-label={title}
-      />
-    </div>
-  );
-}
+import styles from "./notifications.module.css";
 
 export default function NotificationsPage() {
   const {
     t,
+    accessToken,
+    hydrated,
     notifications,
-    markAllRead,
     unreadCount,
-    pushEnabled,
-    setPushEnabled,
-    emailNotificationsEnabled,
-    setEmailNotificationsEnabled,
-    smsNotificationsEnabled,
-    setSmsNotificationsEnabled,
+    markAllRead,
+    notificationsLoading,
+    notificationsError,
+    notificationsSaving,
+    refreshNotifications,
+    loadMoreNotifications,
+    hasMoreNotifications,
   } = useApp();
-
+  const loading = !hydrated || (notificationsLoading && !notifications.length);
   return (
-    <AppFrame className="reference-screen">
-      <ScreenHeader title={t("notifications.title")} backHref="/settings/" />
-
-      <details className="reference-faq mb-5">
-        <summary>{t("notifications.preferences")}</summary>
-        <section aria-labelledby="notification-preferences">
-          <AppText
-            as="h1"
-            id="notification-preferences"
-            className="text-xs font-semibold tracking-wider text-muted uppercase"
-          >
-            {t("notifications.preferences")}
-          </AppText>
-          <PreferenceRow
-            title={t("notifications.sms")}
-            detail={t("notifications.smsDetail")}
-            selected={smsNotificationsEnabled}
-            onChange={setSmsNotificationsEnabled}
-          />
-          <PreferenceRow
-            title={t("notifications.email")}
-            detail={t("notifications.emailDetail")}
-            selected={emailNotificationsEnabled}
-            onChange={setEmailNotificationsEnabled}
-          />
-          <PreferenceRow
-            title={t("notifications.push")}
-            detail={t("notifications.pushDetail")}
-            selected={pushEnabled}
-            onChange={setPushEnabled}
-          />
-        </section>
-      </details>
-
-      <section className="pt-3 pb-8" aria-labelledby="notification-activity">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <AppText
-              as="h2"
-              id="notification-activity"
-              className="text-[16px] font-semibold text-foreground"
-            >
-              {t("notifications.activity")}
-            </AppText>
-            <AppText as="p" className="mt-1 text-sm text-muted">
-              {unreadCount
-                ? t("notifications.unread", { n: unreadCount })
-                : t("notifications.caughtUp")}
-            </AppText>
-          </div>
-          {unreadCount ? (
-            <Button
-              variant="ghost"
-              onPress={markAllRead}
-              className="h-11 rounded-full px-3 text-sm font-semibold"
-            >
-              {t("notifications.markAll")}
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="grid gap-3">
-          {notifications.map((notification) => {
-            const Icon =
-              notification.kind === "order"
-                ? Truck
-                : notification.kind === "promo"
-                  ? Gift
-                  : Info;
-            return (
-              <Card
-                key={notification.id}
-                className="rounded-none border-0 border-b border-border bg-transparent shadow-none"
-              >
-                <Card.Content className="flex gap-3 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                    <Icon size={19} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <AppText
-                        as="h3"
-                        className="flex-1 font-bold text-foreground"
-                      >
-                        {t(notification.title)}
-                      </AppText>
-                      {notification.unread ? (
-                        <span className="mt-2 size-2 rounded-full bg-danger" />
-                      ) : null}
-                    </div>
-                    <AppText
-                      as="p"
-                      className="mt-1 text-sm leading-relaxed text-muted"
-                    >
-                      {t(notification.body)}
-                    </AppText>
-                    <AppText
-                      as="p"
-                      className={cn("mt-2 text-xs font-medium text-muted")}
-                    >
-                      {t(notification.time)}
-                    </AppText>
+    <AppFrame className={styles.page}>
+      <ScreenHeader title={t("notifications.title")} backHref="/profile/" />
+      <section aria-label="Notifications" aria-busy={loading}>
+        {loading
+          ? Array.from({ length: 5 }, (_, index) => (
+              <div className={styles.row} key={index} aria-hidden="true">
+                <div className={styles.top}>
+                  <Skeleton className="size-[60px] shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4 rounded-lg" />
+                    <Skeleton className="h-4 w-2/3 rounded-lg" />
                   </div>
-                </Card.Content>
-              </Card>
-            );
-          })}
-        </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-4 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-5/6 rounded-lg" />
+                </div>
+              </div>
+            ))
+          : notifications.map((notification) => {
+              const cancelled = /cancel|reject|fail/i.test(
+                notification.title + " " + notification.body,
+              );
+              const payment = /card|payment/i.test(notification.title);
+              const account = /account|profile/i.test(notification.title);
+              const Icon = cancelled
+                ? X
+                : payment
+                  ? Wallet
+                  : account
+                    ? User
+                    : notification.kind === "order"
+                      ? ShoppingBag
+                      : notification.kind === "promo"
+                        ? Gift
+                        : Bell;
+              const tone = cancelled
+                ? "danger"
+                : payment
+                  ? "accent"
+                  : notification.kind === "promo"
+                    ? "warning"
+                    : "success";
+              const date = new Date(notification.time);
+              return (
+                <article className={styles.row} key={notification.id}>
+                  <div className={styles.top}>
+                    <span className={styles.icon} data-tone={tone}>
+                      <Icon size={24} strokeWidth={2.5} aria-hidden="true" />
+                    </span>
+                    <div className={styles.heading}>
+                      <h2>{notification.title}</h2>
+                      <time dateTime={notification.time}>
+                        {date.toLocaleDateString(undefined, {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        <span aria-hidden="true"> | </span>{" "}
+                        {date.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </div>
+                    {notification.unread && (
+                      <span className={styles.badge}>New</span>
+                    )}
+                  </div>
+                  <p className={styles.body}>{notification.body}</p>
+                </article>
+              );
+            })}
+        {!loading && !notifications.length && !notificationsError && (
+          <div className={styles.empty}>
+            <Bell size={32} />
+            <h2>
+              {accessToken
+                ? "You’re all caught up"
+                : "Sign in to see notifications"}
+            </h2>
+            <p>
+              {accessToken
+                ? "Your order updates will appear here."
+                : "Your notifications are linked to your account."}
+            </p>
+            {!accessToken && <a href="/login/">Sign in</a>}
+          </div>
+        )}
+        {notificationsError && (
+          <div role="alert" className={styles.feedback}>
+            <p>{notificationsError}</p>
+            <Button
+              variant="secondary"
+              onPress={() => void refreshNotifications()}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+        {hasMoreNotifications && (
+          <Button
+            className="mt-4 w-full"
+            variant="secondary"
+            isPending={notificationsLoading}
+            onPress={() => void loadMoreNotifications()}
+          >
+            Load more
+          </Button>
+        )}
+        {unreadCount > 0 && (
+          <Button
+            className="mt-4 w-full"
+            variant="ghost"
+            isPending={notificationsSaving}
+            onPress={() => void markAllRead()}
+          >
+            {t("notifications.markAll")}
+          </Button>
+        )}
       </section>
+      {accessToken && (
+        <details className={styles.preferences}>
+          <summary>{t("notifications.preferences")}</summary>
+          <Notifications accessToken={accessToken} />
+        </details>
+      )}
     </AppFrame>
   );
 }

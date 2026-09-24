@@ -6,7 +6,7 @@ import { AppText } from "@/components/Text";
 import { walletClient, type CreditStatement } from "@repo/api";
 import { Button } from "@heroui/react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Wallet } from "@repo/icons";
+import { ArrowDown, ArrowUp, Wallet } from "@/components/animated-icon/icons";
 import { EmptyState } from "@/components/EmptyState";
 import { AnimatedBackground } from "@repo/ui/animated-background";
 import { useCallback, useEffect, useState } from "react";
@@ -14,6 +14,7 @@ import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useApp } from "@/context/AppContext";
 import { formatPrice } from "@/constants/pizzas";
+import { pizzaCraftAsset } from "@/constants/media";
 export default function CreditPage() {
   const { accessToken, language } = useApp();
   const de = language === "de";
@@ -64,6 +65,7 @@ export default function CreditPage() {
       {!accessToken ? (
         <EmptyState
           icon={<Wallet size={28} />}
+          image={pizzaCraftAsset("Digital Food Receipt")}
           title={
             de ? "Dein Guthaben, an einem Ort" : "Your credit, in one place"
           }
@@ -73,7 +75,7 @@ export default function CreditPage() {
               : "Sign in to see your available balance and credit activity."
           }
           actionLabel={de ? "Anmelden" : "Sign in"}
-          actionHref="/login/?next=/credit/"
+          actionHref="/auth/sign-in/?next=/credit/"
         />
       ) : (
         <>
@@ -240,6 +242,7 @@ export default function CreditPage() {
           {data?.entries.length === 0 && (
             <EmptyState
               icon={<Wallet size={28} />}
+              image={pizzaCraftAsset("Digital Food Receipt")}
               title={de ? "Noch keine Buchungen" : "A fresh start"}
               body={
                 de

@@ -1,0 +1,285 @@
+.page {
+  padding: max(16px, env(safe-area-inset-top)) 16px 120px;
+  background: var(--background);
+}
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  max-width: 540px;
+  margin: 0 auto;
+  border-radius: 36px;
+  background: var(--surface);
+  color: var(--foreground);
+}
+.stage::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  inset-inline: -12%;
+  height: 330px;
+  border-radius: 0 0 50% 50%;
+  background: var(--accent);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 20px 16px;
+  color: var(--accent-foreground);
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+.icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 18%, transparent);
+}
+.badge {
+  position: absolute;
+  inset: -3px -3px auto auto;
+  background: var(--foreground);
+  color: var(--background);
+  border-radius: 20px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
+.comboTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 20px 12px;
+  scrollbar-width: thin;
+}
+.comboTabs button {
+  flex-shrink: 0;
+  border-radius: 99px;
+  padding: 10px 16px;
+  color: var(--accent-foreground);
+  border: 1px solid
+    color-mix(in srgb, var(--accent-foreground) 35%, transparent);
+  font-size: 13px;
+  font-weight: 650;
+}
+.comboTabs button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--surface);
+}
+.hero {
+  position: relative;
+  width: 88%;
+  max-width: 390px;
+  aspect-ratio: 1;
+  margin: 8px auto 0;
+  animation: arrive 0.35s ease-out both;
+}
+.halo {
+  position: absolute;
+  inset: 13% 1% 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  transform: rotate(-12deg);
+}
+.heroImage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 16px 16px color-mix(in srgb, var(--foreground) 13%, transparent)
+  );
+}
+.copy {
+  text-align: center;
+  padding: 18px 24px 34px;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.copy h2 {
+  margin: 7px 0 10px;
+  font-size: clamp(30px, 9vw, 44px);
+  font-weight: 750;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.description {
+  max-width: 320px;
+  margin: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.price {
+  display: block;
+  font-size: 28px;
+  margin: 12px 0 20px;
+  letter-spacing: -0.045em;
+}
+.add {
+  min-height: 52px;
+  padding-inline: 28px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+.selection {
+  position: relative;
+  padding: 8px 0 28px;
+}
+.selection::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 74px -25% -100px;
+  background: var(--accent);
+  border-radius: 50% 50% 0 0;
+}
+.included {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 18px;
+}
+.products {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px 24px 30px;
+  scroll-snap-type: x mandatory;
+}
+.product {
+  flex: 0 0 130px;
+  min-height: 180px;
+  padding: 10px 10px 15px;
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--foreground);
+  transform: rotate(-6deg) translateY(8px);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+  scroll-snap-align: center;
+}
+.product:nth-child(even) {
+  transform: rotate(6deg) translateY(8px);
+}
+.product[aria-pressed="true"] {
+  transform: translateY(-8px);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 5px var(--surface);
+}
+.thumb {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  margin: -16px auto 6px;
+}
+.product strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.product span {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.detail {
+  text-align: center;
+  color: var(--accent-foreground);
+  padding: 0 28px;
+  font-size: 14px;
+}
+.detail strong {
+  font-size: 19px;
+}
+.detail p {
+  margin-top: 5px;
+}
+.allergens {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.empty {
+  padding: 100px 26px 70px;
+  text-align: center;
+  min-height: 500px;
+}
+.empty h2 {
+  font-size: 28px;
+  font-weight: 750;
+}
+.empty p {
+  margin: 20px 0;
+}
+.menuLink {
+  display: inline-block;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  padding: 14px 24px;
+  font-weight: 700;
+}
+.stage button,
+.icon,
+.menuLink {
+  cursor: pointer;
+}
+.avatars {
+  display: flex;
+  align-items: center;
+  margin-block: 1rem;
+}
+.avatars > :global(.avatar) {
+  width: 42px;
+  height: 42px;
+  margin-inline-start: -9px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+}
+.avatars > :global(.avatar:first-child) {
+  margin-inline-start: 0;
+}
+.stage button:focus-visible,
+.stage a:focus-visible {
+  outline: 3px solid var(--foreground);
+  outline-offset: 4px;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.94) rotate(-5deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero {
+    animation: none;
+  }
+  .product {
+    transition: none;
+  }
+}

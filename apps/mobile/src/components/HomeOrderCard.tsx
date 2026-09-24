@@ -3,7 +3,7 @@ import { AppText } from "@/components/Text";
 
 
 import Link from "next/link";
-import { ArrowRight, ShoppingBag } from "@repo/icons";
+import { ArrowRight, ShoppingBag } from "@/components/animated-icon/icons";
 import { useApp } from "@/context/AppContext";
 import { OrderProgress } from "./OrderProgress";
 
@@ -53,6 +53,31 @@ export function HomeOrderCard() {
           : t("orders.track")}
         <ArrowRight size={17} />
       </Link>
+    </section>
+  );
+}
+
+export function LastOrderRail() {
+  const { orders, hydrated, language, user } = useApp();
+  if (!hydrated || !user) return null;
+  const previous = [...orders]
+    .filter((order) => order.status === "completed")
+    .sort((a, b) => b.placedAt - a.placedAt)
+    .slice(0, 4);
+  if (!previous.length) return null;
+  const de = language === "de";
+  return (
+    <section className="mt-7" aria-label={de ? "Letzte Bestellungen" : "Recent orders"}>
+      <h2 className="text-xl font-bold">{de ? "Nochmal bestellen" : "Order it again"}</h2>
+      <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-2">
+        {previous.map((order) => (
+          <Link key={order.id} href="/orders/" className="data-surface min-w-[72%] snap-start rounded-[24px] p-4">
+            <span className="text-xs text-muted">{new Date(order.placedAt).toLocaleDateString(de ? "de-DE" : "en-IE")}</span>
+            <strong className="mt-2 block line-clamp-2 text-sm">{order.items.map((item) => `${item.quantity}× ${item.name}`).join(" · ")}</strong>
+            <span className="mt-3 inline-flex items-center gap-2 text-xs font-bold">{de ? "Bestellung ansehen" : "View order"}<ArrowRight size={15} /></span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }

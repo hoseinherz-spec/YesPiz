@@ -1,3 +1,5 @@
+import { BillingModule } from "../billing/billing.module";
+import { BillingService } from "../billing/billing.service";
 import { RewardPolicyModule } from "./policy.module";
 import { Body, Controller, Get, Module, Post, UseGuards } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -21,7 +23,10 @@ class MembershipDto {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.CUSTOMER)
 class RewardsController {
-  constructor(private readonly service: RewardsService) {}
+  constructor(
+    private readonly service: RewardsService,
+    private readonly billing: BillingService,
+  ) {}
   @Get() summary(@CurrentUser() u: JwtPayloadUser) {
     return this.service.summary(u.userId);
   }
@@ -32,15 +37,24 @@ class RewardsController {
     @CurrentUser() u: JwtPayloadUser,
     @Body() dto: MembershipDto,
   ) {
-    return this.service.enroll(u.userId, dto.requestId);
+    return this.billing.checkout(u.userId, dto.requestId);
   }
-  @Post("membership/cancel") cancel(@CurrentUser() u: JwtPayloadUser) {
-    return this.service.cancel(u.userId);
+  @Post("membership/refresh") async refresh(@CurrentUser() u: JwtPayloadUser) {
+    await this.billing.refresh(u.userId);
+    return this.service.summary(u.userId);
+  }
+  @Post("membership/portal") portal(@CurrentUser() u: JwtPayloadUser) {
+    return this.billing.portal(u.userId);
+  }
+  @Post("membership/cancel") async cancel(@CurrentUser() u: JwtPayloadUser) {
+    await this.billing.cancel(u.userId);
+    return this.service.summary(u.userId);
   }
 }
 @Module({
   imports: [
     WalletModule,
+    BillingModule,
     RewardPolicyModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },

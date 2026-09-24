@@ -6,7 +6,33 @@ import type {
 } from "./payments.dto";
 import { paymentsEndpoints } from "./payments.endpoint";
 
+export type SavedCard = {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+};
+
 export const paymentsClient = {
+  savedCards(options?: AuthRequestOptions) {
+    return apiRequest<SavedCard[]>(
+      "/api/v1/payments/cards",
+      withAuth({ ...options, method: "GET" }),
+    );
+  },
+  setupCard(options?: AuthRequestOptions) {
+    return apiRequest<{ clientSecret: string }>(
+      "/api/v1/payments/cards/setup",
+      withAuth({ ...options, method: "POST" }),
+    );
+  },
+  removeCard(id: string, options?: AuthRequestOptions) {
+    return apiRequest<{ ok: boolean }>(
+      `/api/v1/payments/cards/${encodeURIComponent(id)}`,
+      withAuth({ ...options, method: "DELETE" }),
+    );
+  },
   cancel(orderId: string, reason: string, options?: AuthRequestOptions) {
     return apiRequest<import("../orders/orders.dto").CustomerOrderView>(
       "/api/v1/payments/cancel-order",

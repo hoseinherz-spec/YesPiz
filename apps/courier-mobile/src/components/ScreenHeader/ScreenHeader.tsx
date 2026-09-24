@@ -42,7 +42,7 @@ export function ScreenHeader({
           </Typography>
         ) : null}
       </div>
-      <div className="flex size-16 items-center justify-center">{right}</div>
+      <div className="flex min-w-0 items-center justify-end">{right}</div>
     </div>
   );
 }

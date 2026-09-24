@@ -1,5 +1,6 @@
 import { generateKeyPairSync } from "crypto";
 import { JwtService } from "@nestjs/jwt";
+import { OAuth2Client } from "google-auth-library";
 import { AccountService } from "./account.service";
 import { UserRole } from "../common/enums";
 
@@ -65,6 +66,30 @@ describe("Social sign-in verification", () => {
       audit: { record: jest.fn() },
     });
   });
+  function configureFacebook() {
+    Object.assign(service, {config: {get: (key: string) => ({FACEBOOK_APP_ID: "fb-app", FACEBOOK_APP_SECRET: "test-secret", FACEBOOK_API_VERSION: "v23.0"})[key]}});
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ok: true, json: async () => ({data: {is_valid: true, app_id: "fb-app", type: "USER", user_id: "fb-user", expires_at: Date.now()/1000+3600}})})
+      .mockResolvedValueOnce({ok: true, json: async () => ({id: "fb-user", email: "fb@example.com", first_name: "Test"})});
+  }
+  it("verifies Facebook identity before creating an account", async () => {
+    configureFacebook();
+    await service.socialLogin({provider: "facebook", idToken: "test-token", nonce});
+    expect(users.create).toHaveBeenCalledWith(expect.objectContaining({facebookSub: "fb-user", email: "fb@example.com"}));
+  });
+  it("rejects Facebook tokens issued to another app", async () => {
+    configureFacebook();
+    (global.fetch as jest.Mock).mockReset().mockResolvedValueOnce({ok:true,json:async()=>({data:{is_valid:true,app_id:"another-app",user_id:"fb-user",type:"USER",expires_at:Date.now()/1000+3600}})});
+    await expect(service.socialLogin({provider:"facebook",idToken:"test-token",nonce})).rejects.toThrow("Unable to verify");
+    expect(users.create).not.toHaveBeenCalled();
+  });
+  it("rejects Facebook profile identity mismatches", async () => {
+    configureFacebook();
+    (global.fetch as jest.Mock).mockReset()
+      .mockResolvedValueOnce({ok:true,json:async()=>({data:{is_valid:true,app_id:"fb-app",user_id:"fb-user",type:"USER",expires_at:Date.now()/1000+3600}})})
+      .mockResolvedValueOnce({ok:true,json:async()=>({id:"another-user",email:"fb@example.com"})});
+    await expect(service.socialLogin({provider:"facebook",idToken:"test-token",nonce})).rejects.toThrow("Unable to verify");
+  });
   afterEach(() => {
     global.fetch = originalFetch;
   });
@@ -100,6 +125,47 @@ describe("Social sign-in verification", () => {
       }),
     );
   });
+  it("falls back to Google's JWKS endpoint when the legacy certificate endpoint is forbidden", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      headers: { get: () => "public, max-age=3600" },
+      json: async () => ({
+        keys: [{ ...publicKey.export({ format: "jwk" }), kid: "test-key" }],
+      }),
+    });
+    const client = new OAuth2Client("google-client");
+    jest
+      .spyOn(client, "verifyIdToken")
+      .mockImplementation(async () => {
+        throw new Error(
+          "Failed to retrieve verification certificates: 403 Forbidden",
+        );
+      });
+    Object.assign(service, {
+      googleClient: client,
+      config: {
+        get: (key: string) =>
+          key === "GOOGLE_CLIENT_ID" ? "google-client" : undefined,
+      },
+    });
+    const idToken = sign(
+      { sub: "google-user", email: "google@example.com" },
+      {
+        issuer: "https://accounts.google.com",
+        audience: "google-client",
+      },
+    );
+
+    await service.socialLogin({ provider: "google", idToken, nonce });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      new URL("https://www.googleapis.com/oauth2/v3/certs"),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(users.create).toHaveBeenCalledWith(
+      expect.objectContaining({ googleSub: "google-user" }),
+    );
+  });
   it("rejects a Google nonce mismatch", async () => {
     Object.assign(service, {
       googleClient: {
@@ -117,6 +183,33 @@ describe("Social sign-in verification", () => {
       }),
     ).rejects.toThrow();
     expect(users.create).not.toHaveBeenCalled();
+  });
+  it("accepts a verified Google token when Google omits the optional nonce claim", async () => {
+    Object.assign(service, {
+      googleClient: {
+        verifyIdToken: async () => ({
+          getPayload: () => ({
+            sub: "google-user",
+            email: "google@example.com",
+            email_verified: true,
+          }),
+        }),
+      },
+      config: {
+        get: (key: string) =>
+          key === "GOOGLE_CLIENT_ID" ? "google-client" : undefined,
+      },
+    });
+
+    await service.socialLogin({
+      provider: "google",
+      idToken: "google-token",
+      nonce,
+    });
+
+    expect(users.create).toHaveBeenCalledWith(
+      expect.objectContaining({ googleSub: "google-user" }),
+    );
   });
   it("verifies an Apple signature and creates only a customer", async () => {
     const result = await service.socialLogin(dto(sign()));

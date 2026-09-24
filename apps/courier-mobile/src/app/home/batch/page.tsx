@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { ArrowRight, Boxes, RefreshCw } from 'lucide-react';
 
 import { AppFrame } from '@/components/AppFrame';
 import { ErrorBanner } from '@/components/ProofUi';
@@ -103,14 +104,24 @@ function BatchDetailInner() {
 
       {error ? <ErrorBanner message={error} className="mb-4" /> : null}
 
-      <p className={cn(hx.caption, 'mb-4 font-mono')}>{id || batchId}</p>
+      <p className={cn(hx.caption, 'mb-4 truncate font-mono')}>{id || batchId}</p>
 
       {batch ? (
-        <div className={cn(hx.card, 'mb-4')}>
-          <p className={hx.bodySm}>
-            {batch.orderIds?.length ?? 0} stops · prep weight {batch.totalPrepWeight}
-          </p>
-          <p className={cn(hx.caption, 'mt-2')}>
+        <div className="courier-hero mb-5">
+          <div className="relative z-10 flex items-start gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground">
+              <Boxes size={21} />
+            </span>
+            <div>
+              <Typography type="h2" className={hx.title}>
+                {batch.orderIds?.length ?? 0} delivery stops
+              </Typography>
+              <p className={cn(hx.bodySm, 'mt-1')}>
+                Prep weight {batch.totalPrepWeight}
+              </p>
+            </div>
+          </div>
+          <p className={cn(hx.caption, 'relative z-10 mt-4 max-w-[300px]')}>
             Complete stops in kitchen pickup order. Server may split the batch if a stop
             becomes unsafe.
           </p>
@@ -123,32 +134,40 @@ function BatchDetailInner() {
         </Typography>
 
         {!orders.length ? (
-          <div className={cn(hx.card, hx.bodySm)}>No orders in this batch.</div>
+          <div className="courier-card courier-empty">
+            <Boxes size={26} className="text-muted" />
+            <p className={hx.bodySm}>No orders in this batch.</p>
+          </div>
         ) : null}
 
         {orders.map((o, index) => (
           <Link
             key={o.orderId}
             href={`/home/order/?id=${encodeURIComponent(o.orderId)}&batch=${encodeURIComponent(batchId)}`}
-            className={cn(hx.card, 'block transition-opacity hover:opacity-90')}
+            className="courier-card courier-card--interactive block"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className={hx.title}>Stop {index + 1}</span>
-              <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold capitalize text-accent">
-                {formatOrderStatus(o.status)}
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent">
+                  {formatOrderStatus(o.status)}
+                </span>
+                <p className={cn(hx.title, 'mt-3')}>Stop {index + 1}</p>
+                <p className={cn(hx.caption, 'mt-1 truncate font-mono')}>{o.orderId}</p>
+              </div>
+              <span className="courier-icon-button size-10 min-w-10 bg-surface-tertiary">
+                <ArrowRight size={18} />
               </span>
             </div>
-            <p className={cn(hx.caption, 'mt-1 font-mono')}>{o.orderId}</p>
           </Link>
         ))}
 
         <Button
           size="sm"
           variant="secondary"
-          className="mt-2 rounded-full border border-border bg-card"
+          className={cn(hx.btnSecondary, 'mt-2')}
           onPress={() => void load()}
         >
-          Refresh
+          <RefreshCw size={17} /> Refresh batch
         </Button>
       </section>
     </>
@@ -157,7 +176,7 @@ function BatchDetailInner() {
 
 export default function CourierBatchPage() {
   return (
-    <AppFrame>
+    <AppFrame className="courier-screen">
       <Suspense fallback={<p className="text-sm text-muted">Loading batch…</p>}>
         <BatchDetailInner />
       </Suspense>

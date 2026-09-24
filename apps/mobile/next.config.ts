@@ -8,7 +8,13 @@ const nextConfig: NextConfig = {
     if (process.env.NEXT_DISABLE_WEBPACK_CACHE === "1") config.cache = false;
     return config;
   },
-  transpilePackages: ["@repo/i18n", "@repo/theme", "@repo/api", "@repo/ui"],
+  transpilePackages: [
+    "@repo/i18n",
+    "@repo/theme",
+    "@repo/api",
+    "@repo/ui",
+    "@repo/native-stripe",
+  ],
   // Static export for Capacitor (APK / AAB / iOS)
   output: "export",
   images: {

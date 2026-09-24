@@ -1,3 +1,18 @@
+export type ComboComponentInput = { menuItemId: string; size?: "small" | "medium" | "large"; variantId?: string; quantity: number };
+export type ComboComponent = ComboComponentInput & { name: string; sizeName: string; imageUrl?: string; productId?: string; productRevisionId?: string };
+export type IngredientOptionConfig = { ingredientId: string; priceCents: number; portionGrams: number; toppingImageUrl?: string };
+export type IngredientOption = IngredientOptionConfig & { name: string; image: string; includedByDefault: boolean };
+export type IngredientChange = { ingredientId: string; action: 'add' | 'remove' };
+export type Ingredient = {
+  id: string;
+  name: string;
+  description: string;
+  slug: string;
+  image: string;
+};
+export type CreateIngredientRequest = Omit<Ingredient, "id">;
+export type UpdateIngredientRequest = Partial<CreateIngredientRequest>;
+
 export type PizzaPresentation = {
   gallery: string[];
   fields: Array<{
@@ -46,6 +61,7 @@ export type PizzaCustomization = {
 export type PizzaSelection = { groupId: string; optionIds: string[] };
 
 export type CreateMenuVersionRequest = {
+  menuId?: string;
   notes?: string;
 };
 
@@ -55,6 +71,13 @@ export type CreateCategoryRequest = {
 };
 
 export type CreateMenuItemRequest = {
+  comboComponents?: ComboComponentInput[];
+  ingredientOptions?: IngredientOptionConfig[];
+  toppingBaseImageUrl?: string;
+  productType?: string;
+  attributes?: Record<string, unknown>;
+  attributesSchemaVersion?: number;
+  ingredientIds?: string[];
   additionalCategoryIds?: string[];
   presentation?: PizzaPresentation;
   customization?: PizzaCustomization;
@@ -80,14 +103,21 @@ export type CreateMenuItemRequest = {
 };
 
 export type UpdateMenuItemRequest = {
+  comboComponents?: ComboComponentInput[];
+  ingredientOptions?: IngredientOptionConfig[];
+  toppingBaseImageUrl?: string;
+  attributes?: Record<string, unknown>;
+  attributesSchemaVersion?: number;
+  ingredientIds?: string[];
   additionalCategoryIds?: string[];
   presentation?: PizzaPresentation;
   categoryId?: string;
   tags?: string[];
   customization?: PizzaCustomization;
   sortOrder?: number;
+  productRevisionId?: string;
   pizzaId?: string;
-  productType?: "pizza" | "unclassified";
+  productType?: string;
   ingredients?: string[];
   allergens?: string[];
   name?: string;
@@ -105,6 +135,7 @@ export type UpdateMenuItemRequest = {
 };
 
 export type MenuVersion = {
+  menuId?: string;
   scheduledPublishAt?: string;
   publishError?: string;
   id: string;
@@ -127,12 +158,21 @@ export type Category = {
 };
 
 export type MenuItem = {
+  comboComponents?: ComboComponent[];
+  ingredientOptions?: IngredientOption[];
+  toppingBaseImageUrl?: string;
+  attributes?: Record<string, unknown>;
+  attributesSchemaVersion?: number;
+  ingredientIds?: string[];
+  ingredientDetails?: Ingredient[];
   additionalCategoryIds?: string[];
   presentation?: PizzaPresentation;
   customization?: PizzaCustomization;
   sortOrder?: number;
+  productId?: string;
+  productRevisionId?: string;
   pizzaId?: string;
-  productType?: "pizza" | "unclassified";
+  productType?: string;
   ingredients?: string[];
   allergens?: string[];
   id: string;
@@ -168,19 +208,28 @@ export type PublishedMenuCategory = {
 };
 
 export type PublishedMenuItem = {
+  comboComponents?: ComboComponent[];
+  ingredientOptions?: IngredientOption[];
+  toppingBaseImageUrl?: string;
+  ingredientIds?: string[];
+  ingredientDetails?: Ingredient[];
   additionalCategoryIds?: string[];
   presentation?: PublicPizzaPresentation;
   customization?: PizzaCustomization;
   sortOrder?: number;
+  productId?: string;
+  productRevisionId?: string;
   pizzaId?: string;
   ingredients?: string[];
   allergens?: string[];
   id: string;
+  productType?: string;
   categoryId: string;
   name: string;
   description: string;
   priceCents: number;
   prepWeight: number;
+  cookTimeSeconds?: number;
   imageUrl?: string;
   tags: string[];
 };
@@ -189,6 +238,11 @@ export type PublishedMenuResponse = {
   version: PublishedMenuVersion | null;
   categories: PublishedMenuCategory[];
   items: PublishedMenuItem[];
+};
+
+export type PublishedComboResponse = {
+  version: PublishedMenuVersion;
+  item: PublishedMenuItem;
 };
 
 export type MenuVersionDetail = {

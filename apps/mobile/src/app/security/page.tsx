@@ -6,8 +6,11 @@ import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useApp } from "@/context/AppContext";
 import Link from "next/link";
+import { Shield } from "@/components/animated-icon/icons";
+import { PageIntro } from "@/components/PageIntro";
 export default function SecurityPage() {
-  const { accessToken } = useApp();
+  const { accessToken, language } = useApp();
+  const de = language === "de";
   const [keys, setKeys] = useState<Array<{ _id: string; name: string }>>([]),
     [password, setPassword] = useState(""),
     [name, setName] = useState("My device"),
@@ -69,13 +72,17 @@ export default function SecurityPage() {
   return (
     <AppFrame className="reference-screen">
       <ScreenHeader title="Security" />
-      <p className="text-sm leading-6 text-muted">
-        A passkey uses your device’s fingerprint, face recognition or screen
-        lock. Yespiz never receives biometric data. Password sign-in stays
-        available.
-      </p>
+      <PageIntro
+        icon={<Shield />}
+        title={de ? "Dein Konto. Geschützt." : "Your account. Protected."}
+        description={
+          de
+            ? "Melde dich mit Fingerabdruck, Gesicht oder Displaysperre an. Deine biometrischen Daten bleiben auf deinem Gerät."
+            : "Sign in with your fingerprint, face or screen lock. Your biometric data stays on your device."
+        }
+      />
       {!accessToken ? (
-        <Link href="/login/?next=/security/" className="mt-6 underline">
+        <Link href="/auth/sign-in/?next=/security/" className="mt-6 underline">
           Sign in to manage security
         </Link>
       ) : (
@@ -109,7 +116,7 @@ export default function SecurityPage() {
             ))}
           </div>
           <form
-            className="mt-6 space-y-4"
+            className="data-surface mt-2 space-y-5 p-5"
             onSubmit={(e) => {
               e.preventDefault();
               void enroll();

@@ -35,7 +35,7 @@ export const hx = {
     "bg-danger-soft text-danger shadow-none",
   ),
   iconBtn:
-    "relative size-16 min-w-16 rounded-full border-0 bg-card text-foreground shadow-none",
+    "relative size-12 min-w-0 shrink-0 aspect-square rounded-full p-0 border-0 bg-card text-foreground shadow-none",
   field:
     "h-[52px] w-full rounded-[18px] border border-transparent bg-field-background px-6 text-[16px] font-medium text-field-foreground shadow-none outline-none placeholder:text-field-placeholder focus-visible:border-focus",
   sheet:

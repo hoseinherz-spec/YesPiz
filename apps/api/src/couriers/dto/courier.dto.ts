@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsIn,
+  IsUrl,
   IsMongoId,
   MaxLength,
   MinLength,
@@ -16,6 +17,24 @@ export class UpdateCourierProfileDto {
   @IsOptional()
   @IsString()
   vehicleType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  vehicleModel?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  plateNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUrl({ protocols: ["https"], require_protocol: true })
+  @MaxLength(2048)
+  avatarUrl?: string;
 }
 
 export class SessionCodeDto {

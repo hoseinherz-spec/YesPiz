@@ -1,0 +1,196 @@
+/* The account and ordering screens share the approved auth/menu vocabulary.
+   Kept route-scoped so the home, catalog and onboarding compositions stay intact. */
+.shell {
+  isolation: isolate;
+}
+.shell::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 300px;
+  pointer-events: none;
+  background: var(--foreground);
+  opacity: 0.035;
+  mask: url("/images/pizza-hero-pattern.svg") center top / 320px repeat;
+}
+.screen {
+  position: relative;
+  min-width: 0;
+}
+.screen:global(.reference-screen) {
+  padding-inline: 20px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+  background: transparent;
+}
+.tabs:global(.reference-screen) {
+  padding-bottom: 112px;
+}
+.screen :global(.reference-screen) {
+  padding-inline: 20px;
+}
+.screen :global(.data-surface) {
+  border: 1px solid color-mix(in oklab, var(--foreground) 5%, transparent);
+  border-radius: 26px;
+  background: var(--surface-secondary);
+  box-shadow: none;
+}
+.screen :global(.button--primary) {
+  min-height: 52px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.screen :global(.button--icon-only) {
+  min-height: 44px;
+  min-width: 44px;
+}
+.screen :is(input, textarea, select) {
+  font-family: inherit;
+}
+.screen :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--accent);
+}
+.screen:global(.chat-screen) > section {
+  border: 0;
+  border-radius: 26px;
+  padding: 20px;
+  background: var(--surface-secondary);
+}
+.screen:global(.chat-screen) form textarea {
+  min-height: 120px;
+  border-radius: 18px;
+  font-size: 16px;
+}
+.screen:global(.chat-screen) form button[type="submit"] {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+.screen
+  :global(.reference-screen)
+  input:not([type="checkbox"]):not([type="radio"]),
+.screen:global(.reference-screen)
+  input:not([type="checkbox"]):not([type="radio"]) {
+  border-radius: 18px;
+}
+.screen :global(.text-accent) {
+  color: var(--selection-ink);
+}
+.screen :global(.empty-state-orbit),
+.screen :global(.empty-state-preview) {
+  display: none;
+}
+.screen :global(.empty-state-image) {
+  left: 20px;
+  width: 160px;
+  height: 160px;
+}
+.screen :global(.empty-state-icon) {
+  width: 44px;
+  height: 44px;
+  right: 8px;
+  bottom: 0;
+  border-radius: 16px;
+  color: var(--selection-ink);
+  background: var(--surface-secondary);
+  box-shadow: none;
+}
+.screen :is(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.screen:global(.settings-screen) :global(.appearance-section) {
+  padding-top: 16px;
+  text-align: center;
+}
+.screen:global(.settings-screen) :global(.appearance-section) h1 {
+  max-width: 300px;
+  margin-inline: auto;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.screen:global(.settings-screen) :global(.appearance-options) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-block: 24px 32px;
+}
+.screen:global(.settings-screen) :global(.appearance-option) {
+  position: relative;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 12px;
+  min-height: 160px;
+  background: var(--surface);
+  font-size: 13px;
+}
+.screen:global(.settings-screen)
+  :global(.appearance-option[aria-pressed="true"]) {
+  background: var(--surface-secondary);
+  border-color: var(--selection-ink);
+}
+.screen:global(.settings-screen) :global(.appearance-preview) {
+  width: 54px;
+  height: 62px;
+}
+.screen:global(.settings-screen) :global(.appearance-radio) {
+  width: 18px;
+  height: 18px;
+  position: absolute;
+  inset: 12px 12px auto auto;
+}
+.screen :global(.referral-intro) {
+  text-align: center;
+  padding-top: 20px;
+}
+.screen :global(.referral-intro) h1 {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+}
+.screen :global(.referral-symbol) {
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  margin-bottom: 20px;
+}
+.screen :global(.referral-symbol) svg {
+  width: 30px;
+  height: 30px;
+}
+.screen :global(.referral-intro) + p {
+  text-align: center;
+}
+@media (max-width: 350px) {
+  .screen:global(.reference-screen),
+  .screen :global(.reference-screen) {
+    padding-inline: 16px;
+  }
+}
+
+/* Consistent disclosure and keyboard treatment across supporting screens. */
+.screen summary {
+  min-height: 48px;
+  align-content: center;
+  cursor: pointer;
+}
+.screen summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+.screen :is(input, textarea, select) {
+  scroll-margin-block: 100px;
+  font-size: max(1rem, 16px);
+}
+.screen :is(h1, h2, p) { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .screen *, .screen *::before, .screen *::after {
+    scroll-behavior: auto !important;
+  }
+}

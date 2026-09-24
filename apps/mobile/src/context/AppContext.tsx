@@ -1,4 +1,5 @@
 "use client";
+import { useNotifications } from "@/lib/use-notifications";
 import { disableNotifications } from "@repo/api/components/notifications";
 
 import {
@@ -17,6 +18,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -79,9 +81,17 @@ export type Address = {
   id: string;
   label: string;
   detail: string;
+  street: string;
+  city?: string;
+  zipcode?: string;
+  isDefault: boolean;
+  entrance?: string;
+  floor?: string;
+  unit?: string;
 };
 
 export type AppUser = {
+  profileRevision?: number;
   id: string;
   firstName: string;
   lastName: string;
@@ -103,13 +113,15 @@ type AppContextValue = {
   userEmail: string;
   updateLocalUser: (
     patch: Partial<Pick<AppUser, "firstName" | "lastName" | "email" | "phone">>,
-  ) => void;
+  ) => Promise<void>;
   accessToken: string | null;
   authed: boolean;
   authLoading: boolean;
   authError: string | null;
   clearAuthError: () => void;
   onboarded: boolean;
+  welcomed: boolean;
+  completeWelcome: () => void;
   sendOtp: (phone: string) => Promise<void>;
   loginWithOtp: (
     phone: string,
@@ -117,7 +129,7 @@ type AppContextValue = {
     names?: { firstName?: string; lastName?: string },
   ) => Promise<void>;
   loginWithSocial: (
-    provider: "google" | "apple",
+    provider: "google" | "apple" | "facebook",
     idToken: string,
     nonce: string,
   ) => Promise<void>;
@@ -135,6 +147,8 @@ type AppContextValue = {
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
   addresses: Address[];
+  addressesLoading: boolean;
+  addressesError: string | null;
   selectedAddressId: string;
   setSelectedAddressId: (id: string) => void;
   refreshAddresses: () => Promise<void>;
@@ -145,7 +159,13 @@ type AppContextValue = {
     zipcode?: string;
     longitude: number;
     latitude: number;
+    entrance?: string;
+    floor?: string;
+    unit?: string;
+    doorCode?: string;
+    instructions?: string;
   }) => Promise<Address>;
+  deleteAddress: (id: string) => Promise<void>;
   orders: Order[];
   refreshOrders: () => Promise<void>;
   addOrder: (o: Order) => void;
@@ -153,7 +173,13 @@ type AppContextValue = {
   setActiveOrderId: (id: string | null) => void;
   advanceActiveOrder: () => void;
   notifications: AppNotification[];
-  markAllRead: () => void;
+  markAllRead: () => Promise<void>;
+  notificationsLoading: boolean;
+  notificationsError: string;
+  notificationsSaving: boolean;
+  refreshNotifications: () => Promise<void>;
+  loadMoreNotifications: () => Promise<void>;
+  hasMoreNotifications: boolean;
   unreadCount: number;
   pushEnabled: boolean;
   setPushEnabled: (v: boolean) => void;
@@ -168,7 +194,12 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "yespiz_state_v2";
-const TOKEN_KEY = "yespizz_access_token";
+const AUTH_SESSION_KEY = "yespiz_auth_session_v1";
+const AUTH_PROFILE_KEY = "yespiz_auth_profile_v1";
+const DELIVERY_COUNTRY = (
+  process.env.NEXT_PUBLIC_PAYMENT_COUNTRY || "DE"
+).toUpperCase();
+const DEFAULT_DELIVERY_CITY = DELIVERY_COUNTRY === "AT" ? "Wien" : "Munich";
 
 const SAMPLE_ORDERS: Order[] = [
   {
@@ -203,33 +234,6 @@ const SAMPLE_ORDERS: Order[] = [
   },
 ];
 
-const SAMPLE_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "n1",
-    title: "notif.n1.title",
-    body: "notif.n1.body",
-    time: "notif.n1.time",
-    unread: true,
-    kind: "order",
-  },
-  {
-    id: "n2",
-    title: "notif.n2.title",
-    body: "notif.n2.body",
-    time: "notif.n2.time",
-    unread: true,
-    kind: "promo",
-  },
-  {
-    id: "n3",
-    title: "notif.n3.title",
-    body: "notif.n3.body",
-    time: "notif.n3.time",
-    unread: false,
-    kind: "promo",
-  },
-];
-
 const CUSTOMER_ROLE = "client" as const;
 
 const STATUS_INDEX: Record<CustomerOrderProjection, number> = {
@@ -253,6 +257,8 @@ function mapProfile(
       },
 ): AppUser {
   return {
+    profileRevision:
+      "profileRevision" in profile ? (profile.profileRevision as number) : 0,
     id: profile.id,
     firstName: profile.firstName,
     lastName: profile.lastName,
@@ -263,8 +269,32 @@ function mapProfile(
 
 function mapAddress(doc: DeliveryAddress): Address {
   const id = entityId(doc);
-  const detail = [doc.street, doc.zipcode, doc.city].filter(Boolean).join(", ");
-  return { id, label: doc.label, detail };
+  const access = [
+    doc.entrance ? `Stiege ${doc.entrance}` : "",
+    doc.floor ? `${doc.floor}. Stock` : "",
+    doc.unit ? `Tür ${doc.unit}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const detail = [
+    doc.street,
+    [doc.zipcode, doc.city].filter(Boolean).join(" "),
+    access,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    id,
+    label: doc.label,
+    detail,
+    street: doc.street,
+    city: doc.city,
+    zipcode: doc.zipcode,
+    isDefault: doc.isDefault,
+    entrance: doc.entrance,
+    floor: doc.floor,
+    unit: doc.unit,
+  };
 }
 
 export function mapCustomerOrder(view: CustomerOrderView): Order {
@@ -324,16 +354,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [onboarded, setOnboarded] = useState(false);
+  const [welcomed, setWelcomed] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([
     "pepperoni",
     "yespiz-special",
   ]);
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressesError, setAddressesError] = useState<string | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [notifications, setNotifications] =
-    useState<AppNotification[]>(SAMPLE_NOTIFICATIONS);
+  const notificationState = useNotifications(accessToken);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] =
     useState(true);
@@ -343,13 +375,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     Partial<Pick<AppUser, "firstName" | "lastName" | "email" | "phone">>
   >({});
 
+  const sessionToken = useRef<string | null>(null);
   const persistToken = useCallback((token: string | null) => {
+    sessionToken.current = token;
     setAccessToken(token);
     try {
-      if (token) localStorage.setItem(TOKEN_KEY, token);
-      else localStorage.removeItem(TOKEN_KEY);
+      if (token) sessionStorage.setItem(AUTH_SESSION_KEY, token);
+      else {
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+        sessionStorage.removeItem(AUTH_PROFILE_KEY);
+      }
     } catch {
-      // ignore
+      // The in-memory session remains usable when storage is unavailable.
     }
   }, []);
 
@@ -358,16 +395,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const auth = token === undefined ? accessToken : token;
       if (!auth) {
         setAddresses([]);
+        setAddressesLoading(false);
+        setAddressesError(null);
         return;
       }
-      const list = await ordersClient.listAddresses({ accessToken: auth });
-      const mapped = list.map(mapAddress).filter((a) => a.id);
-      setAddresses(mapped);
-      setSelectedAddressId((prev) => {
-        if (prev && mapped.some((a) => a.id === prev)) return prev;
-        const preferred = list.find((a) => a.isDefault) ?? list[0];
-        return preferred ? entityId(preferred) : "";
-      });
+      setAddressesLoading(true);
+      setAddressesError(null);
+      try {
+        const list = await ordersClient.listAddresses({ accessToken: auth });
+        const mapped = list.map(mapAddress).filter((a) => a.id);
+        setAddresses(mapped);
+        setSelectedAddressId((prev) => {
+          if (prev && mapped.some((a) => a.id === prev)) return prev;
+          const preferred = list.find((a) => a.isDefault) ?? list[0];
+          return preferred ? entityId(preferred) : "";
+        });
+      } catch (error) {
+        setAddressesError(authErrorMessage(error));
+        throw error;
+      } finally {
+        setAddressesLoading(false);
+      }
     },
     [accessToken],
   );
@@ -389,6 +437,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (token: string, profile: AppUser) => {
       persistToken(token);
       setUser(profile);
+      try {
+        sessionStorage.setItem(AUTH_PROFILE_KEY, JSON.stringify(profile));
+      } catch {
+        // The active in-memory profile is still authoritative.
+      }
       setAuthError(null);
       void refreshAddresses(token).catch(() => setAddresses([]));
       void refreshOrders(token).catch(() => setOrders([]));
@@ -414,15 +467,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async function hydrate() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        let storedProfile: Partial<
-          Pick<AppUser, "firstName" | "lastName" | "email" | "phone">
-        > = {};
         if (raw) {
           const s = JSON.parse(raw) as Record<string, unknown>;
           if (s.mode === "dark" || s.mode === "light") setModeState(s.mode);
           if (s.language === "en" || s.language === "de")
             setLanguageState(s.language);
           if (typeof s.onboarded === "boolean") setOnboarded(s.onboarded);
+          if (typeof s.welcomed === "boolean") setWelcomed(s.welcomed);
           if (Array.isArray(s.favorites)) setFavorites(s.favorites as string[]);
           if (typeof s.pushEnabled === "boolean") setPushEnabled(s.pushEnabled);
           if (typeof s.emailNotificationsEnabled === "boolean") {
@@ -440,45 +491,75 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (typeof s.activeOrderId === "string" || s.activeOrderId === null) {
             setActiveOrderId(s.activeOrderId as string | null);
           }
-          if (s.localProfile && typeof s.localProfile === "object") {
-            storedProfile = s.localProfile as typeof storedProfile;
-            setLocalProfile(storedProfile);
-          }
         }
 
-        const token = localStorage.getItem(TOKEN_KEY);
-        if (token) {
-          setAccessToken(token);
+        const storedToken = sessionStorage.getItem(AUTH_SESSION_KEY);
+        if (storedToken) {
+          sessionToken.current = storedToken;
+          setAccessToken(storedToken);
+          const cachedProfile = sessionStorage.getItem(AUTH_PROFILE_KEY);
+          if (cachedProfile) {
+            try {
+              const parsed = JSON.parse(cachedProfile) as AppUser;
+              if (parsed?.id) setUser(parsed);
+            } catch {
+              sessionStorage.removeItem(AUTH_PROFILE_KEY);
+            }
+          }
           try {
-            const me = await accountClient.getMe({ accessToken: token });
+            // Authentication is determined by /me alone. Optional address or
+            // order fetches must not erase a valid session on a transient error.
+            const me = await accountClient.getMe({ accessToken: storedToken });
             if (!cancelled) {
-              setUser({ ...mapProfile(me), ...storedProfile });
-              const [addrList, orderList] = await Promise.all([
-                ordersClient.listAddresses({ accessToken: token }),
-                ordersClient.list({ accessToken: token }),
-              ]);
-              if (cancelled) return;
-              const mapped = addrList.map(mapAddress).filter((a) => a.id);
-              setAddresses(mapped);
-              setSelectedAddressId((prev) => {
-                if (prev && mapped.some((a) => a.id === prev)) return prev;
-                const preferred =
-                  addrList.find((a) => a.isDefault) ?? addrList[0];
-                return preferred ? entityId(preferred) : "";
-              });
-              setOrders(orderList.map(mapCustomerOrder));
+              const profile = mapProfile(me);
+              setUser(profile);
+              sessionStorage.setItem(AUTH_PROFILE_KEY, JSON.stringify(profile));
+            }
+            const [addressResult, orderResult] = await Promise.allSettled([
+              ordersClient.listAddresses({ accessToken: storedToken }),
+              ordersClient.list({ accessToken: storedToken }),
+            ]);
+            if (!cancelled) {
+              if (addressResult.status === "fulfilled") {
+                const addressDocs = addressResult.value;
+                const mappedAddresses = addressDocs
+                  .map(mapAddress)
+                  .filter((address) => address.id);
+                setAddresses(mappedAddresses);
+                setSelectedAddressId((selected) => {
+                  if (
+                    selected &&
+                    mappedAddresses.some((address) => address.id === selected)
+                  )
+                    return selected;
+                  const preferred =
+                    addressDocs.find((address) => address.isDefault) ??
+                    addressDocs[0];
+                  return preferred ? entityId(preferred) : "";
+                });
+              } else {
+                setAddressesError(authErrorMessage(addressResult.reason));
+              }
+              if (orderResult.status === "fulfilled") {
+                setOrders(orderResult.value.map(mapCustomerOrder));
+              } else {
+                setOrders([]);
+              }
             }
           } catch (error) {
-            // Interrupted navigation and temporary API failures do not invalidate a session.
-            if (
-              !cancelled &&
-              error instanceof ApiError &&
-              error.status === 401
-            ) {
-              localStorage.removeItem(TOKEN_KEY);
-              setAccessToken(null);
-              setUser(null);
-              setOrders(SAMPLE_ORDERS);
+            if (error instanceof ApiError && error.status === 401) {
+              sessionStorage.removeItem(AUTH_SESSION_KEY);
+              sessionStorage.removeItem(AUTH_PROFILE_KEY);
+              if (!cancelled) {
+                sessionToken.current = null;
+                setAccessToken(null);
+                setUser(null);
+                setOrders(SAMPLE_ORDERS);
+              }
+            } else if (!cancelled) {
+              // Keep the last authenticated session during a transient API
+              // outage; foreground/online sync will verify it again.
+              setAuthError(authErrorMessage(error));
             }
           }
         } else {
@@ -506,6 +587,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           mode,
           language,
           onboarded,
+          welcomed,
           favorites,
           pushEnabled,
           emailNotificationsEnabled,
@@ -524,6 +606,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mode,
     language,
     onboarded,
+    welcomed,
     favorites,
     pushEnabled,
     emailNotificationsEnabled,
@@ -552,16 +635,79 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
   const updateLocalUser = useCallback(
-    (
+    async (
       patch: Partial<
         Pick<AppUser, "firstName" | "lastName" | "email" | "phone">
       >,
     ) => {
-      setLocalProfile((current) => ({ ...current, ...patch }));
-      setUser((current) => (current ? { ...current, ...patch } : current));
+      if (!accessToken || !user) throw new Error("Please sign in first.");
+      if (
+        (patch.email !== undefined && patch.email !== user.email) ||
+        (patch.phone !== undefined && patch.phone !== user.phone)
+      )
+        throw new Error("Contact changes require verification.");
+      const me = await accountClient.updateMe(
+        {
+          firstName: patch.firstName ?? user.firstName,
+          lastName: patch.lastName ?? user.lastName,
+          revision: user.profileRevision ?? 0,
+        },
+        { accessToken },
+      );
+      if (sessionToken.current === accessToken) {
+        setUser(mapProfile(me));
+        setLocalProfile({});
+      }
     },
-    [],
+    [accessToken, user],
   );
+
+  // Refresh from the API when returning to the app or reconnecting. Ignore stale responses.
+  useEffect(() => {
+    if (!hydrated || !accessToken) return;
+    let cancelled = false;
+    let pending = false;
+    const sync = async () => {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      try {
+        const me = await accountClient.getMe({ accessToken });
+        if (!cancelled && sessionToken.current === accessToken)
+          setUser((current) =>
+            current &&
+            current.id === me.id &&
+            (current.profileRevision ?? 0) > (me.profileRevision ?? 0)
+              ? current
+              : mapProfile(me),
+          );
+      } catch (error) {
+        if (
+          !cancelled &&
+          sessionToken.current === accessToken &&
+          error instanceof ApiError &&
+          error.status === 401
+        ) {
+          persistToken(null);
+          setUser(null);
+          setAddresses([]);
+          setOrders([]);
+        }
+      } finally {
+        pending = false;
+      }
+    };
+    window.addEventListener("focus", sync);
+    window.addEventListener("online", sync);
+    document.addEventListener("visibilitychange", sync);
+    const timer = window.setInterval(sync, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("online", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [hydrated, accessToken, persistToken]);
 
   const sendOtp = useCallback(async (phone: string) => {
     setAuthLoading(true);
@@ -609,7 +755,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginWithSocial = useCallback(
-    async (provider: "google" | "apple", idToken: string, nonce: string) => {
+    async (
+      provider: "google" | "apple" | "facebook",
+      idToken: string,
+      nonce: string,
+    ) => {
       setAuthLoading(true);
       setAuthError(null);
       try {
@@ -654,15 +804,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginWithPasskey = useCallback(async () => {
-    setAuthLoading(true);setAuthError(null);
+    setAuthLoading(true);
+    setAuthError(null);
     try {
-      const {startAuthentication}=await import("@simplewebauthn/browser");
-      const request=await apiRequest<{requestId:string;options:Parameters<typeof startAuthentication>[0]["optionsJSON"]}>("/api/v1/account/passkeys/authenticate/options",{method:"POST"});
-      const response=await startAuthentication({optionsJSON:request.options});
-      const result=await apiRequest<Awaited<ReturnType<typeof accountClient.login>>>("/api/v1/account/passkeys/authenticate/verify",{method:"POST",body:{requestId:request.requestId,response}});
-      applyAuth(result.accessToken,mapProfile(result.user));setOnboarded(true);
-    }catch(error){setAuthError(authErrorMessage(error));throw error;}finally{setAuthLoading(false);}
-  },[applyAuth]);
+      const { startAuthentication } = await import("@simplewebauthn/browser");
+      const request = await apiRequest<{
+        requestId: string;
+        options: Parameters<typeof startAuthentication>[0]["optionsJSON"];
+      }>("/api/v1/account/passkeys/authenticate/options", { method: "POST" });
+      const response = await startAuthentication({
+        optionsJSON: request.options,
+      });
+      const result = await apiRequest<
+        Awaited<ReturnType<typeof accountClient.login>>
+      >("/api/v1/account/passkeys/authenticate/verify", {
+        method: "POST",
+        body: { requestId: request.requestId, response },
+      });
+      applyAuth(result.accessToken, mapProfile(result.user));
+      setOnboarded(true);
+    } catch (error) {
+      setAuthError(authErrorMessage(error));
+      throw error;
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [applyAuth]);
 
   const register = useCallback(
     async (
@@ -699,6 +866,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     persistToken(null);
     setUser(null);
     setAddresses([]);
+    setAddressesLoading(false);
+    setAddressesError(null);
     setSelectedAddressId("");
     setOrders(SAMPLE_ORDERS);
     setActiveOrderId(null);
@@ -706,6 +875,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLocalProfile({});
   }, [persistToken, accessToken]);
 
+  const completeWelcome = useCallback(() => setWelcomed(true), []);
   const completeOnboarding = useCallback(() => setOnboarded(true), []);
 
   const toggleFavorite = useCallback((id: string) => {
@@ -726,18 +896,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       zipcode?: string;
       longitude: number;
       latitude: number;
+      entrance?: string;
+      floor?: string;
+      unit?: string;
+      doorCode?: string;
+      instructions?: string;
     }) => {
       if (!accessToken) throw new Error("Not authenticated");
       const created = await ordersClient.createAddress(
         {
           label: input.label,
           street: input.street,
-          city: input.city ?? "Munich",
+          city: input.city ?? DEFAULT_DELIVERY_CITY,
           zipcode: input.zipcode,
-          country: "DE",
+          country: DELIVERY_COUNTRY,
           longitude: input.longitude,
           latitude: input.latitude,
           isDefault: addresses.length === 0,
+          entrance: input.entrance,
+          floor: input.floor,
+          unit: input.unit,
+          doorCode: input.doorCode,
+          instructions: input.instructions,
         },
         { accessToken },
       );
@@ -747,6 +927,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return mapped;
     },
     [accessToken, addresses.length, refreshAddresses],
+  );
+
+  const deleteAddress = useCallback(
+    async (id: string) => {
+      if (!accessToken) throw new Error("Not authenticated");
+      await ordersClient.deleteAddress(id, { accessToken });
+      await refreshAddresses();
+    },
+    [accessToken, refreshAddresses],
   );
 
   const addOrder = useCallback((o: Order) => {
@@ -769,15 +958,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }),
     );
   }, [activeOrderId, accessToken]);
-
-  const markAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-  }, []);
-
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => n.unread).length,
-    [notifications],
-  );
 
   const colors = mode === "dark" ? palettes.dark : palettes.light;
   const userName = user
@@ -805,6 +985,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     authError,
     clearAuthError,
     onboarded,
+    welcomed,
+    completeWelcome,
     sendOtp,
     loginWithOtp,
     loginWithPassword,
@@ -817,19 +999,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleFavorite,
     isFavorite,
     addresses,
+    addressesLoading,
+    addressesError,
     selectedAddressId,
     setSelectedAddressId,
     refreshAddresses,
     createAddress,
+    deleteAddress,
     orders,
     refreshOrders,
     addOrder,
     activeOrderId,
     setActiveOrderId,
     advanceActiveOrder,
-    notifications,
-    markAllRead,
-    unreadCount,
+    ...notificationState,
     pushEnabled,
     setPushEnabled,
     emailNotificationsEnabled,

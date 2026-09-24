@@ -1,5 +1,7 @@
 "use client";
 import { AppText } from "@/components/Text";
+import { PageIntro } from "@/components/PageIntro";
+import { MessageCircle } from "@/components/animated-icon/icons";
 
 import { FormScope, Input, Form, RadioField, TextArea } from "@repo/ui/forms";
 
@@ -103,16 +105,18 @@ export default function FeedbackPage() {
     <FormScope>
       {
         <AppFrame className="reference-screen">
-          <ScreenHeader
+          <ScreenHeader title={de ? "Feedback" : "Your feedback"} />
+          <PageIntro
+            icon={<MessageCircle />}
             title={
               de ? "Deine Pizza, dein Feedback" : "Your pizza, your feedback"
             }
+            description={
+              de
+                ? "Deine Bewertungen bleiben intern. Deinen Kommentar veröffentlichen wir nur mit deiner Erlaubnis und nach Prüfung."
+                : "Your scores stay internal. Your comment is shared only with your permission and after review."
+            }
           />
-          <AppText as="p" className="mt-3 text-sm leading-6 text-muted">
-            {de
-              ? "Deine Bewertungen bleiben intern. Deinen Kommentar veröffentlichen wir nur mit deiner Erlaubnis und nach Prüfung."
-              : "Your scores stay internal. Your comment is shared only with your permission and after review."}
-          </AppText>
           {error && (
             <div role="alert" className="my-4 text-danger">
               {error}{" "}
@@ -125,7 +129,7 @@ export default function FeedbackPage() {
             </div>
           )}
           {!accessToken ? (
-            <Link href="/login/">
+            <Link href="/auth/sign-in/">
               {de ? "Bitte anmelden" : "Sign in to continue"}
             </Link>
           ) : !id ? (

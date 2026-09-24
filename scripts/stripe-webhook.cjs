@@ -26,7 +26,7 @@ const child = spawn(
   [
     "listen",
     "--events",
-    "payment_intent.succeeded",
+    "payment_intent.succeeded,checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,invoice.payment_action_required",
     "--forward-to",
     "http://localhost:8058/api/v1/payments/webhook/stripe",
   ],

@@ -11,11 +11,14 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { loadStripe, type StripeElementsOptions } from "@stripe/stripe-js";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { paymentsClient, type SavedCard } from "@repo/api";
 
 import { useApp } from "@/context/AppContext";
 import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
+import { SavedPaymentCard } from "./SavedPaymentCard";
+import cardStyles from "./SavedPaymentCard.module.css";
 
 type Props = {
   clientSecret: string;
@@ -29,6 +32,7 @@ type Props = {
 };
 
 function ConfirmPayment({
+  clientSecret,
   amountLabel,
   processingLabel,
   payLabel,
@@ -36,9 +40,32 @@ function ConfirmPayment({
   errorFallback,
   onCancel,
   onSuccess,
-}: Omit<Props, "clientSecret">) {
+}: Props) {
   const stripe = useStripe();
   const elements = useElements();
+  const { accessToken, language } = useApp();
+  const [saved, setSaved] = useState<{
+    token: string;
+    cards: SavedCard[];
+  } | null>(null);
+  const [selectedCard, setSelectedCard] = useState("");
+  useEffect(() => {
+    let live = true;
+    if (accessToken)
+      void paymentsClient
+        .savedCards({ accessToken })
+        .then((cards) => {
+          if (live) setSaved({ token: accessToken, cards });
+        })
+        .catch(() => {
+          /* New-card checkout remains available. */
+        });
+    return () => {
+      live = false;
+    };
+  }, [accessToken]);
+  const cards = saved?.token === accessToken ? saved.cards : [];
+  const selected = cards.find((card) => card.id === selectedCard)?.id;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +74,19 @@ function ConfirmPayment({
     setBusy(true);
     setError(null);
     try {
+      if (selected) {
+        const result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: selected,
+        });
+        if (result.error) setError(result.error.message ?? errorFallback);
+        else if (result.paymentIntent?.status === "succeeded")
+          await onSuccess();
+        else
+          setError(
+            "Your payment is still processing. Please try again shortly.",
+          );
+        return;
+      }
       const submitted = await elements.submit();
       if (submitted.error) {
         setError(submitted.error.message ?? errorFallback);
@@ -81,28 +121,66 @@ function ConfirmPayment({
         void confirm();
       }}
     >
-      <ExpressCheckoutElement
-        options={{
-          paymentMethods: {
-            applePay: "auto",
-            googlePay: "auto",
-            link: "never",
-            amazonPay: "never",
-            paypal: "never",
-          },
-        }}
-        onConfirm={() => {
-          void confirm();
-        }}
-      />
-      <div className="mt-4">
-        <PaymentElement
+      {!!cards.length && (
+        <fieldset className="mb-4 grid min-w-0 gap-5">
+          <legend className="mb-2 text-sm font-semibold">
+            {language === "de" ? "Gespeicherte Karte" : "Saved card"}
+          </legend>
+          {cards.map((card) => (
+            <label
+              key={card.id}
+              className={cardStyles.choice}
+            >
+              <input
+                type="radio"
+                name="saved-card"
+                value={card.id}
+                checked={selectedCard === card.id}
+                disabled={busy}
+                onChange={() => setSelectedCard(card.id)}
+              />
+              <SavedPaymentCard card={card} language={language} />
+            </label>
+          ))}
+          <label className="flex items-center gap-3 p-3 text-sm">
+            <input
+              type="radio"
+              name="saved-card"
+              value=""
+              checked={!selected}
+              disabled={busy}
+              onChange={() => setSelectedCard("")}
+            />
+            {language === "de"
+              ? "Andere Zahlungsmethode"
+              : "Another payment method"}
+          </label>
+        </fieldset>
+      )}
+      <div hidden={Boolean(selected)}>
+        <ExpressCheckoutElement
           options={{
-            layout: "tabs",
-            paymentMethodOrder: ["card", "klarna"],
-            wallets: { applePay: "never", googlePay: "never" },
+            paymentMethods: {
+              applePay: "auto",
+              googlePay: "auto",
+              link: "never",
+              amazonPay: "never",
+              paypal: "never",
+            },
+          }}
+          onConfirm={() => {
+            void confirm();
           }}
         />
+        <div className="mt-4">
+          <PaymentElement
+            options={{
+              layout: "tabs",
+              paymentMethodOrder: ["card", "klarna"],
+              wallets: { applePay: "never", googlePay: "never" },
+            }}
+          />
+        </div>
       </div>
       {error ? (
         <Typography type="body-sm" className="mt-3 text-danger" role="alert">

@@ -1,6 +1,8 @@
+import type { LiveOperationsView } from "./orders.dto";
 import { apiRequest, withAuth, type AuthRequestOptions } from "../../core";
 import type {
   AtRiskDashboardResponse,
+  OrderTrackingView,
   CourierLocationView,
   CreateAddressRequest,
   CreateOrderRequest,
@@ -16,6 +18,18 @@ import type {
 import { ordersEndpoints } from "./orders.endpoint";
 
 export const ordersClient = {
+  tracking(id: string, options?: AuthRequestOptions) {
+    return apiRequest<OrderTrackingView>(
+      ordersEndpoints.tracking(id),
+      withAuth({ ...options, method: "GET" }),
+    );
+  },
+  callCourier(id: string, options?: AuthRequestOptions) {
+    return apiRequest<{ message: string }>(
+      `/api/v1/communications/orders/${encodeURIComponent(id)}/call`,
+      withAuth({ ...options, method: "POST" }),
+    );
+  },
   quote(body: CreateOrderRequest, options?: AuthRequestOptions) {
     return apiRequest<OrderQuote>(
       ordersEndpoints.quote,
@@ -64,6 +78,12 @@ export const ordersClient = {
     );
   },
 
+  liveOperations(options?: AuthRequestOptions) {
+    return apiRequest<LiveOperationsView>(
+      "/api/v1/orders/admin/live",
+      withAuth({ ...options, method: "GET" }),
+    );
+  },
   listAtRisk(options?: AuthRequestOptions) {
     return apiRequest<AtRiskDashboardResponse>(
       ordersEndpoints.adminAtRisk,

@@ -1,9 +1,10 @@
 'use client';
 
-import { Pizza } from '@repo/icons';
+import { Pizza } from '@/components/animated-icon/icons';
 import { useState } from 'react';
 
 import { cn } from '@/lib/cn';
+import { resolvePizzaCutout } from '@/constants/media';
 
 type ProductImageProps = {
   src: string;
@@ -40,7 +41,7 @@ export function ProductImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={resolvePizzaCutout(src)}
       alt={alt}
       className={className}
       onError={() => setFailedSrc(src)}

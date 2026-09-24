@@ -1,7 +1,7 @@
 "use client";
 
 import { trackProductEvent } from "@/lib/product-events";
-import { type PizzaSelection, apiRequest } from "@repo/api";
+import { type PizzaSelection, type IngredientChange, apiRequest } from "@repo/api";
 import React, {
   createContext,
   useCallback,
@@ -14,6 +14,7 @@ import React, {
 import { EXTRAS, SIZES } from "@/constants/pizzas";
 
 export type CartItem = {
+  ingredientChanges?: IngredientChange[];
   secondHalfItemId?: string;
   variantId?: string;
   selections?: PizzaSelection[];
@@ -145,6 +146,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           p.menuItemId === item.menuItemId &&
           p.secondHalfItemId === item.secondHalfItemId &&
           p.variantId === item.variantId &&
+          JSON.stringify([...(p.ingredientChanges ?? [])].sort((a,b) => a.ingredientId.localeCompare(b.ingredientId))) === JSON.stringify([...(item.ingredientChanges ?? [])].sort((a,b) => a.ingredientId.localeCompare(b.ingredientId))) &&
           JSON.stringify(p.selections ?? []) ===
             JSON.stringify(item.selections ?? []) &&
           p.size === item.size &&

@@ -1,0 +1,39 @@
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42% 1fr;
+  min-height: 178px;
+  overflow: hidden;
+  border-radius: 30px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  text-decoration: none;
+  box-shadow: 0 14px 30px color-mix(in oklab, var(--accent) 13%, transparent);
+  transition: transform 200ms ease;
+}
+.art {
+  position: relative;
+  min-width: 0;
+  background: color-mix(in oklab, var(--surface) 18%, transparent);
+}
+.product {
+  position: absolute;
+  width: 82%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 8px color-mix(in oklab, var(--foreground) 20%, transparent));
+}
+.product:nth-child(1) { top: 4%; left: -16%; transform: rotate(-12deg); }
+.product:nth-child(2) { top: 28%; right: -13%; transform: rotate(11deg); }
+.product:nth-child(3) { bottom: -30%; left: 3%; transform: rotate(-4deg); }
+.fallback { display: grid; height: 100%; place-items: center; }
+.copy { display: flex; min-width: 0; flex-direction: column; padding: 22px 20px 22px 16px; }
+.label { align-self: flex-start; border-radius: 99px; background: var(--accent-foreground); color: var(--accent); padding: 5px 9px; font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.copy h3 { margin-top: 12px; font-size: 23px; font-weight: 800; line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.copy p { margin-top: 7px; padding-right: 28px; color: color-mix(in oklab, var(--accent-foreground) 78%, var(--accent)); font-size: 11px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.copy strong { margin-top: auto; padding-top: 12px; font-size: 21px; letter-spacing: -.04em; }
+.action { position: absolute; right: 15px; bottom: 15px; display: grid; width: 39px; height: 39px; place-items: center; border-radius: 50%; background: var(--accent-foreground); color: var(--accent); }
+.card:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+@media (hover: hover) { .card:hover { transform: translateY(-3px); } }
+@media (min-width: 520px) { .card { min-height: 190px; } }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }

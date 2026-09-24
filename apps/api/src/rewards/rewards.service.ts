@@ -1,3 +1,4 @@
+import { BillingService } from "../billing/billing.service";
 import { RewardPolicyService, DEFAULT_REWARD_POLICY } from "./policy.module";
 import {
   BadRequestException,
@@ -5,7 +6,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { ConfigService } from "@nestjs/config";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../account/schemas/user.schema";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
@@ -29,8 +29,8 @@ export class RewardsService {
     @InjectModel(User.name) private readonly users: Model<UserDocument>,
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     private readonly wallet: WalletService,
-    private readonly config: ConfigService,
     private readonly policies: RewardPolicyService,
+    private readonly billing: BillingService,
   ) {}
 
   async summary(userId: string) {
@@ -98,8 +98,10 @@ export class RewardsService {
           !!user.membershipUntil && user.membershipUntil.getTime() > Date.now(),
         until: user.membershipUntil ?? null,
         cancelled: user.membershipCancelled ?? false,
-        mock: true,
-        canEnroll: this.config.get("NODE_ENV") !== "production",
+        mock: false,
+        status: user.membershipStatus ?? null,
+        canManage: !!user.membershipSubscriptionId,
+        canEnroll: this.billing.enabled(),
       },
     };
   }
@@ -115,49 +117,6 @@ export class RewardsService {
       `loyalty:v${campaign.version}:${campaign.claimed + 1}`,
       campaign.rewardCents,
       "",
-    );
-    return this.summary(userId);
-  }
-
-  async enroll(userId: string, requestId: string) {
-    if (this.config.get("NODE_ENV") === "production")
-      throw new BadRequestException(
-        "Mock membership is unavailable in production.",
-      );
-    const now = new Date();
-    const until = new Date(now.getTime() + MEMBERSHIP_PLAN.days * 86400000);
-    const user = await this.users
-      .findOneAndUpdate(
-        {
-          _id: userId,
-          membershipReceipts: { $ne: requestId },
-          $or: [
-            { membershipUntil: { $exists: false } },
-            { membershipUntil: { $lte: now } },
-          ],
-        },
-        {
-          $set: { membershipUntil: until, membershipCancelled: false },
-          $push: { membershipReceipts: requestId },
-        },
-        { new: true },
-      )
-      .exec();
-    if (!user) {
-      const previous = await this.users.findById(userId).exec();
-      if (!previous?.membershipReceipts?.includes(requestId))
-        throw new BadRequestException(
-          "Your membership is already active. Refresh to see its status.",
-        );
-    }
-    return this.summary(userId);
-  }
-
-  async cancel(userId: string) {
-    // No automatic charge: cancellation retains the already simulated paid period.
-    await this.users.updateOne(
-      { _id: userId },
-      { $set: { membershipCancelled: true } },
     );
     return this.summary(userId);
   }

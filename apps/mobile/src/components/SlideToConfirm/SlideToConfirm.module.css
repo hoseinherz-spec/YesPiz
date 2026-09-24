@@ -1,0 +1,32 @@
+.root {
+  /* Bencho card/fill-slab → foreground, fill-on → accent, ink →
+     background, pane-edge → border, font-ui → font-sans. This
+     version reads colors directly; no RGB aliases leak globally. */
+  --slide-card: var(--foreground);
+  --slide-fill-on: var(--accent);
+  --slide-fill-slab: var(--foreground);
+  --slide-ink: var(--background);
+  width: 100%;
+  height: 56px;
+  font-family: var(--font-sans);
+}
+.track { position: relative; width: 100%; height: 100%; border-radius: 999px; background: var(--slide-fill-slab); touch-action: none; user-select: none; overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); }
+.label { position: absolute; inset: 0; display: grid; place-items: center; padding-left: 48px; color: var(--slide-ink); font-size: 14px; font-weight: 700; }
+.grip { position: absolute; left: 4px; top: 4px; display: flex; align-items: center; justify-content: center; gap: 7px; width: 96px; height: 48px; border: 0; border-radius: 999px; background: var(--slide-fill-on); color: var(--accent-foreground); cursor: grab; touch-action: none; }
+.track[data-held] .grip { cursor: grabbing; }
+.grip { transform-origin: 0% 50%; transition: none; z-index: 2; }
+/* THE SAME INK AS THE HANDLE. Above the label, so it WIPES it;
+   matched, there is no seam to find between trail and handle. */
+.wash { position: absolute; top: 4px; bottom: 4px; left: 4px; border-radius: 24px; background: var(--slide-fill-on); z-index: 1; pointer-events: none; }
+/* Two contents, both absolute: neither can size the handle while
+   its width is arithmetic on the spring's position. */
+.arrows, .done { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; gap: 8px; white-space: nowrap; pointer-events: none; }
+.arrows { gap: 0; }
+.label { padding-left: 0; }
+.done { font-size: 14px; font-weight: 600; }
+.grip:focus-visible { outline: 3px solid var(--focus); outline-offset: -4px; }
+.arrows svg { width: 20px; margin-inline: -5px; }
+.arrows svg:first-child { opacity: .25; }
+.arrows svg:nth-child(2) { opacity: .55; }
+.root[data-disabled] { opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .track[data-done] .grip { transition: none; } }

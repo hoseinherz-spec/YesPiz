@@ -14,6 +14,7 @@ export function IconBadgeButton({
   onPress,
   badge,
   'aria-label': ariaLabel,
+  'aria-pressed': ariaPressed,
   className,
   style,
 }: IconBadgeButtonProps) {
@@ -24,6 +25,7 @@ export function IconBadgeButton({
     <Link
       href={href}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
       className={cn(buttonVariants({ variant: 'secondary', isIconOnly: true }), cls)}
       style={style}
     >
@@ -34,6 +36,7 @@ export function IconBadgeButton({
       isIconOnly
       variant="secondary"
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
       onPress={onPress}
       className={cls}
       style={style}

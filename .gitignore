@@ -68,3 +68,6 @@ deploy/.env.staging
 /artifacts/apk-build/
 /artifacts/apk/*.apk
 /artifacts/apk/*.idsig
+
+# Private SMS Trial credentials
+.env.twilio-sandbox

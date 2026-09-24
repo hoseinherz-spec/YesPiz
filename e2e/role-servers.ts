@@ -10,6 +10,15 @@ const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function startRoleApp(workspace: string, port: number) {
   if (running.has(workspace)) return;
+  try {
+    const response = await fetch(`http://localhost:${port}/login/`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    await response.body?.cancel();
+    if (response.ok) return;
+  } catch {
+    /* Start the isolated QA server when no preview is serving this port. */
+  }
   mkdirSync(".qa", { recursive: true });
   const log = openSync(`.qa/server-${workspace}.log`, "a");
   const child = spawn(

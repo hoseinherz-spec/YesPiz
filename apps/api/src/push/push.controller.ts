@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { IsIn, IsString, MaxLength, MinLength } from "class-validator";
 import {
   CurrentUser,
@@ -15,10 +23,25 @@ class DeviceTokenDto {
 class RegisterDeviceDto extends DeviceTokenDto {
   @IsIn(["web", "android", "ios"]) platform!: string;
 }
+class ReadInboxDto {
+  @IsString() through!: string;
+}
 @Controller("push")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PushController {
   constructor(private readonly push: PushService) {}
+  @Get("inbox") inbox(
+    @CurrentUser() user: JwtPayloadUser,
+    @Query("before") before?: string,
+  ) {
+    return this.push.inbox(user.userId, before);
+  }
+  @Post("inbox/read") readInbox(
+    @CurrentUser() user: JwtPayloadUser,
+    @Body() dto: ReadInboxDto,
+  ) {
+    return this.push.readInbox(user.userId, dto.through);
+  }
   @Post("devices") register(
     @CurrentUser() user: JwtPayloadUser,
     @Body() dto: RegisterDeviceDto,

@@ -17,15 +17,15 @@ export const hx = {
     'rounded-[30px] border border-border bg-card-elevated p-4 shadow-none ring-0',
 
   btnPrimary: cn(
-    'h-[76px] w-full gap-2 rounded-full px-6 text-[18px] font-bold',
+    'h-[56px] w-full gap-2 rounded-full px-6 text-[15px] font-semibold',
     'bg-accent text-accent-foreground shadow-none',
   ),
   btnSecondary: cn(
-    'h-[76px] w-full gap-2 rounded-full px-6 text-[18px] font-bold',
+    'h-[56px] w-full gap-2 rounded-full px-6 text-[15px] font-semibold',
     'border border-border bg-card text-foreground',
   ),
   btnGhost: cn(
-    'h-[76px] w-full gap-2 rounded-full px-6 text-[18px] font-bold',
+    'h-[56px] w-full gap-2 rounded-full px-6 text-[15px] font-semibold',
     'bg-transparent text-foreground shadow-none',
   ),
   btnDanger: cn(
@@ -33,13 +33,13 @@ export const hx = {
     'bg-danger-soft text-danger shadow-none',
   ),
   iconBtn:
-    'relative size-16 min-w-16 rounded-full border-0 bg-card text-foreground shadow-none',
+    'relative size-12 min-w-0 shrink-0 aspect-square rounded-full p-0 border-0 bg-card text-foreground shadow-none',
   field:
-    'h-[74px] w-full rounded-[18px] border border-transparent bg-field-background px-6 text-[16px] font-medium text-field-foreground shadow-none outline-none placeholder:text-field-placeholder focus-visible:border-focus',
+    'h-[52px] w-full rounded-[18px] border border-transparent bg-field-background px-6 text-[16px] font-medium text-field-foreground shadow-none outline-none placeholder:text-field-placeholder focus-visible:border-focus',
   sheet:
-    'rounded-t-[44px] bg-surface px-[38px] pt-9 pb-[max(28px,env(safe-area-inset-bottom))] text-surface-foreground',
+    'rounded-t-[44px] bg-surface px-[16px] pt-9 pb-[max(28px,env(safe-area-inset-bottom))] text-surface-foreground',
   bottomBar:
-    'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[473px] items-center gap-3 rounded-t-[42px] bg-surface px-[38px] pt-4 pb-[max(18px,env(safe-area-inset-bottom))]',
+    'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[473px] items-center gap-3 rounded-t-[26px] bg-surface px-[16px] pt-4 pb-[max(18px,env(safe-area-inset-bottom))]',
   filterChip: (active: boolean) =>
     cn(
       'h-14 shrink-0 rounded-full px-5 text-[15px] font-semibold shadow-none',

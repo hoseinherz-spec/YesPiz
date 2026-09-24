@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { GoogleAuth } from "google-auth-library";
 import { createHash } from "crypto";
 import { Cron } from "@nestjs/schedule";
-import { ORDER_STATUS_TO_CUSTOMER, OrderStatus } from "../common/enums";
+import { OrderStatus } from "../common/enums";
 import {
   Provider,
   ProviderDocument,
@@ -10,7 +10,7 @@ import {
 import { PushDevice, PushDeviceDocument } from "./schemas/push-device.schema";
 import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import {
   PushNotification,
   PushNotificationDocument,
@@ -44,6 +44,60 @@ export class PushService {
   /** Recent in-memory notifications (dev/debug). */
   recent(limit = 20): PushPayload[] {
     return this.memory.slice(0, limit);
+  }
+
+  async inbox(userId: string, before?: string) {
+    if (before && !/^[a-f0-9]{24}$/i.test(before))
+      throw new BadRequestException("Invalid cursor");
+    const owner = { userId: new Types.ObjectId(userId), providerId: null };
+    const [rows, unreadCount] = await Promise.all([
+      this.notifications
+        .find({
+          ...owner,
+          ...(before ? { _id: { $lt: new Types.ObjectId(before) } } : {}),
+        })
+        .select("title body data createdAt readAt")
+        .sort({ _id: -1 })
+        .limit(31)
+        .lean()
+        .exec(),
+      this.notifications.countDocuments({ ...owner, readAt: null }).exec(),
+    ]);
+    const items = rows.slice(0, 30).map((row) => ({
+      id: String(row._id),
+      title: row.title,
+      body: row.body,
+      time: row.createdAt.toISOString(),
+      unread: !row.readAt,
+      kind: row.data?.orderId
+        ? "order"
+        : row.data?.type?.startsWith("promo")
+          ? "promo"
+          : "system",
+      data: row.data ?? {},
+    }));
+    return {
+      items,
+      unreadCount,
+      nextCursor: rows.length > 30 ? items[items.length - 1].id : null,
+    };
+  }
+
+  async readInbox(userId: string, through: string) {
+    if (!/^[a-f0-9]{24}$/i.test(through))
+      throw new BadRequestException("Invalid cursor");
+    await this.notifications
+      .updateMany(
+        {
+          userId: new Types.ObjectId(userId),
+          providerId: null,
+          _id: { $lte: new Types.ObjectId(through) },
+          readAt: null,
+        },
+        { $set: { readAt: new Date() } },
+      )
+      .exec();
+    return { ok: true };
   }
 
   async register(
@@ -232,7 +286,18 @@ export class PushService {
     return this.notify({
       userId,
       title: "Order update",
-      body: `Your order: ${ORDER_STATUS_TO_CUSTOMER[status as OrderStatus] ?? "updated"}`,
+      body: ({
+        [OrderStatus.PENDING_OFFERS]: "Nearby restaurants are reviewing your request.",
+        [OrderStatus.ACCEPTED_BY_PROVIDER]: "A restaurant has confirmed your order.",
+        [OrderStatus.PREPARING]: "Your food is being freshly prepared.",
+        [OrderStatus.READY_FOR_PICKUP]: "Your order is packed and ready for pickup.",
+        [OrderStatus.ASSIGNED_TO_COURIER]: "Your rider is getting ready to collect your order.",
+        [OrderStatus.PICKED_UP]: "Your order has been handed to your rider.",
+        [OrderStatus.ON_THE_WAY]: "Your rider is on the way. Follow their location in the app.",
+        [OrderStatus.DELIVERED]: "Your order has arrived. Enjoy every bite!",
+        [OrderStatus.COMPLETED]: "Your delivery is complete. Enjoy your meal!",
+        [OrderStatus.CANCELLED]: "Your order was cancelled. Open the app for details.",
+      } as Partial<Record<OrderStatus, string>>)[status as OrderStatus] ?? "There is an update to your order. Open the app for details.",
       data: { type: "order.status", orderId },
     });
   }

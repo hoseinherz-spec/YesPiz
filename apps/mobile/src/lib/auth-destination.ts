@@ -6,10 +6,18 @@ export function safeAuthDestination(search: string): string {
   const next = new URLSearchParams(search).get("next");
   return next?.startsWith("/") &&
     !next.startsWith("//") &&
+    !/^\/(?:auth|login|signup|forgot-password|reset-password|onboarding)(?:[/?#]|$)/.test(
+      next,
+    ) &&
     !next.includes("\\") &&
     !/[\u0000-\u0020\u007f]/.test(next)
     ? next
     : "/home/";
+}
+
+export function authCompletionDestination(destination: string): string {
+  const safe = safeAuthDestination(`?next=${encodeURIComponent(destination)}`);
+  return `/auth/complete/?next=${encodeURIComponent(safe)}`;
 }
 
 export function useAuthDestination() {

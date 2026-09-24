@@ -34,7 +34,7 @@ export default function PartnerPage() {
   ];
 
   return (
-    <AppFrame>
+    <AppFrame className="reference-screen">
       <ScreenHeader title={t('partner.title')} subtitle={t('partner.subtitle')} />
 
       <div className="mb-4">

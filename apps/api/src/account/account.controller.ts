@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import {
@@ -15,6 +15,7 @@ import {
   SocialLoginDto,
   AcceptInviteDto,
   BootstrapAdminDto,
+  ConfirmPasswordResetOtpDto,
   ConfirmOtpDto,
   CreateInviteDto,
   ForgotPasswordDto,
@@ -25,10 +26,22 @@ import {
   SendOtpDto,
 } from "./dto/auth.dto";
 
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+
 @ApiTags("account")
 @Controller("account")
 export class AccountController {
   constructor(private readonly account: AccountService) {}
+
+  @Get("auth/providers")
+  providers() { return this.account.socialProviders(); }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Patch("profile/me")
+  updateProfile(@CurrentUser() user: JwtPayloadUser, @Body() dto: UpdateProfileDto) {
+    return this.account.updateProfile(user.userId, dto);
+  }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("auth/register")
@@ -74,6 +87,12 @@ export class AccountController {
   @Post("auth/password/forgot")
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.account.requestPasswordReset(dto);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post("auth/password/forgot/confirm")
+  confirmPasswordResetOtp(@Body() dto: ConfirmPasswordResetOtpDto) {
+    return this.account.confirmPasswordResetOtp(dto);
   }
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

@@ -11,6 +11,14 @@ export function usePublishedMenuQuery(locale?: string) {
   });
 }
 
+export function usePublishedComboQuery(id: string, locale?: string) {
+  return useQuery({
+    queryKey: [...catalogKeys.combo(id), locale ?? 'en'],
+    queryFn: () => catalogClient.getPublishedCombo(id, { locale }),
+    enabled: Boolean(id),
+  });
+}
+
 export function useMenuVersionsQuery(accessToken?: string) {
   return useQuery({
     queryKey: [...catalogKeys.versions(), accessToken ?? ''],

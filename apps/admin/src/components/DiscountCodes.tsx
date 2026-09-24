@@ -4,7 +4,7 @@ import { couponSchema } from "@repo/ui/form-schemas";
 import { Form, Input, Select } from "@repo/ui/forms";
 import { Button as FormButton } from "@heroui/react";
 
-import { apiRequest } from "@repo/api";
+import { apiRequest, catalogClient, type PublishedMenuItem } from "@repo/api";
 import { useCallback, useEffect, useState } from "react";
 import { requireAdminToken } from "@/lib/auth";
 type Coupon = {
@@ -15,9 +15,23 @@ type Coupon = {
   kind: "fixed" | "percent";
   value: number;
   endAt: string;
+  userScope?: "all" | "specific";
+  eligibleUserIds?: string[];
+  productScope?: "all" | "specific";
+  eligibleProductIds?: string[];
+  minimumEligibleQuantity?: number;
+};
+type CustomerTarget = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
 };
 export function DiscountCodes() {
   const [rows, setRows] = useState<Coupon[]>([]);
+  const [customers, setCustomers] = useState<CustomerTarget[]>([]);
+  const [products, setProducts] = useState<PublishedMenuItem[]>([]);
+  const [customerQuery, setCustomerQuery] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -29,14 +43,30 @@ export function DiscountCodes() {
     cap: "10",
     start: "",
     end: "",
+    userScope: "all" as "all" | "specific",
+    eligibleUserIds: [] as string[],
+    productScope: "all" as "all" | "specific",
+    eligibleProductIds: [] as string[],
+    minimumEligibleQuantity: "1",
   });
   const load = useCallback(async () => {
     try {
-      setRows(
-        await apiRequest<Coupon[]>("/api/v1/growth/coupons", {
-          headers: { Authorization: `Bearer ${requireAdminToken()}` },
+      const token = requireAdminToken();
+      const [couponRows, customerRows, menu] = await Promise.all([
+        apiRequest<Coupon[]>("/api/v1/growth/coupons", {
+          headers: { Authorization: `Bearer ${token}` },
         }),
-      );
+        apiRequest<CustomerTarget[]>(
+          "/api/v1/growth/coupon-targets/customers",
+          {
+            headers: { Authorization: `Bearer ${requireAdminToken()}` },
+          },
+        ),
+        catalogClient.getPublishedMenu(),
+      ]);
+      setRows(couponRows);
+      setCustomers(customerRows);
+      setProducts(menu.items.filter((item) => !!item.productId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed.");
     }
@@ -44,6 +74,23 @@ export function DiscountCodes() {
   useEffect(() => {
     void Promise.resolve().then(load);
   }, [load]);
+  const searchCustomers = async () => {
+    setError("");
+    try {
+      setCustomers(
+        await apiRequest<CustomerTarget[]>(
+          `/api/v1/growth/coupon-targets/customers?q=${encodeURIComponent(customerQuery)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${requireAdminToken()}`,
+            },
+          },
+        ),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Customer search failed.");
+    }
+  };
   const field = "mt-1 w-full rounded-xl border border-border bg-background p-3";
   return (
     <section className="space-y-4 rounded-3xl border border-border p-5">
@@ -74,9 +121,24 @@ export function DiscountCodes() {
                 maxDiscountCents: Math.round(Number(form.cap) * 100),
                 startAt: new Date(form.start).toISOString(),
                 endAt: new Date(form.end).toISOString(),
+                userScope: form.userScope,
+                eligibleUserIds:
+                  form.userScope === "specific" ? form.eligibleUserIds : [],
+                productScope: form.productScope,
+                eligibleProductIds:
+                  form.productScope === "specific"
+                    ? form.eligibleProductIds
+                    : [],
+                minimumEligibleQuantity: Number(form.minimumEligibleQuantity),
               },
             });
-            setForm((f) => ({ ...f, code: "", name: "" }));
+            setForm((f) => ({
+              ...f,
+              code: "",
+              name: "",
+              eligibleUserIds: [],
+              eligibleProductIds: [],
+            }));
             await load();
           } catch (e) {
             setError(e instanceof Error ? e.message : "Create failed.");
@@ -160,6 +222,134 @@ export function DiscountCodes() {
           value={form.end}
           onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))}
         />
+        <Select
+          label={<>Customers</>}
+          className={field}
+          value={form.userScope}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              userScope: e.target.value as "all" | "specific",
+            }))
+          }
+        >
+          <option value="all">All customers</option>
+          <option value="specific">Selected customers only</option>
+        </Select>
+        <Select
+          label={<>Products</>}
+          className={field}
+          value={form.productScope}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              productScope: e.target.value as "all" | "specific",
+            }))
+          }
+        >
+          <option value="all">All products</option>
+          <option value="specific">Selected products only</option>
+        </Select>
+        {form.userScope === "specific" && (
+          <fieldset className="rounded-xl border border-border p-3 md:col-span-2">
+            <legend className="px-1 text-sm font-semibold">
+              Eligible customers
+            </legend>
+            <div className="mt-2 flex gap-2">
+              <Input
+                label={<>Search by name, email or phone</>}
+                className={field}
+                value={customerQuery}
+                onChange={(event) => setCustomerQuery(event.target.value)}
+              />
+              <FormButton
+                type="button"
+                variant="ghost"
+                className="self-end rounded-xl border border-border px-4 py-3"
+                onPress={() => void searchCustomers()}
+              >
+                Search
+              </FormButton>
+            </div>
+            <div className="mt-2 grid max-h-56 gap-2 overflow-y-auto md:grid-cols-2">
+              {customers.map((customer) => (
+                <label key={customer.id} className="flex gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.eligibleUserIds.includes(customer.id)}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        eligibleUserIds: event.target.checked
+                          ? [...current.eligibleUserIds, customer.id]
+                          : current.eligibleUserIds.filter(
+                              (id) => id !== customer.id,
+                            ),
+                      }))
+                    }
+                  />
+                  <span>
+                    <strong>{customer.name}</strong>
+                    <small className="block text-muted">
+                      {customer.email || customer.phone || customer.id}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+        {form.productScope === "specific" && (
+          <fieldset className="rounded-xl border border-border p-3 md:col-span-2">
+            <legend className="px-1 text-sm font-semibold">
+              Eligible products
+            </legend>
+            <div className="mt-2 grid max-h-56 gap-2 overflow-y-auto md:grid-cols-2">
+              {products.map((product) => (
+                <label key={product.id} className="flex gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.eligibleProductIds.includes(
+                      product.productId!,
+                    )}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        eligibleProductIds: event.target.checked
+                          ? [...current.eligibleProductIds, product.productId!]
+                          : current.eligibleProductIds.filter(
+                              (id) => id !== product.productId,
+                            ),
+                      }))
+                    }
+                  />
+                  <span>
+                    <strong>{product.name}</strong>
+                    <small className="block text-muted">
+                      €{(product.priceCents / 100).toFixed(2)}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+        <Input
+          label={<>Minimum eligible product quantity</>}
+          required
+          type="number"
+          min="1"
+          max="99"
+          step="1"
+          className={field}
+          value={form.minimumEligibleQuantity}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              minimumEligibleQuantity: e.target.value,
+            }))
+          }
+        />
         <FormButton
           variant="ghost"
           type="submit"
@@ -187,6 +377,17 @@ export function DiscountCodes() {
                 ? `${row.value}%`
                 : `€${(row.value / 100).toFixed(2)}`}{" "}
               · {row.active ? "Active" : "Paused"}
+            </p>
+            <p className="text-xs text-muted">
+              {row.userScope === "specific"
+                ? `${row.eligibleUserIds?.length ?? 0} selected customer(s)`
+                : "All customers"}
+              {" · "}
+              {row.productScope === "specific"
+                ? `${row.eligibleProductIds?.length ?? 0} selected product(s)`
+                : "All products"}
+              {" · minimum quantity "}
+              {row.minimumEligibleQuantity ?? 1}
             </p>
           </div>
           <FormButton

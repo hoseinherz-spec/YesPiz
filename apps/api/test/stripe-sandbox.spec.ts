@@ -5,10 +5,14 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import { execFile, spawn, ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { promisify, parseEnv } from "node:util";
 import request from "supertest";
 import Stripe from "stripe";
+import { getModelToken } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { User, UserDocument } from "../src/account/schemas/user.schema";
+import { GroupCart, GroupCartDocument } from "../src/groups/group.schema";
 import { AppModule } from "../src/app.module";
 import { I18nExceptionFilter } from "../src/common/filters/i18n-exception.filter";
 
@@ -29,6 +33,8 @@ if (!key || !/^(sk|rk|rkcs)_test_/.test(key)) {
 const stripe = new Stripe(key, { timeout: 15000, maxNetworkRetries: 1 });
 const secret = key;
 const intents = new Set<string>();
+const subscriptions = new Set<string>();
+const checkoutSessions = new Set<string>();
 let app: INestApplication;
 let mongo: MongoMemoryServer;
 let listener: ChildProcess | undefined;
@@ -105,6 +111,14 @@ beforeAll(async () => {
     SERVICE_AREA_LONGITUDE: "",
     SERVICE_AREA_RADIUS_METERS: "",
   });
+  const prices = await stripe.prices.list({
+    lookup_keys: ["yespiz_plus_30_days_v1"],
+    active: true,
+    limit: 1,
+  });
+  if (!prices.data[0])
+    throw new Error("Run scripts/setup-stripe-sandbox.cjs first.");
+  process.env.STRIPE_MEMBERSHIP_PRICE_ID = prices.data[0].id;
   // Test credentials before creating a database. Do not echo the key or Stripe response body.
   try {
     await stripe.balance.retrieve();
@@ -152,7 +166,7 @@ beforeAll(async () => {
     [
       "listen",
       "--events",
-      "payment_intent.succeeded",
+      "payment_intent.succeeded,checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed",
       "--forward-to",
       `${url}/api/v1/payments/webhook/stripe`,
     ],
@@ -231,6 +245,21 @@ beforeAll(async () => {
 }, 180000);
 
 afterAll(async () => {
+  for (const id of subscriptions) {
+    try {
+      await stripe.subscriptions.cancel(id);
+    } catch {
+      console.warn(`Subscription cleanup requires review: ${id}`);
+    }
+  }
+  for (const id of checkoutSessions) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(id);
+      if (session.status === "open") await stripe.checkout.sessions.expire(id);
+    } catch {
+      console.warn(`Checkout cleanup requires review: ${id}`);
+    }
+  }
   // Clean up only intents created by this run, even when an assertion failed.
   for (const id of intents) {
     try {
@@ -377,3 +406,158 @@ test("3DS remains unpaid until authentication and can be cancelled without charg
     "canceled",
   );
 }, 60000);
+
+test("Plus creates reusable checkout, activates from a real paid invoice, and cancels renewal", async () => {
+  const users = app.get<Model<UserDocument>>(getModelToken(User.name));
+  const user = (await users
+    .findOne({ email: "customer@yespizz.local" })
+    .exec())!;
+  const requestId = randomUUID();
+  await post("rewards/membership", { requestId }).expect(201);
+  const checkoutUser = (await users.findById(user.id).exec())!;
+  checkoutSessions.add(checkoutUser.membershipCheckoutId!);
+  await post("rewards/membership", { requestId: randomUUID() }).expect(201);
+  expect((await users.findById(user.id).exec())!.membershipCheckoutId).toBe(
+    checkoutUser.membershipCheckoutId,
+  );
+  expect(checkoutUser.membershipUntil).toBeUndefined();
+  const method = await stripe.paymentMethods.create({
+    type: "card",
+    card: { token: "tok_visa" },
+  });
+  await stripe.paymentMethods.attach(method.id, {
+    customer: checkoutUser.stripeCustomerId!,
+  });
+  const subscription = await stripe.subscriptions.create({
+    customer: checkoutUser.stripeCustomerId!,
+    items: [{ price: process.env.STRIPE_MEMBERSHIP_PRICE_ID! }],
+    default_payment_method: method.id,
+    metadata: { purpose: "membership", userId: user.id },
+    expand: ["latest_invoice"],
+  });
+  subscriptions.add(subscription.id);
+  const invoice = subscription.latest_invoice as Stripe.Invoice;
+  const invoicePayments = await stripe.invoicePayments.list({
+    invoice: invoice.id,
+  });
+  for (const payment of invoicePayments.data) {
+    const pi = payment.payment.payment_intent;
+    if (pi) intents.add(typeof pi === "string" ? pi : pi.id);
+  }
+  const active = await poll(
+    () => users.findById(user.id).exec(),
+    (u) => !!u?.membershipUntil && u.membershipUntil.getTime() > Date.now(),
+  );
+  const until = active!.membershipUntil!.getTime();
+  const cancelled = await post("rewards/membership/cancel", {}).expect(201);
+  expect(cancelled.body.membership.active).toBe(true);
+  expect(cancelled.body.membership.cancelled).toBe(true);
+  await post("rewards/membership/cancel", {}).expect(201);
+  expect(
+    (await users.findById(user.id).exec())!.membershipUntil!.getTime(),
+  ).toBe(until);
+  expect(
+    (await stripe.subscriptions.retrieve(subscription.id)).cancel_at_period_end,
+  ).toBe(true);
+}, 90000);
+
+test("real group shares settle exactly once and cancellation refunds each payer", async () => {
+  const groups = app.get<Model<GroupCartDocument>>(
+    getModelToken(GroupCart.name),
+  );
+  const users = app.get<Model<UserDocument>>(getModelToken(User.name));
+  const user = (await users
+    .findOne({ email: "customer@yespizz.local" })
+    .exec())!;
+  let group = (
+    await post("groups", {
+      title: "Sandbox shared order",
+      menuVersion,
+      split: true,
+      deadline: new Date(Date.now() + 1800000).toISOString(),
+    }).expect(201)
+  ).body;
+  group = (
+    await post(`groups/${group.token}/items`, {
+      revision: group.revision,
+      lines: [{ menuItemId, quantity: 1, size: "large" }],
+    }).expect(201)
+  ).body;
+  const friendLogin = await post(
+    "account/auth/register",
+    {
+      firstName: "Sandbox",
+      lastName: "Friend",
+      email: `group-${randomUUID()}@example.test`,
+      password: "TestPassword123!",
+    },
+    "",
+  ).expect(201);
+  const friendToken = friendLogin.body.accessToken;
+  group = (
+    await post(
+      `groups/${group.token}/items`,
+      {
+        revision: group.revision,
+        lines: [{ menuItemId, quantity: 2, size: "large" }],
+      },
+      friendToken,
+    ).expect(201)
+  ).body;
+  group = (
+    await post(`groups/${group.token}/lock`, {
+      revision: group.revision,
+      addressId,
+    }).expect(201)
+  ).body;
+  const checkout = await post(`groups/${group.token}/share`, {}).expect(201);
+  expect(typeof checkout.body.checkoutUrl).toBe("string");
+  const row = (await groups.findOne({ token: group.token }).exec())!;
+  const sessionId = row.members[0].checkoutId!;
+  checkoutSessions.add(sessionId);
+  await stripe.checkout.sessions.expire(sessionId);
+  // Exercise actual server settlement independently of the hosted browser form.
+  const shareIntents: string[] = [];
+  for (const member of row.members) {
+    const intent = await stripe.paymentIntents.create({
+      amount: member.shareCents,
+      currency: "eur",
+      payment_method: "pm_card_visa",
+      confirm: true,
+      payment_method_types: ["card"],
+      metadata: {
+        purpose: "group_share",
+        token: group.token,
+        round: String(row.paymentRound),
+        userId: member.userId,
+      },
+    });
+    intents.add(intent.id);
+    shareIntents.push(intent.id);
+    member.checkoutId = undefined;
+    member.paid = true;
+    member.intentId = intent.id;
+  }
+  row.markModified("members");
+  await row.save();
+  const submitted = await post(`groups/${group.token}/submit`, {
+    revision: group.revision,
+    expectedTotalCents: group.quote.totalCents,
+  }).expect(201);
+  const orderId = submitted.body.orderId;
+  await post(`groups/${group.token}/submit`, {
+    revision: group.revision,
+    expectedTotalCents: group.quote.totalCents,
+  }).expect(201);
+  expect((await readOrder(orderId)).paymentStatus).toBe("captured");
+  await post("payments/cancel-order", {
+    orderId,
+    reason: "Sandbox acceptance cleanup",
+  }).expect(201);
+  await post("payments/refunds/reconcile", { orderId }, adminToken).expect(201);
+  for (const intentId of shareIntents) {
+    const refunds = await stripe.refunds.list({ payment_intent: intentId });
+    expect(refunds.data.length).toBe(1);
+    expect(refunds.data[0].status).toBe("succeeded");
+  }
+}, 90000);

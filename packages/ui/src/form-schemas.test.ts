@@ -87,6 +87,11 @@ test("coupons require chronological dates and an integer percentage up to 100", 
     cap: "20",
     start: "2026-09-01T10:00",
     end: "2026-09-30T10:00",
+    userScope: "all",
+    eligibleUserIds: [],
+    productScope: "all",
+    eligibleProductIds: [],
+    minimumEligibleQuantity: "1",
   };
   assert.equal(couponSchema.safeParse(coupon).success, true);
   assert.equal(
@@ -98,6 +103,14 @@ test("coupons require chronological dates and an integer percentage up to 100", 
     false,
   );
   assert.equal(couponSchema.safeParse({ ...coupon, cap: "0" }).success, false);
+  assert.equal(
+    couponSchema.safeParse({
+      ...coupon,
+      productScope: "specific",
+      eligibleProductIds: [],
+    }).success,
+    false,
+  );
 });
 
 test("opening periods reject overlap, reverse time and invalid closures", () => {

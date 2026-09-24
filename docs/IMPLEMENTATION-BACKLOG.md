@@ -566,7 +566,7 @@ Checkout persists a future start time; payment holds the order in `SCHEDULED`, a
 Do this only after P0 reliability is measured and stable. Group orders, split pay,
 ads, and predictive ML ETA remain explicitly out of scope for the MVP.
 
-Requested for follow-up implementation. Define loyalty reward/expiry rules and subscription price, billing period, benefits and cancellation behavior before enabling customer enrollment. No loyalty/subscription implementation is claimed here.
+Requested for follow-up implementation. Define loyalty reward/expiry rules and subscription price, billing period, benefits and cancellation behavior before enabling customer enrollment. Loyalty and Stripe subscription billing now exist; see [release follow-up](RELEASE-FOLLOWUP.md). The checkbox remains open until account/device release acceptance is complete.
 
 ---
 

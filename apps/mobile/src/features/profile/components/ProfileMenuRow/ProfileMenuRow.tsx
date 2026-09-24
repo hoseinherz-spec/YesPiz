@@ -2,7 +2,7 @@
 import { AppText } from "@/components/Text";
 
 
-import { ChevronRight } from '@repo/icons';
+import { ChevronRight } from '@/components/animated-icon/icons';
 import Link from 'next/link';
 
 import type { ProfileMenuRowProps } from './ProfileMenuRow.types';

@@ -5,8 +5,11 @@ export type GroupCartView = {
   title: string;
   menuVersion: number;
   split: boolean;
-  state: "open" | "locked" | "ordered" | "cancelled";
+  state: "open" | "locked" | "ordered" | "cancelling" | "cancelled";
   revision: number;
+  mock: boolean;
+  checkoutUrl?: string;
+  refundPending: boolean;
   deadline: string;
   expired: boolean;
   owner: boolean;
@@ -36,6 +39,16 @@ const post = <T>(path: string, body: unknown, options?: AuthRequestOptions) =>
     withAuth({ ...options, method: "POST", body }),
   );
 export const groupsClient = {
+  refundQueue: (o?: AuthRequestOptions) =>
+    apiRequest<
+      { token: string; title: string; state: string; refundError?: string }[]
+    >("/api/v1/groups/admin/refunds", withAuth({ ...o, method: "GET" })),
+  retryRefund: (token: string, o?: AuthRequestOptions) =>
+    post<{ state: string; refundError?: string }>(
+      `/admin/refunds/${encodeURIComponent(token)}`,
+      {},
+      o,
+    ),
   list: (o?: AuthRequestOptions) =>
     apiRequest<GroupCartView[]>(
       "/api/v1/groups",

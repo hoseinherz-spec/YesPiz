@@ -8,6 +8,8 @@ import type {
   AcceptInviteRequest,
   AuthResponse,
   BootstrapAdminRequest,
+  ConfirmPasswordResetOtpRequest,
+  ConfirmPasswordResetOtpResponse,
   ConfirmOtpRequest,
   CreateInviteRequest,
   CreateInviteResponse,
@@ -26,8 +28,23 @@ import { accountEndpoints } from "./account.endpoint";
 export type { AuthRequestOptions };
 
 export const accountClient = {
+  startSignup(body: { firstName: string; lastName: string; email: string }) {
+    return apiRequest<{ challengeId: string; email: string; verificationCode?: string }>("/api/v1/account/auth/signup", { method: "POST", body });
+  },
+  verifySignup(body: { challengeId: string; code: string }) {
+    return apiRequest<{ token: string }>("/api/v1/account/auth/signup/verify", { method: "POST", body });
+  },
+  completeSignup(body: { token: string; password: string }) {
+    return apiRequest<{ status: string }>("/api/v1/account/auth/signup/complete", { method: "POST", body });
+  },
+  socialProviders() {
+    return apiRequest<Record<"google" | "apple" | "facebook", boolean>>("/api/v1/account/auth/providers");
+  },
+  updateMe(body: { firstName: string; lastName: string; revision: number }, options?: AuthRequestOptions) {
+    return apiRequest<ProfileResponse>(accountEndpoints.me, withAuth({ ...options, method: "PATCH", body }));
+  },
   socialLogin(
-    body: { provider: "google" | "apple"; idToken: string; nonce: string },
+    body: { provider: "google" | "apple" | "facebook"; idToken: string; nonce: string },
     options?: ApiRequestOptions,
   ) {
     return apiRequest<AuthResponse>("/api/v1/account/auth/social", {
@@ -109,6 +126,16 @@ export const accountClient = {
       method: "POST",
       body,
     });
+  },
+
+  confirmPasswordResetOtp(
+    body: ConfirmPasswordResetOtpRequest,
+    options?: ApiRequestOptions,
+  ) {
+    return apiRequest<ConfirmPasswordResetOtpResponse>(
+      accountEndpoints.confirmPasswordResetOtp,
+      { ...options, method: "POST", body },
+    );
   },
 
   resetPassword(body: ResetPasswordRequest, options?: ApiRequestOptions) {

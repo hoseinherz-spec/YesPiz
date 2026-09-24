@@ -6,6 +6,7 @@ export type IconBadgeButtonProps = {
   onPress?: () => void;
   badge?: number;
   'aria-label'?: string;
+  'aria-pressed'?: boolean;
   className?: string;
   style?: CSSProperties;
 };

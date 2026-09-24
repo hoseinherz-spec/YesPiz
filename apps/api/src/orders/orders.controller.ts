@@ -25,6 +25,7 @@ import {
   UpdateKitchenStatusDto,
 } from "./dto/order.dto";
 import { PrepOverrideDto } from "../providers/dto/provider.dto";
+import { OrderTrackingService } from "./order-tracking.service";
 import { OrdersService } from "./orders.service";
 
 @ApiTags("orders")
@@ -34,6 +35,7 @@ import { OrdersService } from "./orders.service";
 export class OrdersController {
   constructor(
     private readonly orders: OrdersService,
+    private readonly tracking: OrderTrackingService,
     private readonly providers: ProvidersService,
   ) {}
 
@@ -77,6 +79,12 @@ export class OrdersController {
   }
 
   @Roles(UserRole.ADMIN)
+  @Get("admin/live")
+  liveOperations() {
+    return this.orders.liveOperations();
+  }
+
+  @Roles(UserRole.ADMIN)
   @Get("admin/at-risk")
   listAtRisk() {
     return this.orders.listAtRisk();
@@ -111,6 +119,12 @@ export class OrdersController {
     @Param("orderId") orderId: string,
   ) {
     return this.orders.buildReorderPreview(user.userId, orderId);
+  }
+
+  @Roles(UserRole.CUSTOMER)
+  @Get(":id/tracking")
+  getTracking(@CurrentUser() user: JwtPayloadUser, @Param("id") id: string) {
+    return this.tracking.get(user.userId, id);
   }
 
   @Roles(UserRole.CUSTOMER)

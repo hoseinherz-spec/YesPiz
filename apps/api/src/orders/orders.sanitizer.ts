@@ -52,6 +52,9 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     menuVersion: plain.menuVersion,
     lines: lines.map((line) => ({
       menuItemId: String(line.menuItemId),
+      productId: line.productId ? String(line.productId) : undefined,
+      productRevisionId: line.productRevisionId ? String(line.productRevisionId) : undefined,
+      productType: line.productType,
       secondHalfItemId: line.secondHalfItemId,
       name: line.name,
       unitPriceCents: line.unitPriceCents,
@@ -61,6 +64,7 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
       variantId: line.variantId,
       selections: line.selections ?? [],
       selectionLabels: line.selectionLabels ?? [],
+      ingredientChanges: line.ingredientChanges ?? [],
     })),
     subtotalCents: plain.subtotalCents,
     discountCents: plain.discountCents ?? 0,
@@ -72,6 +76,17 @@ export function toCustomerView(order: OrderDocument | Record<string, unknown>) {
     deliveryWindowEnd: plain.deliveryWindowEnd,
     // Blind: never expose raw kitchen/ops status strings — use customerStatus only
     customerStatus: projection,
+    matching: status === OrderStatus.PENDING_OFFERS ? {
+      notified: Array.isArray(plain.offers) ? plain.offers.length : 0,
+      viewed: Array.isArray(plain.offers) ? plain.offers.filter((offer: { viewedAt?: unknown; respondedAt?: unknown }) => offer.viewedAt || offer.respondedAt).length : 0,
+    } : undefined,
+    fulfillmentStage: ({
+      [OrderStatus.ADMIN_REVIEW]: "review",
+      [OrderStatus.EXCEPTION_REPORTED]: "review",
+      [OrderStatus.READY_FOR_PICKUP]: "ready",
+      [OrderStatus.PICKED_UP]: "picked_up",
+      [OrderStatus.ON_THE_WAY]: "onway",
+    } as Partial<Record<OrderStatus, string>>)[status] ?? projection,
     orderState: [OrderStatus.CANCELLED, OrderStatus.FAILED_CASH].includes(
       status,
     )

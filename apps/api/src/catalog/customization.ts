@@ -1,12 +1,12 @@
 import { BadRequestException } from "@nestjs/common";
 
-export type PizzaVariant = {
+export type ProductVariant = {
   id: string;
   name: string;
   priceCents: number;
   isActive: boolean;
 };
-export type PizzaOption = {
+export type ProductOption = {
   id: string;
   name: string;
   priceCents: number;
@@ -14,18 +14,18 @@ export type PizzaOption = {
   variantIds: string[];
   priceOverrides?: Array<{ variantId: string; priceCents: number }>;
 };
-export type PizzaOptionGroup = {
+export type ProductOptionGroup = {
   id: string;
   name: string;
   min: number;
   max: number;
-  options: PizzaOption[];
+  options: ProductOption[];
 };
-export type PizzaCustomization = {
-  variants: PizzaVariant[];
-  groups: PizzaOptionGroup[];
+export type ProductCustomization = {
+  variants: ProductVariant[];
+  groups: ProductOptionGroup[];
 };
-export type PizzaSelection = { groupId: string; optionIds: string[] };
+export type ProductSelection = { groupId: string; optionIds: string[] };
 
 const fail = (message: string): never => {
   throw new BadRequestException(message);
@@ -39,7 +39,7 @@ const money = (v: unknown) =>
 const unique = (values: string[]) => new Set(values).size === values.length;
 
 /** Validate persisted admin configuration as well as incoming requests. */
-export function validateCustomization(value: PizzaCustomization) {
+export function validateCustomization(value: ProductCustomization) {
   if (
     !value ||
     !Array.isArray(value.variants) ||
@@ -53,7 +53,7 @@ export function validateCustomization(value: PizzaCustomization) {
     value.variants.some((v) => !v || typeof v !== "object") ||
     value.groups.some((g) => !g || typeof g !== "object")
   )
-    fail("Invalid pizza configuration.");
+    fail("Invalid product configuration.");
   if (
     !unique(value.variants.map((v) => v.id)) ||
     !unique(value.groups.map((g) => g.id))
@@ -66,9 +66,9 @@ export function validateCustomization(value: PizzaCustomization) {
       !money(v.priceCents) ||
       typeof v.isActive !== "boolean"
     )
-      fail("Invalid pizza variant.");
+      fail("Invalid product variant.");
   if (!value.variants.some((v) => v.isActive))
-    fail("At least one pizza variant must be available.");
+    fail("At least one product variant must be available.");
   for (const g of value.groups) {
     if (
       !id(g.id) ||
@@ -155,12 +155,12 @@ export function validateCustomization(value: PizzaCustomization) {
 }
 
 export function priceCustomization(
-  config: PizzaCustomization,
+  config: ProductCustomization,
   variantId: string | undefined,
-  selections: PizzaSelection[] = [],
+  selections: ProductSelection[] = [],
 ) {
   const variant = config.variants.find((v) => v.id === variantId && v.isActive);
-  if (!variant) fail("Choose an available pizza variant.");
+  if (!variant) fail("Choose an available product variant.");
   if (
     !Array.isArray(selections) ||
     selections.length > 20 ||
@@ -171,7 +171,7 @@ export function priceCustomization(
     fail("Unknown or duplicate option group.");
   let unitPriceCents = variant!.priceCents;
   const labels: string[] = [variant!.name];
-  const normalized: PizzaSelection[] = [];
+  const normalized: ProductSelection[] = [];
   for (const group of config.groups) {
     const selected =
       selections.find((s) => s.groupId === group.id)?.optionIds ?? [];
@@ -205,3 +205,10 @@ export function priceCustomization(
     selectionLabels: labels,
   };
 }
+
+/** Backward-compatible names for existing pizza consumers. */
+export type PizzaCustomization = ProductCustomization;
+export type PizzaSelection = ProductSelection;
+export type PizzaVariant = ProductVariant;
+export type PizzaOption = ProductOption;
+export type PizzaOptionGroup = ProductOptionGroup;

@@ -1,5 +1,14 @@
+import { MenuManagementService } from "./menu-management.service";
+import {
+  ActiveStatusDto,
+  AddProductToMenuDto,
+  CatalogListDto,
+  UpdateVersionDto,
+} from "./dto/management.dto";
 import {
   Body,
+  Delete,
+  Query,
   Controller,
   Get,
   Param,
@@ -25,11 +34,22 @@ import {
 @ApiTags("catalog")
 @Controller("catalog")
 export class CatalogController {
-  constructor(private readonly catalog: CatalogService) {}
+  constructor(
+    private readonly catalog: CatalogService,
+    private readonly management: MenuManagementService,
+  ) {}
 
   @Get("menu")
-  getPublishedMenu() {
-    return this.catalog.getPublishedMenu();
+  getPublishedMenu(@Query("menuId") menuId?: string) {
+    return this.catalog.getPublishedMenu(menuId);
+  }
+
+  @Get("combos/:id")
+  getPublishedCombo(
+    @Param("id") id: string,
+    @Query("menuId") menuId?: string,
+  ) {
+    return this.catalog.getPublishedCombo(id, menuId);
   }
 
   @ApiBearerAuth()
@@ -109,5 +129,93 @@ export class CatalogController {
   @Post("versions/:id/schedule")
   schedule(@Param("id") id: string, @Body() dto: ScheduleMenuDto) {
     return this.catalog.schedulePublish(id, dto.scheduledPublishAt);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get("versions/:id/categories")
+  categories(@Param("id") id: string, @Query() query: CatalogListDto) {
+    return this.management.listCategories(id, query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get("categories/:id")
+  category(@Param("id") id: string) {
+    return this.management.category(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete("categories/:id")
+  removeCategory(@Param("id") id: string) {
+    return this.management.removeCategory(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch("categories/:id/status")
+  categoryStatus(@Param("id") id: string, @Body() dto: ActiveStatusDto) {
+    return this.catalog.updateCategory(id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get("versions/:id/items")
+  items(@Param("id") id: string, @Query() query: CatalogListDto) {
+    return this.management.listItems(id, query);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get("items/:id")
+  item(@Param("id") id: string) {
+    return this.management.item(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete("items/:id")
+  removeItem(@Param("id") id: string) {
+    return this.management.removeItem(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch("items/:id/status")
+  itemStatus(@Param("id") id: string, @Body() dto: ActiveStatusDto) {
+    return this.catalog.updateItem(id, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Patch("versions/:id")
+  updateVersion(@Param("id") id: string, @Body() dto: UpdateVersionDto) {
+    return this.management.updateVersion(id, dto.notes);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete("versions/:id")
+  removeVersion(@Param("id") id: string) {
+    return this.management.removeVersion(id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post("versions/:id/products")
+  attachProduct(@Param("id") id: string, @Body() dto: AddProductToMenuDto) {
+    return this.catalog.attachProduct(id, dto);
   }
 }

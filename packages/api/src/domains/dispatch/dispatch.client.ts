@@ -14,6 +14,9 @@ import type {
 import { dispatchEndpoints } from './dispatch.endpoint';
 
 export const dispatchClient = {
+  markViewed(orderId: string, options?: AuthRequestOptions) {
+    return apiRequest(`/api/v1/dispatch/orders/${encodeURIComponent(orderId)}/viewed`, withAuth({ ...options, method: 'POST' }));
+  },
   broadcast(orderId: string, options?: AuthRequestOptions) {
     return apiRequest<DispatchBroadcastResponse>(
       dispatchEndpoints.broadcast(orderId),

@@ -5,6 +5,45 @@
 @source "../../../../packages/api/src/components";
 @source "../../../../packages/ui/src";
 
+.button.button--icon-only { border-radius: 999px; padding: 0; aspect-ratio: 1; flex-shrink: 0; }
+
+.pizza-night-banner {
+  background: linear-gradient(90deg, #061326d9, #06132645), url("/images/pizza-night-bg.webp") center / cover;
+}
+.home-shortcut {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 126px;
+  border-radius: 24px;
+  padding: 18px 12px;
+  background: linear-gradient(145deg, color-mix(in oklab, var(--accent) 16%, var(--surface)), var(--surface));
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.home-shortcut:nth-child(2) { background: linear-gradient(145deg, color-mix(in oklab, var(--warning) 22%, var(--surface)), var(--surface)); }
+.home-shortcut:nth-child(3) { background: linear-gradient(145deg, color-mix(in oklab, var(--danger) 18%, var(--surface)), var(--surface)); }
+.home-shortcut > svg:first-child { width: 28px; height: 28px; color: var(--accent); }
+.home-shortcut-arrow { position: absolute; right: 12px; top: 16px; width: 14px; height: 14px; color: var(--muted); }
+.home-shortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.home-combo-rail {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  margin-inline: -24px;
+  padding: 4px 24px 16px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.home-combo-rail::-webkit-scrollbar { display: none; }
+.home-combo-rail > * { flex: 0 0 88%; scroll-snap-align: start; }
+.home-combo-skeleton { min-height: 330px; border-radius: 28px; background: var(--surface-secondary); animation: combo-home-pulse 1.4s ease-in-out infinite alternate; }
+@keyframes combo-home-pulse { to { opacity: .55; } }
+
 .account-shortcut {
   display: flex;
   min-height: 108px;
@@ -174,12 +213,11 @@
     color-mix(in oklab, var(--background) 65%, transparent);
 }
 .empty-state-image {
-  border-radius: 50%;
   position: absolute;
-  top: 10px;
-  left: 25px;
-  width: 130px;
-  height: 130px;
+  top: 4px;
+  left: 20px;
+  width: 144px;
+  height: 144px;
   object-fit: contain;
   filter: drop-shadow(
     0 12px 10px color-mix(in oklab, var(--background) 60%, transparent)
@@ -192,87 +230,14 @@
   --color-card-foreground: var(--card-foreground);
   --color-card-elevated: var(--card-elevated);
   --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
 }
 
-:root,
-.light,
-[data-theme="light"] {
-  --accent: #d8ff00;
-  --accent-foreground: #08111f;
-  --background: #ffffff;
-  --foreground: #101828;
-  --border: #e4e7ec;
-  --danger: #e5484d;
-  --danger-foreground: #ffffff;
-  --default: #f0f5f1;
-  --default-foreground: #101828;
-  --field-background: #f0f5f1;
-  --field-border: transparent;
-  --field-foreground: #101828;
-  --field-placeholder: #98a2b3;
-  --focus: #d8ff00;
-  --muted: #98a2b3;
-  --overlay: #ffffff;
-  --overlay-foreground: #101828;
-  --success: #1bb866;
-  --success-foreground: #08111f;
-  --surface: #ffffff;
-  --surface-foreground: #101828;
-  --surface-secondary: #ffffff;
-  --surface-secondary-foreground: #101828;
-  --surface-tertiary: #f0f5f1;
-  --surface-tertiary-foreground: #101828;
-  --warning: #e08a00;
-  --warning-foreground: #08111f;
-  --separator: #e4e7ec;
-  --link: var(--foreground);
+:root {
   --font-sans: var(--font-poppins);
-
-  /* App aliases (mapped to HeroUI tokens) */
-  --card: #ffffff;
-  --card-foreground: #101828;
-  --card-elevated: #ffffff;
-  --text-secondary: #667085;
-}
-
-.dark,
-[data-theme="dark"] {
-  color-scheme: dark;
-  --accent: #d8ff00;
-  --accent-foreground: #08111f;
-  --background: #08111f;
-  --foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.08);
-  --danger: #ff5f6d;
-  --danger-foreground: #ffffff;
-  --default: #182640;
-  --default-foreground: #ffffff;
-  --field-background: #121c30;
-  --field-border: transparent;
-  --field-foreground: #ffffff;
-  --field-placeholder: #8b95a8;
-  --focus: #d8ff00;
-  --muted: #8b95a8;
-  --overlay: #121c30;
-  --overlay-foreground: #ffffff;
-  --success: #2eea7b;
-  --success-foreground: #08111f;
-  --surface: #0d1628;
-  --surface-foreground: #ffffff;
-  --surface-secondary: #121c30;
-  --surface-secondary-foreground: #ffffff;
-  --surface-tertiary: #182640;
-  --surface-tertiary-foreground: #ffffff;
-  --warning: #ffb547;
-  --warning-foreground: #08111f;
-  --separator: rgba(255, 255, 255, 0.08);
   --link: var(--foreground);
-  --font-sans: var(--font-poppins);
-
-  --card: #121c30;
-  --card-foreground: #ffffff;
-  --card-elevated: #182640;
-  --text-secondary: #c2cad6;
 }
 
 html,
@@ -551,7 +516,43 @@ nav:has(.cart-dock-action) .app-selection-background {
   border-radius: 999px;
 }
 
-.dark, [data-theme="dark"] { --muted:#b2bdd0; --field-placeholder:#b2bdd0; --text-secondary:#c2cad6; }
+.dark,
+[data-theme="dark"] {
+  --muted: #b2bdd0;
+  --field-placeholder: #b2bdd0;
+  --text-secondary: #c2cad6;
+}
 
 /* Phosphor is a fill on light surfaces; standalone prices remain readable. */
-.light .text-accent, [data-theme="light"] .text-accent, .light .reference-order-meta strong, [data-theme="light"] .reference-order-meta strong { color:#516500; }
+.light .text-accent,
+[data-theme="light"] .text-accent,
+.light .reference-order-meta strong,
+[data-theme="light"] .reference-order-meta strong {
+  color: #516500;
+}
+
+.home-category-pills {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-top: 25px;
+  padding-block: 3px;
+}
+.home-category-pills::-webkit-scrollbar { display: none; }
+.home-category-pills button {
+  flex-shrink: 0;
+  min-height: 48px;
+  min-width: 76px;
+  padding: 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.home-category-pills button[aria-pressed="true"] {
+  background: var(--foreground);
+  border-color: var(--foreground);
+  color: var(--background);
+}

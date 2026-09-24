@@ -1,7 +1,7 @@
 "use client";
 
 import { Chip } from "@heroui/react";
-import { MapPin } from "@repo/icons";
+import { MapPin } from "@/components/animated-icon/icons";
 
 import { useApp } from "@/context/AppContext";
 

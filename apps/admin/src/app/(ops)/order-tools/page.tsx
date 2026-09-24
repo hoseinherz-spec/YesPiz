@@ -37,7 +37,11 @@ const stages = [
   ["completedAt", "Completed"],
 ] as const;
 export default function OrderToolsPage() {
-  const [id, setId] = useState(""),
+  const [id, setId] = useState(() =>
+      typeof window === "undefined"
+        ? ""
+        : new URLSearchParams(window.location.search).get("orderId") || "",
+    ),
     [order, setOrder] = useState<Timeline | null>(null),
     [notifications, setNotifications] = useState<Notification[]>([]),
     [error, setError] = useState(""),

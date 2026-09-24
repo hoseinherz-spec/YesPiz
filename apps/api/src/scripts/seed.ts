@@ -15,11 +15,23 @@ import {
   Provider,
   ProviderDocument,
 } from "../providers/schemas/provider.schema";
+import {
+  Category,
+  CategoryDocument,
+  MenuItem,
+  MenuItemDocument,
+} from "../catalog/schemas/menu.schema";
 
 export async function seedApplication(app: INestApplicationContext) {
   const users = app.get<Model<UserDocument>>(getModelToken(User.name));
   const providersModel = app.get<Model<ProviderDocument>>(
     getModelToken(Provider.name),
+  );
+  const categories = app.get<Model<CategoryDocument>>(
+    getModelToken(Category.name),
+  );
+  const menuItems = app.get<Model<MenuItemDocument>>(
+    getModelToken(MenuItem.name),
   );
   const catalog = app.get(CatalogService);
   const providers = app.get(ProvidersService);
@@ -146,40 +158,265 @@ export async function seedApplication(app: INestApplicationContext) {
   const published = await catalog.getPublishedMenu();
   if (!published.version) {
     const version = await catalog.createVersion({ notes: "Seed menu v1" });
-    const pizzas = await catalog.addCategory(version.id, {
-      name: "Pizzas",
-      sortOrder: 1,
-    });
+    const categoryEntries = await Promise.all(
+      [
+        ["classic", "Classics"],
+        ["meat", "Meat lovers"],
+        ["veggie", "Veggie"],
+        ["spicy", "Spicy"],
+        ["premium", "Premium"],
+      ].map(async ([key, name], sortOrder) => {
+        const category = await catalog.addCategory(version.id, {
+          name,
+          sortOrder: sortOrder + 1,
+        });
+        return [key, category.id] as const;
+      }),
+    );
+    const categoryIds = Object.fromEntries(categoryEntries);
 
-    await catalog.addItem(version.id, {
-      categoryId: pizzas.id,
-      name: "Margherita",
-      description: "Tomato, mozzarella, basil",
-      priceCents: 899,
-      prepWeight: 1,
-      tags: ["vegetarian"],
-    });
-    await catalog.addItem(version.id, {
-      categoryId: pizzas.id,
-      name: "Diavola",
-      description: "Spicy salami, chili, mozzarella",
-      priceCents: 1099,
-      prepWeight: 1.2,
-      tags: ["spicy"],
-    });
-    await catalog.addItem(version.id, {
-      categoryId: pizzas.id,
-      name: "Quattro Formaggi",
-      description: "Four cheese blend",
-      priceCents: 1199,
-      prepWeight: 1.1,
-      tags: ["vegetarian"],
-    });
+    const seedPizzas = [
+      {
+        category: "classic",
+        name: "Margherita",
+        description: "San Marzano tomato, fior di latte and fresh basil.",
+        priceCents: 990,
+        tags: ["vegetarian", "classic"],
+        ingredients: [
+          "San Marzano tomato",
+          "Fior di latte",
+          "Fresh basil",
+          "Olive oil",
+        ],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-margherita.png",
+      },
+      {
+        category: "classic",
+        name: "Pepperoni",
+        description: "Crispy pepperoni cups, mozzarella and chili honey.",
+        priceCents: 1190,
+        tags: ["popular", "meat"],
+        ingredients: ["Tomato", "Mozzarella", "Pepperoni", "Chili honey"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-pepperoni.png",
+      },
+      {
+        category: "meat",
+        name: "Salami",
+        description: "Italian salami, mozzarella and fragrant oregano.",
+        priceCents: 1150,
+        tags: ["meat", "classic"],
+        ingredients: ["Tomato", "Mozzarella", "Italian salami", "Oregano"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-salami.png",
+      },
+      {
+        category: "meat",
+        name: "BBQ Chicken",
+        description: "Grilled chicken, red onion and smoky BBQ sauce.",
+        priceCents: 1390,
+        tags: ["popular", "meat"],
+        ingredients: ["BBQ sauce", "Mozzarella", "Chicken", "Red onion"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-bbq-chicken.png",
+      },
+      {
+        category: "veggie",
+        name: "Quattro Formaggi",
+        description: "Mozzarella, gorgonzola, parmesan and fontina.",
+        priceCents: 1350,
+        tags: ["vegetarian", "premium"],
+        ingredients: ["Mozzarella", "Gorgonzola", "Parmesan", "Fontina"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-quattro-formaggi.png",
+      },
+      {
+        category: "spicy",
+        name: "Diavola",
+        description: "Spicy salami, chili flakes and creamy mozzarella.",
+        priceCents: 1290,
+        tags: ["spicy", "meat"],
+        ingredients: ["Tomato", "Mozzarella", "Spicy salami", "Chili flakes"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-diavola.png",
+      },
+      {
+        category: "classic",
+        name: "Tonno",
+        description: "Tuna, red onion and capers on a bright tomato base.",
+        priceCents: 1250,
+        tags: ["seafood"],
+        ingredients: ["Tomato", "Mozzarella", "Tuna", "Red onion", "Capers"],
+        allergens: ["gluten", "milk", "fish"],
+        imageUrl: "/images/pizza-tonno.png",
+      },
+      {
+        category: "veggie",
+        name: "Vegetariana",
+        description: "Roasted peppers, zucchini, eggplant and cherry tomatoes.",
+        priceCents: 1190,
+        tags: ["vegetarian"],
+        ingredients: [
+          "Tomato",
+          "Mozzarella",
+          "Peppers",
+          "Zucchini",
+          "Eggplant",
+        ],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-vegetariana.png",
+      },
+      {
+        category: "veggie",
+        name: "Funghi",
+        description: "Sautéed mushrooms, mozzarella, parsley and garlic.",
+        priceCents: 1150,
+        tags: ["vegetarian", "classic"],
+        ingredients: ["Tomato", "Mozzarella", "Mushrooms", "Parsley", "Garlic"],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-funghi.png",
+      },
+      {
+        category: "premium",
+        name: "YesPiz Special",
+        description: "Burrata, prosciutto, arugula and shaved truffle.",
+        priceCents: 1590,
+        tags: ["premium", "popular", "meat"],
+        ingredients: [
+          "San Marzano tomato",
+          "Burrata",
+          "Prosciutto",
+          "Arugula",
+          "Truffle",
+        ],
+        allergens: ["gluten", "milk"],
+        imageUrl: "/images/pizza-yespiz-special.png",
+      },
+    ];
+
+    for (const [sortOrder, pizza] of seedPizzas.entries()) {
+      await catalog.addItem(version.id, {
+        categoryId: categoryIds[pizza.category],
+        name: pizza.name,
+        description: pizza.description,
+        priceCents: pizza.priceCents,
+        prepWeight: pizza.tags.includes("premium") ? 1.3 : 1,
+        sortOrder: sortOrder + 1,
+        tags: pizza.tags,
+        ingredients: pizza.ingredients,
+        allergens: pizza.allergens,
+        imageUrl: pizza.imageUrl,
+        cookTimeSeconds: 480,
+        handoffTempC: 65,
+        requiresNumberedSeal: true,
+        requiresReadyPhoto: pizza.tags.includes("premium"),
+      });
+    }
 
     await catalog.publish(version.id);
-    console.log("Published seed menu with pizzas");
+    console.log(`Published seed menu with ${seedPizzas.length} pizzas`);
   } else {
     console.log(`Published menu already at v${published.version.version}`);
+  }
+
+  // The production mobile export requires at least one concrete combo route.
+  // Keep a fresh demo seed useful for the bundles/combo journey as well as
+  // ordinary pizza ordering. Clone the published menu so published data is
+  // never edited in place.
+  const currentMenu = await catalog.getPublishedMenu();
+  if (
+    currentMenu.version &&
+    !currentMenu.items.some((item) => item.productType === "combo")
+  ) {
+    const draft = await catalog.cloneVersion(currentMenu.version.id);
+    const [draftCategories, draftItems] = await Promise.all([
+      categories
+        .find({ menuVersionId: draft._id, isActive: true, deletedAt: null })
+        .exec(),
+      menuItems
+        .find({
+          menuVersionId: draft._id,
+          isActive: true,
+          deletedAt: null,
+          productType: "pizza",
+        })
+        .exec(),
+    ]);
+    const byName = new Map<string, MenuItemDocument>();
+    for (const item of draftItems) byName.set(item.name, item);
+    const preferred = [
+      "Margherita",
+      "Pepperoni",
+      "Diavola",
+      "BBQ Chicken",
+      "Vegetariana",
+      "Funghi",
+      "Quattro Formaggi",
+    ];
+    const pizzas: MenuItemDocument[] = [];
+    for (const name of preferred) {
+      const item = byName.get(name);
+      if (item) pizzas.push(item);
+    }
+    if (pizzas.length < 2 || !draftCategories.length) {
+      throw new Error(
+        "Cannot seed demo combos: the published menu needs at least two active pizzas and a category.",
+      );
+    }
+    const first = pizzas[0];
+    const second = pizzas[1];
+    if (!first || !second)
+      throw new Error("Cannot seed demo combos without two pizzas.");
+    const premium =
+      draftCategories.find((category) => /premium/i.test(category.name)) ??
+      draftCategories[0];
+    const component = (item: MenuItemDocument, quantity = 1) => ({
+      menuItemId: item.id,
+      quantity,
+      size: "medium" as const,
+    });
+    const combos = [
+      {
+        name: "Pizza Night Duo",
+        description: "Two crowd favorites for an easy night in.",
+        priceCents: 1990,
+        components: [first, second],
+      },
+      {
+        name: "Spicy Sharing Box",
+        description: "A bold trio for friends who like a little heat.",
+        priceCents: 3190,
+        components:
+          pizzas.length >= 5 ? pizzas.slice(2, 5) : [first, second, first],
+      },
+      {
+        name: "Veggie Table",
+        description: "A garden-forward trio made for sharing.",
+        priceCents: 2990,
+        components:
+          pizzas.length >= 3 ? pizzas.slice(-3) : [first, second, first],
+      },
+    ];
+    for (const [index, combo] of combos.entries()) {
+      await catalog.addItem(draft.id, {
+        categoryId: String(premium._id),
+        name: combo.name,
+        description: combo.description,
+        priceCents: combo.priceCents,
+        sortOrder: 101 + index,
+        productType: "combo",
+        tags: ["combo", "sharing"],
+        ingredients: [],
+        allergens: [],
+        imageUrl: combo.components[0].imageUrl,
+        comboComponents: combo.components.map((item) => component(item)),
+      });
+    }
+    await catalog.publish(draft.id);
+    console.log(
+      `Published demo menu v${draft.version} with ${combos.length} combo cards`,
+    );
   }
 
   console.log("Seed complete");

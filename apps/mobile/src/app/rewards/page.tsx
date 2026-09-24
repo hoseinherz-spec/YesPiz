@@ -1,7 +1,14 @@
 "use client";
+import { PageIntro } from "@/components/PageIntro";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { openHostedCheckout } from "@/lib/hosted-checkout";
 import Link from "next/link";
-import { Gift, ArrowRight, Wallet, Check } from "@repo/icons";
+import {
+  Gift,
+  ArrowRight,
+  Wallet,
+  Check,
+} from "@/components/animated-icon/icons";
 import { Button } from "@heroui/react";
 import { rewardsClient, type RewardsSummary } from "@repo/api";
 import { AppFrame } from "@/components/AppFrame";
@@ -9,6 +16,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { useApp } from "@/context/AppContext";
 import { formatPrice } from "@/constants/pizzas";
+import { pizzaCraftAsset } from "@/constants/media";
 
 export default function RewardsPage() {
   const { accessToken, language } = useApp();
@@ -21,7 +29,7 @@ export default function RewardsPage() {
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
-      setData(await rewardsClient.summary({ accessToken }));
+      setData(await rewardsClient.refresh({ accessToken }));
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load rewards.");
@@ -30,19 +38,25 @@ export default function RewardsPage() {
   useEffect(() => {
     void Promise.resolve().then(load);
   }, [load]);
-  async function act(action: "claim" | "enroll" | "cancel") {
+  async function act(action: "claim" | "enroll" | "cancel" | "portal") {
     if (!accessToken || busy) return;
     setBusy(true);
     setError("");
     try {
       if (!requestId.current) requestId.current = crypto.randomUUID();
-      const next =
-        action === "claim"
-          ? await rewardsClient.claim({ accessToken })
-          : action === "cancel"
-            ? await rewardsClient.cancel({ accessToken })
+      if (action === "enroll" || action === "portal") {
+        const result =
+          action === "portal"
+            ? await rewardsClient.portal({ accessToken })
             : await rewardsClient.enroll(requestId.current, { accessToken });
-      setData(next);
+        await openHostedCheckout(result.checkoutUrl, load);
+      } else {
+        setData(
+          action === "claim"
+            ? await rewardsClient.claim({ accessToken })
+            : await rewardsClient.cancel({ accessToken }),
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
@@ -51,9 +65,11 @@ export default function RewardsPage() {
   }
   return (
     <AppFrame withTabs className="reference-screen">
-      <ScreenHeader
+      <ScreenHeader title={de ? "Prämien" : "Rewards"} />
+      <PageIntro
+        icon={<Gift />}
         title={de ? "Deine Extras" : "A little extra, for you"}
-        subtitle={
+        description={
           de
             ? "Gute Pizza. Gute Gründe wiederzukommen."
             : "Good pizza deserves another round."
@@ -62,13 +78,14 @@ export default function RewardsPage() {
       {!accessToken ? (
         <EmptyState
           icon={<Gift size={28} />}
+          image={pizzaCraftAsset("Pizza Shop")}
           title={de ? "Jede Bestellung zählt" : "Make every order count"}
           body={
             de
               ? "Melde dich an und entdecke deine Prämien."
               : "Sign in to collect rewards and see your credit."
           }
-          actionHref="/login/?next=/rewards/"
+          actionHref="/auth/sign-in/?next=/rewards/"
           actionLabel={de ? "Anmelden" : "Sign in"}
         />
       ) : (
@@ -190,7 +207,7 @@ export default function RewardsPage() {
               </Link>
               <section className="data-surface mt-6 rounded-[28px] p-6">
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Yespiz Plus · {de ? "Testabo" : "Mock membership"}
+                  Yespiz Plus
                 </span>
                 <h2 className="mt-3 text-2xl font-bold">
                   {de
@@ -237,8 +254,8 @@ export default function RewardsPage() {
                         onChange={(e) => setConsent(e.target.checked)}
                       />
                       {de
-                        ? "Testkauf bestätigen. Keine echte Abbuchung, keine automatische Verlängerung."
-                        : "Confirm simulated purchase. No real charge or automatic renewal."}
+                        ? "4,99 € alle 30 Tage. Automatische Verlängerung bis zur Kündigung; der bezahlte Zeitraum bleibt erhalten."
+                        : "€4.99 every 30 days. Renews automatically until cancelled; your paid period remains available."}
                     </label>
                     <Button
                       isDisabled={
@@ -246,11 +263,35 @@ export default function RewardsPage() {
                       }
                       onPress={() => void act("enroll")}
                     >
-                      {de
-                        ? "Testmitgliedschaft starten"
-                        : "Start mock membership"}
+                      {de ? "Weiter zur Zahlung" : "Continue to payment"}
                     </Button>
                   </>
+                )}
+                {data.membership.canManage && (
+                  <Button
+                    className="mt-4"
+                    variant="secondary"
+                    isDisabled={busy}
+                    onPress={() => void act("portal")}
+                  >
+                    {de
+                      ? "Zahlungen und Rechnungen verwalten"
+                      : "Manage payments and invoices"}
+                  </Button>
+                )}
+                {data.membership.status === "past_due" && (
+                  <p role="alert" className="mt-3 text-sm text-danger">
+                    {de
+                      ? "Die Verlängerung ist fehlgeschlagen. Bitte aktualisiere deine Zahlungsmethode."
+                      : "Renewal payment failed. Please update your payment method."}
+                  </p>
+                )}
+                {!data.membership.canEnroll && (
+                  <p className="mt-3 text-sm text-muted">
+                    {de
+                      ? "Mitgliedschaften sind derzeit nicht verfügbar."
+                      : "Membership checkout is currently unavailable."}
+                  </p>
                 )}
               </section>
               <Link
@@ -266,7 +307,24 @@ export default function RewardsPage() {
           )}
         </>
       )}
-      {data?.campaigns.filter(c=>c.version!==data.rules.version).map(c=><div key={c.version} className="data-surface mt-4 rounded-2xl p-4 text-sm"><strong>{de?"Frühere Prämienregeln":"Previous reward terms"} · v{c.version}</strong><p className="mt-2 text-muted">{c.progress}/{c.ordersPerReward} · {c.available} {de?"Prämien verfügbar":"rewards available"} · {formatPrice(c.rewardCents/100)}</p></div>)}
+      {data?.campaigns
+        .filter((c) => c.version !== data.rules.version)
+        .map((c) => (
+          <div
+            key={c.version}
+            className="data-surface mt-4 rounded-2xl p-4 text-sm"
+          >
+            <strong>
+              {de ? "Frühere Prämienregeln" : "Previous reward terms"} · v
+              {c.version}
+            </strong>
+            <p className="mt-2 text-muted">
+              {c.progress}/{c.ordersPerReward} · {c.available}{" "}
+              {de ? "Prämien verfügbar" : "rewards available"} ·{" "}
+              {formatPrice(c.rewardCents / 100)}
+            </p>
+          </div>
+        ))}
     </AppFrame>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import { Button, Drawer } from "@heroui/react";
-import { X } from "@repo/icons";
+import { X } from "@/components/animated-icon/icons";
 import type { ReactNode } from "react";
 export function ReferenceSheet({
   open,

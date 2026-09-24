@@ -15,7 +15,7 @@
   border-radius: 26px;
   box-shadow: var(--reference-shadow);
 }
-.reference-screen input:not([type="checkbox"]):not([type="radio"]),
+.reference-screen input:not([type="checkbox"]):not([type="radio"]):not(.search-field__input),
 .reference-screen textarea,
 .reference-screen select {
   background: var(--field-background);

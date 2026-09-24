@@ -1,0 +1,152 @@
+/* Dribbble 887cdd35: tracking ~3s, detail ~9.5s, return ~15s.
+   Content overlaps the artwork flight instead of waiting for it to finish. */
+:root {
+  --food-travel: 720ms;
+  --food-reveal: var(--duration-very-slow, 500ms);
+  --food-detail-reveal: var(--duration-very-slow, 500ms);
+  --food-stagger: var(--duration-stagger, 40ms);
+  --food-ease: var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+/* Tall catalog snapshots must not stretch to the shorter detail page. */
+::view-transition-group(.mobile-product-in),
+::view-transition-group(.mobile-product-out),
+::view-transition-group(.mobile-food-in),
+::view-transition-group(.mobile-food-out) {
+  animation: none;
+}
+::view-transition-old(.mobile-product-in),
+::view-transition-new(.mobile-product-in),
+::view-transition-old(.mobile-product-out),
+::view-transition-new(.mobile-product-out),
+::view-transition-old(.mobile-food-in),
+::view-transition-new(.mobile-food-in),
+::view-transition-old(.mobile-food-out),
+::view-transition-new(.mobile-food-out) {
+  height: auto;
+}
+::view-transition-new(.mobile-food-in),
+::view-transition-new(.mobile-food-out),
+::view-transition-new(.mobile-product-out) {
+  animation: food-page-in var(--duration-fast, 250ms) var(--food-ease) both;
+}
+::view-transition-new(.mobile-product-in) {
+  animation: food-sheet-in var(--duration-slow, 400ms) var(--food-ease) both;
+}
+::view-transition-new(.food-detail-reveal) {
+  animation: food-content-in var(--food-detail-reveal) var(--food-ease) both;
+  animation-delay: calc(
+    var(--food-detail-step, 0) * var(--food-stagger)
+  );
+}
+::view-transition-new(.food-detail-1) {
+  --food-detail-step: 1;
+}
+::view-transition-new(.food-detail-2) {
+  --food-detail-step: 2;
+}
+::view-transition-new(.food-detail-3) {
+  --food-detail-step: 3;
+}
+::view-transition-new(.food-detail-4) {
+  --food-detail-step: 4;
+}
+::view-transition-new(.food-detail-5) {
+  --food-detail-step: 5;
+}
+::view-transition-new(.food-detail-6) {
+  --food-detail-step: 6;
+}
+::view-transition-new(.food-detail-7) {
+  --food-detail-step: 7;
+}
+::view-transition-old(.mobile-food-in),
+::view-transition-old(.mobile-food-out),
+::view-transition-old(.mobile-product-in),
+::view-transition-old(.mobile-product-out) {
+  animation: food-page-out 240ms ease-out both;
+}
+::view-transition-group(.mobile-hero) {
+  animation-duration: var(--food-travel);
+  animation-timing-function: var(--food-ease);
+}
+::view-transition-image-pair(.mobile-hero) {
+  animation: food-turn var(--food-travel) var(--food-ease) both;
+}
+/* Use one artwork during travel, avoiding a double pizza while rotating. */
+::view-transition-old(.mobile-hero) {
+  animation: food-page-out 100ms ease-out both;
+}
+::view-transition-new(.mobile-hero) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(.food-reveal) {
+  animation: food-content-in var(--food-reveal) var(--food-ease) both;
+  animation-delay: 0ms;
+}
+::view-transition-new(.food-reveal-1) {
+  animation-delay: var(--food-stagger);
+}
+::view-transition-new(.food-reveal-2) {
+  animation-delay: calc(2 * var(--food-stagger));
+}
+::view-transition-new(.food-reveal-3) {
+  animation-delay: calc(3 * var(--food-stagger));
+}
+::view-transition-new(.food-reveal-4) {
+  animation-delay: calc(4 * var(--food-stagger));
+}
+::view-transition-old(.food-leave) {
+  animation: food-page-out 180ms ease-out both;
+}
+@keyframes food-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes food-page-out {
+  to {
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+@keyframes food-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes food-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--distance-medium, 12px));
+    filter: blur(var(--blur-medium, 3px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+/* A small intermediate turn keeps the final artwork orientation unchanged. */
+@keyframes food-turn {
+  45% {
+    transform: rotate(-18deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

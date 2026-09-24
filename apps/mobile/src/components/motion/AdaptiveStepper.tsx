@@ -5,6 +5,9 @@ import { useId, useRef } from "react";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { SPRING_PRESS } from "@/lib/ease";
 import { cn } from "@/lib/cn";
+import { Button } from "@heroui/react";
+
+const MotionButton = motion.create(Button);
 
 export interface AdaptiveStepperProps {
   value: number;
@@ -48,13 +51,13 @@ export function AdaptiveStepper({ value, onValueChange, min = 1, max = Infinity,
     </span>
     {([-1, 1] as const).map((direction) => {
       const hidden = direction === -1 ? atMin : atMax;
-      return <motion.button key={direction} ref={direction === -1 ? decrementRef : incrementRef} type="button" aria-label={direction === -1 ? "Decrease" : "Increase"} aria-hidden={hidden || undefined} disabled={disabled || hidden} tabIndex={hidden ? -1 : 0}
+      return <MotionButton isIconOnly variant="ghost" key={direction} ref={direction === -1 ? decrementRef : incrementRef} type="button" aria-label={direction === -1 ? "Decrease" : "Increase"} aria-hidden={hidden || undefined} isDisabled={disabled || hidden}
         initial={false} animate={{ x: direction === -1 ? (hidden ? 32 : 0) : (hidden ? 136 : 168), opacity: hidden ? 0 : 1 }} transition={transition}
         whileTap={reduce || disabled || hidden ? undefined : { scale: 0.94 }}
-        onClick={(event) => change(direction, event.detail === 0)}
+        onPress={(event) => change(direction, event.pointerType === "keyboard")}
         className="absolute left-0 top-0 z-10 grid size-12 place-items-center rounded-full text-foreground outline-none hover:bg-muted/15 focus-visible:ring-2 focus-visible:ring-foreground disabled:pointer-events-none">
         <motion.span aria-hidden="true" transition={SPRING_PRESS} className="text-xl font-semibold">{direction === -1 ? "−" : "+"}</motion.span>
-      </motion.button>;
+      </MotionButton>;
     })}
     <motion.output initial={false} animate={valueGeometry} transition={transition} aria-live="polite" aria-atomic="true" className="absolute left-0 top-0 flex h-12 items-center justify-center overflow-hidden rounded-full px-4 text-lg font-semibold text-foreground">
       <AnimatedNumber value={current} />

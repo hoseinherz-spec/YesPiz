@@ -15,8 +15,19 @@ import { Button, Spinner, Typography } from "@heroui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import {
+  ArrowRight,
+  Boxes,
+  Clock3,
+  LogOut,
+  QrCode,
+  RefreshCw,
+  Route,
+  WalletCards,
+} from "lucide-react";
 
 import { AppFrame } from "@/components/AppFrame";
+import { CourierBrand } from "@/components/CourierBrand";
 import { ErrorBanner } from "@/components/ProofUi";
 import { formatApiError } from "@/lib/api-errors";
 import {
@@ -128,167 +139,210 @@ export default function CourierHomePage() {
 
   return (
     <FormScope>
-      {
-        <AppFrame>
-          <header className="mb-6 flex items-start justify-between gap-3">
+      <AppFrame className="courier-screen">
+        <header className="mb-6 flex items-center justify-between gap-3">
+          <CourierBrand />
+          <Button
+            isIconOnly
+            variant="secondary"
+            aria-label="Log out"
+            className="courier-icon-button border-0"
+            onPress={() => {
+              clearCourierToken();
+              router.replace("/login/");
+            }}
+          >
+            <LogOut size={19} />
+          </Button>
+        </header>
+
+        <section className="courier-hero mb-4">
+          <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
-              <Typography type="h1" className={hx.h2}>
-                On the road
-              </Typography>
-              <p className={cn(hx.bodySm, "mt-1")}>
+              <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-surface-tertiary px-3 py-2 text-xs font-semibold">
+                <span
+                  className="courier-status-dot"
+                  data-active={profile?.onDuty ? "true" : "false"}
+                />
                 {profile?.onDuty ? "On duty" : "Off duty"}
-                {profile?.vehicleType
-                  ? ` · ${profile.vehicleType.split("|")[0]}`
-                  : ""}
+              </span>
+              <Typography type="h1" className={hx.h2}>
+                {profile?.onDuty ? "Keep moving." : "Ready for your shift?"}
+              </Typography>
+              <p className={cn(hx.bodySm, "mt-2 max-w-[260px]")}>
+                {profile?.onDuty
+                  ? "Your assigned routes and proof steps are ready below."
+                  : "Scan the dispatch code to start receiving deliveries."}
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="rounded-full border border-border bg-card"
-              onPress={() => {
-                clearCourierToken();
-                router.replace("/login/");
-              }}
-            >
-              Log out
-            </Button>
-          </header>
+            <Route className="mt-2 shrink-0 text-accent" size={34} />
+          </div>
+        </section>
 
-          <Link
-            href="/earnings/"
-            className="mb-5 block rounded-2xl bg-surface-secondary p-4 font-semibold"
-          >
-            Earnings & settlements →
+        <div className="courier-stat-grid mb-5">
+          <div className="courier-stat">
+            <Boxes size={18} className="text-accent" />
+            <strong>{batches.length}</strong>
+            <span>Batches</span>
+          </div>
+          <div className="courier-stat">
+            <Route size={18} className="text-info" />
+            <strong>
+              {batches.reduce((sum, batch) => sum + (batch.orderIds?.length ?? 0), 0)}
+            </strong>
+            <span>Stops</span>
+          </div>
+          <Link href="/earnings/" className="courier-stat courier-card--interactive">
+            <WalletCards size={18} className="text-success" />
+            <strong>€</strong>
+            <span>Earnings</span>
           </Link>
-          <Notifications accessToken={getCourierToken()} />
-          {error ? <ErrorBanner message={error} className="mb-4" /> : null}
+        </div>
 
-          <FormScope>
-            <section className={cn(hx.card, "mb-4 flex flex-col gap-3")}>
+        <Notifications accessToken={getCourierToken()} />
+        {error ? <ErrorBanner message={error} className="mb-4" /> : null}
+
+        <section className="courier-card mb-5 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-tertiary text-accent">
+              <QrCode size={21} />
+            </span>
+            <div>
               <Typography type="h3" className={hx.title}>
                 Shift session
               </Typography>
-              <p className={hx.bodySm}>
-                Scan the depot QR or enter the OTP from dispatch to go on duty.
-                End your shift with the session end code when finished.
+              <p className={cn(hx.bodySm, "mt-1")}>
+                {profile?.onDuty
+                  ? "Enter the end code from dispatch when your run is complete."
+                  : "Scan the depot QR or enter the OTP from dispatch."}
               </p>
-              {!profile?.onDuty ? (
-                <>
-                  <ScanCode onScan={setCode} />
-                  <Input
-                    label={<>Start QR / OTP</>}
-                    wrapperClassName="flex flex-col gap-2 text-sm font-medium text-muted"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className={cn(hx.field, "h-14 bg-field-background")}
-                    placeholder="From QR scan or dispatch"
-                  />
-                  <FormAction
-                    variant="primary"
-                    fullWidth
-                    isDisabled={busy || !code.trim()}
-                    onPress={startSession}
-                    className={cn(hx.btnPrimary, "h-14 text-base")}
-                  >
-                    Start session
-                  </FormAction>
-                </>
-              ) : (
-                <>
-                  {session?.endCode || endCode ? (
-                    <p className="text-sm text-foreground">
-                      End code:{" "}
-                      <span className="font-mono">
-                        {session?.endCode || endCode}
-                      </span>
-                    </p>
-                  ) : null}
-                  <ScanCode onScan={setEndCode} />
-                  <Input
-                    label={<>End OTP</>}
-                    wrapperClassName="flex flex-col gap-2 text-sm font-medium text-muted"
-                    value={endCode}
-                    onChange={(e) => setEndCode(e.target.value)}
-                    className={cn(hx.field, "h-14 bg-field-background")}
-                    placeholder="Session end code"
-                  />
-                  <FormAction
-                    variant="secondary"
-                    fullWidth
-                    isDisabled={busy || !endCode.trim()}
-                    onPress={endSession}
-                    className={cn(hx.btnSecondary, "h-14 text-base")}
-                  >
-                    End session
-                  </FormAction>
-                </>
-              )}
-            </section>
-          </FormScope>
+            </div>
+          </div>
 
-          <section className="flex flex-col gap-3 pb-8">
-            <div className="flex items-center justify-between">
-              <Typography type="h3" className={hx.title}>
+          {!profile?.onDuty ? (
+            <>
+              <ScanCode onScan={setCode} />
+              <Input
+                label={<>Start QR / OTP</>}
+                wrapperClassName="flex flex-col gap-2 text-sm font-medium text-muted"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                className={hx.field}
+                placeholder="Code from dispatch"
+              />
+              <FormAction
+                variant="primary"
+                fullWidth
+                isDisabled={busy || !code.trim()}
+                onPress={startSession}
+                className={hx.btnPrimary}
+              >
+                Start shift
+              </FormAction>
+            </>
+          ) : (
+            <>
+              {session?.endCode || endCode ? (
+                <p className="rounded-2xl bg-surface-tertiary px-4 py-3 text-sm text-foreground">
+                  End code:{" "}
+                  <span className="font-mono font-semibold">
+                    {session?.endCode || endCode}
+                  </span>
+                </p>
+              ) : null}
+              <ScanCode onScan={setEndCode} />
+              <Input
+                label={<>End OTP</>}
+                wrapperClassName="flex flex-col gap-2 text-sm font-medium text-muted"
+                value={endCode}
+                onChange={(event) => setEndCode(event.target.value)}
+                className={hx.field}
+                placeholder="Session end code"
+              />
+              <FormAction
+                variant="secondary"
+                fullWidth
+                isDisabled={busy || !endCode.trim()}
+                onPress={endSession}
+                className={hx.btnSecondary}
+              >
+                End shift
+              </FormAction>
+            </>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <div className="courier-section-heading">
+            <div>
+              <Typography type="h2" className={hx.h3}>
                 Assigned batches
               </Typography>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="rounded-full border border-border bg-card"
-                onPress={() => void load()}
-              >
-                Refresh
-              </Button>
+              <p className={cn(hx.caption, "mt-1")}>Updated automatically</p>
             </div>
+            <Button
+              isIconOnly
+              variant="secondary"
+              aria-label="Refresh assigned batches"
+              className="courier-icon-button border-0"
+              onPress={() => void load()}
+            >
+              <RefreshCw size={18} />
+            </Button>
+          </div>
 
-            {!profile?.onDuty ? (
-              <div className={cn(hx.card, hx.bodySm)}>
-                Start your session to see assigned batches and run the pickup →
-                delivery proof chain.
-              </div>
-            ) : null}
+          {!profile?.onDuty ? (
+            <div className="courier-card courier-empty">
+              <Clock3 size={26} className="text-muted" />
+              <strong className={hx.title}>You are currently off duty</strong>
+              <p className={cn(hx.bodySm, "max-w-[280px]")}>
+                Start your shift to see assigned batches and delivery stops.
+              </p>
+            </div>
+          ) : null}
 
-            {profile?.onDuty && !batches.length ? (
-              <div className={cn(hx.card, hx.bodySm)}>
-                No assigned batches right now. Pull to refresh when dispatch
-                assigns you.
-              </div>
-            ) : null}
+          {profile?.onDuty && !batches.length ? (
+            <div className="courier-card courier-empty">
+              <Boxes size={26} className="text-muted" />
+              <strong className={hx.title}>No batches yet</strong>
+              <p className={cn(hx.bodySm, "max-w-[280px]")}>
+                You are online. New work from dispatch will appear here.
+              </p>
+            </div>
+          ) : null}
 
-            {batches.map((batch) => {
-              const id = entityId(batch);
-              const active =
-                batch.status === "assigned" || batch.status === "in_progress";
-              return (
-                <Link
-                  key={id}
-                  href={`/home/batch/?id=${encodeURIComponent(id)}`}
-                  className={cn(
-                    hx.card,
-                    "block transition-opacity hover:opacity-90",
-                    active && "ring-2 ring-accent/40",
-                  )}
-                >
-                  <div className="flex justify-between gap-2">
-                    <Typography type="h3" className={hx.title}>
+          {batches.map((batch) => {
+            const id = entityId(batch);
+            const active =
+              batch.status === "assigned" || batch.status === "in_progress";
+            return (
+              <Link
+                key={id}
+                href={`/home/batch/?id=${encodeURIComponent(id)}`}
+                className={cn(
+                  "courier-card courier-card--interactive block",
+                  active && "courier-card--active",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="mb-3 inline-flex rounded-full bg-surface-tertiary px-3 py-1 text-[10px] font-bold tracking-wide uppercase text-muted">
                       {batch.status.replaceAll("_", " ")}
-                    </Typography>
-                    <span className={hx.caption}>
-                      {batch.orderIds?.length ?? 0} stops
                     </span>
+                    <Typography type="h3" className={hx.title}>
+                      {batch.orderIds?.length ?? 0} delivery stops
+                    </Typography>
+                    <p className={cn(hx.caption, "mt-1 truncate font-mono")}>{id}</p>
                   </div>
-                  <p className={cn(hx.caption, "mt-1 font-mono")}>{id}</p>
-                  <p className={cn(hx.bodySm, "mt-2")}>
-                    Tap to open stops — pickup, en route, deliver, and complete
-                    each order.
-                  </p>
-                </Link>
-              );
-            })}
-          </section>
-        </AppFrame>
-      }
+                  <span className="courier-icon-button size-10 min-w-10 bg-accent text-accent-foreground">
+                    <ArrowRight size={18} />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </section>
+      </AppFrame>
     </FormScope>
   );
 }

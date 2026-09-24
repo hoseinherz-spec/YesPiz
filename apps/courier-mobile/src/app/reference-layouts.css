@@ -1,0 +1,184 @@
+/* Shared mobile composition rules mirrored from the customer application. */
+.reference-screen {
+  min-width: 0;
+  padding-inline: 16px;
+  background: var(--background);
+}
+
+.reference-screen h1 {
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.reference-screen input:not([type="checkbox"]):not([type="radio"]),
+.reference-screen textarea,
+.reference-screen select {
+  border-radius: 18px;
+  background: var(--field-background);
+}
+
+.reference-screen button[aria-label="Back"] {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border: 0;
+  background: var(--surface-tertiary);
+}
+
+.courier-screen {
+  padding-inline: 16px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+
+.courier-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.courier-brand__mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.courier-role {
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.courier-hero,
+.courier-card {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface-secondary);
+}
+
+.courier-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 90% 8%, color-mix(in oklab, var(--accent) 19%, transparent), transparent 42%),
+    var(--surface-secondary);
+}
+
+.courier-hero::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -52px;
+  width: 140px;
+  height: 140px;
+  border: 18px solid color-mix(in oklab, var(--accent) 7%, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.courier-card {
+  padding: 18px;
+}
+
+.courier-card--interactive {
+  transition: border-color var(--duration-fast) var(--ease-smooth-out), transform var(--duration-fast) var(--ease-smooth-out), background-color var(--duration-fast) var(--ease-smooth-out);
+}
+
+.courier-card--interactive:active {
+  transform: scale(.985);
+}
+
+.courier-card--active {
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--border));
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface-secondary));
+}
+
+.courier-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.courier-status-dot[data-active="true"] {
+  background: var(--success);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--success) 12%, transparent);
+}
+
+.courier-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.courier-stat {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 14px 12px;
+  background: var(--surface-secondary);
+}
+
+.courier-stat strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.courier-stat span {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courier-section-heading {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.courier-icon-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-tertiary);
+  color: var(--foreground);
+}
+
+.courier-empty {
+  display: flex;
+  min-height: 164px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+@media (max-width: 340px) {
+  .courier-stat-grid { grid-template-columns: 1fr; }
+}

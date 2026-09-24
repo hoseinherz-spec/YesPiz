@@ -3,7 +3,7 @@ import { PageHero } from "@repo/ui/mobile-page-transition";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 import { Button, Card, Typography } from "@heroui/react";
-import { Heart, Plus } from "@repo/icons";
+import { Heart, Plus } from "@/components/animated-icon/icons";
 import Link from "next/link";
 
 import { pizzaTagline } from "@/constants/i18n";
@@ -26,7 +26,7 @@ export function ProductCard({
   const tagline = subtitle ?? pizzaTagline(pizza, language);
   const styles = productCard({ variant });
 
-  const href = `/pizza/?id=${encodeURIComponent(pizza.id)}`;
+  const href = "comboComponents" in pizza && pizza.comboComponents ? `/combo/${encodeURIComponent(pizza.id)}/` : `/menu/${encodeURIComponent(pizza.id)}/`;
 
   const onFavoritePress = () => {
     toggleFavorite(pizza.pizzaId ?? pizza.id);

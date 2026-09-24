@@ -181,6 +181,11 @@ export const couponSchema = z
     cap: z.string().trim().min(1),
     start: z.string().min(1),
     end: z.string().min(1),
+    userScope: z.enum(["all", "specific"]),
+    eligibleUserIds: z.array(z.string()),
+    productScope: z.enum(["all", "specific"]),
+    eligibleProductIds: z.array(z.string()),
+    minimumEligibleQuantity: z.string().trim().min(1),
   })
   .superRefine((v, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: "custom", message });
@@ -208,6 +213,16 @@ export const couponSchema = z
       Date.parse(v.end) <= Date.parse(v.start)
     )
       fail("The discount must end after it starts.");
+    if (
+      !Number.isInteger(Number(v.minimumEligibleQuantity)) ||
+      Number(v.minimumEligibleQuantity) < 1 ||
+      Number(v.minimumEligibleQuantity) > 99
+    )
+      fail("Minimum eligible product quantity must be from 1 to 99.");
+    if (v.userScope === "specific" && v.eligibleUserIds.length === 0)
+      fail("Select at least one eligible customer.");
+    if (v.productScope === "specific" && v.eligibleProductIds.length === 0)
+      fail("Select at least one eligible product.");
   });
 
 export const passwordResetSchema = z

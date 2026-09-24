@@ -2,8 +2,11 @@
 import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { useApp } from "@/context/AppContext";
-import { MapPin, Check, ChevronRight } from "@repo/icons";
+import { MapPin, Check, ChevronRight } from "@/components/animated-icon/icons";
 import Link from "next/link";
+import { Button, buttonVariants } from "@heroui/react";
+import { AddressesSkeleton } from "@/features/profile/components/ProfileSkeletons";
+import styles from "@/features/profile/components/Profile.module.css";
 export default function AddressesPage() {
   const {
     addresses,
@@ -15,24 +18,18 @@ export default function AddressesPage() {
   } = useApp();
   const de = language === "de";
   return (
-    <AppFrame className="reference-screen">
-      <ScreenHeader
-        title={de ? "Adressen" : "Addresses"}
-        backHref="/profile/"
-      />
-      <p className="mb-5 text-sm text-muted">
-        {de
-          ? "Wähle deine Lieferadresse."
-          : "Choose where your next pizza arrives."}
-      </p>
+    <AppFrame padded={false} className={styles.subpage}>
+      <ScreenHeader title={de ? "Adressen" : "Address"} backHref="/profile/" />
+      {!hydrated && <AddressesSkeleton />}
       <div className="space-y-3">
         {addresses.map((address) => (
-          <button
+          <Button
+            variant="ghost"
             key={address.id}
             type="button"
-            className="reference-address"
+            className={`reference-address ${styles.card}`}
             aria-pressed={selectedAddressId === address.id}
-            onClick={() => setSelectedAddressId(address.id)}
+            onPress={() => setSelectedAddressId(address.id)}
           >
             <span className="reference-address-icon">
               <MapPin size={24} />
@@ -48,7 +45,7 @@ export default function AddressesPage() {
             ) : (
               <ChevronRight size={20} />
             )}
-          </button>
+          </Button>
         ))}
       </div>
       {hydrated && !addresses.length && (
@@ -61,9 +58,9 @@ export default function AddressesPage() {
           href={
             authed
               ? "/addresses/new/?from=addresses"
-              : "/login/?next=/addresses/"
+              : "/auth/sign-in/?next=/addresses/"
           }
-          className="flex min-h-14 items-center justify-center rounded-full bg-accent px-5 text-sm font-semibold text-accent-foreground"
+          className={`${buttonVariants({ variant: "primary" })} ${styles.bottomAction}`}
         >
           {de ? "Neue Adresse hinzufügen" : "Add new address"}
         </Link>

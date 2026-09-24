@@ -12,6 +12,7 @@ import {
 } from "@repo/api";
 import { Button, Spinner, Typography } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, MapPin, Navigation } from "lucide-react";
 
 import { IncidentActionSheet } from "@/components/IncidentActionSheet";
 import { ErrorBanner, ProofField } from "@/components/ProofUi";
@@ -248,12 +249,13 @@ export function OrderProofFlow({
         backHref={backHref}
         right={
           <Button
-            size="sm"
+            isIconOnly
             variant="secondary"
-            className="rounded-full border border-border px-3 text-xs"
+            aria-label="Report an incident"
+            className="courier-icon-button border-0"
             onPress={() => setIncidentOpen(true)}
           >
-            Incident
+            <AlertTriangle size={18} />
           </Button>
         }
       />
@@ -264,10 +266,15 @@ export function OrderProofFlow({
       ) : null}
 
       {view ? (
-        <section className="mb-5 rounded-[24px] border border-border bg-card p-4">
-          <h2 className="font-bold">
-            {status === "ASSIGNED_TO_COURIER" ? "Pickup" : "Delivery address"}
-          </h2>
+        <section className="courier-card mb-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-tertiary text-accent">
+              <MapPin size={21} />
+            </span>
+            <h2 className={hx.title}>
+              {status === "ASSIGNED_TO_COURIER" ? "Pickup" : "Delivery address"}
+            </h2>
+          </div>
           {status === "ASSIGNED_TO_COURIER" ? (
             <p className="mt-2">{view.pickup?.address}</p>
           ) : (
@@ -311,12 +318,12 @@ export function OrderProofFlow({
                 : view.deliveryLongitude;
             return lat != null && lng != null ? (
               <a
-                className="mt-3 inline-block underline"
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
                 href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                Open directions
+                <Navigation size={16} /> Open directions
               </a>
             ) : null;
           })()}
@@ -326,7 +333,7 @@ export function OrderProofFlow({
       {locError ? <ErrorBanner message={locError} className="mb-4" /> : null}
 
       {shareLocation ? (
-        <section className={cn(hx.card, "mb-4")}>
+        <section className="courier-card mb-4">
           <Typography type="h3" className={hx.title}>
             Live location
           </Typography>

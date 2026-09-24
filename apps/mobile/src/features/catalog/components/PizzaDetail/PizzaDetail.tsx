@@ -1,591 +1,410 @@
 "use client";
-import { readUsualPizzas, saveUsualPizza } from "@/lib/usual-pizzas";
-import { AnimatedNumber } from "@/components/AnimatedNumber";
 
-import { AppText } from "@/components/Text";
-
-import { FormScope, RadioField, CheckboxGroupField } from "@repo/ui/forms";
-
-import type { PizzaSelection } from "@repo/api";
-import { PizzaChoices } from "./PizzaChoices";
-import { Typography, buttonVariants } from "@heroui/react";
-import { ArrowLeft, Heart, ShoppingBag, Truck } from "@repo/icons";
+import { ChevronLeft } from "@/components/animated-icon/icons";
+import { Bookmark } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import "./pizza-size-motion.css";
+import type { PizzaSelection, IngredientChange } from "@repo/api";
+import { PageHero } from "@repo/ui/mobile-page-transition";
+import { FlowReveal } from "@/components/motion/FlowReveal";
+import { ToppingStudio } from "./ToppingStudio";
+import { AddToCart } from "./AddToCart";
+import { ProductOptions } from "./ProductOptions";
+import { pizzaOptions } from "./pizza-order";
+import { PizzaDescription } from "./PizzaDescription";
+import { pizzaDescription } from "@/constants/i18n";
+import { Star, Clock, TakeoutFood, PercentageCircle } from "@repo/icons";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-
+import { useSearchParams } from "next/navigation";
 import { AppFrame } from "@/components/AppFrame";
 import { IconBadgeButton } from "@/components/IconBadgeButton";
-import { MobileActionBar } from "@/components/MobileActionBar";
-import { Stepper } from "@/components/Stepper";
-import {
-  pizzaDescription,
-  pizzaIngredients,
-  pizzaTagline,
-} from "@/constants/i18n";
-import { formatPrice, resolveProductImage } from "@/constants/pizzas";
+import { SlidingNumber } from "@/components/SlidingNumber";
+import { resolveProductImage } from "@/constants/pizzas";
 import { useApp } from "@/context/AppContext";
 import { useCart } from "@/context/CartContext";
 import { useMenuCatalog } from "@/lib/catalog";
-import { cn } from "@/lib/cn";
-import { hx } from "@/lib/heroui-classes";
-
 import { ProductImage } from "../ProductImage/ProductImage";
-import { PizzaComments } from "./PizzaComments";
 import type { PizzaDetailProps } from "./PizzaDetail.types";
+import styles from "./PizzaDetail.module.css";
+import { PizzaDetailSkeleton } from "./PizzaSkeletons";
+import { PizzaComments } from "./PizzaComments";
+import { reviewMetrics } from "./review-metrics";
+import { ScrollHeader } from "@/components/ScrollHeader";
+import { saveUsualPizza, useUsualPizzas } from "@/lib/usual-pizzas";
+
+const currencyFormat: Intl.NumberFormatOptions = {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+};
 
 export function PizzaDetail({ id }: PizzaDetailProps) {
-  const router = useRouter();
-  const [adding, startAdding] = useTransition();
-  const { t, language, isFavorite, toggleFavorite } = useApp();
-  const { addItem, count, sizes, extraOptions, baseDeliveryFee } = useCart();
-  const {
-    items: menuItems,
-    getById,
-    menuVersion,
-    fromApi,
-    isLoading,
-    isOffline,
-  } = useMenuCatalog();
+  const searchParams = useSearchParams();
+  const fromFeatured = searchParams.get("source") === "featured";
+  const usualId = searchParams.get("usual");
+  const heroId = fromFeatured ? `featured-${id}` : id;
+  const { language, isFavorite, toggleFavorite } = useApp();
+  const { sizes } = useCart();
+  const hero = useRef<HTMLDivElement>(null);
+  const sizeGroupId = useId();
+  const [adding, setAdding] = useState(false);
+  const [usualSaved, setUsualSaved] = useState(false);
+  const [ingredientState, setIngredientState] = useState<{ id: string; changes: IngredientChange[] | null }>({ id, changes: null });
+  const [selections, setSelections] = useState<PizzaSelection[] | null>(null);
+  const [sizeChoice, setSizeChoice] = useState<{
+    pizzaId: string;
+    sizeId: string;
+  } | null>(null);
+  const { getById, isLoading, categories, menuVersion } = useMenuCatalog();
+  const { items: usualPizzas } = useUsualPizzas();
   const pizza = getById(id);
+  const locale = language === "de" ? "de-DE" : "en-IE";
 
-  const [size, setSize] = useState<"small" | "medium" | "large">("medium");
-  const [secondHalfItemId, setSecondHalfItemId] = useState("");
-  const secondHalf = menuItems.find((p) => p.id === secondHalfItemId);
-  const [extras, setExtras] = useState<string[]>([]);
-  const [chosenVariant, setChosenVariant] = useState("");
-  const [selections, setSelections] = useState<PizzaSelection[]>([]);
-  const variantId =
-    chosenVariant ||
-    pizza?.customization?.variants.find((v) => v.isActive)?.id ||
-    "";
-  const variant = pizza?.customization?.variants.find(
-    (v) => v.id === variantId && v.isActive,
-  );
-  const choicesValid =
-    (!secondHalfItemId || !!secondHalf) &&
-    (!pizza?.customization ||
-      (!!variant &&
-        pizza.customization.groups.every((g) => {
-          const selected =
-            selections.find((s) => s.groupId === g.id)?.optionIds ?? [];
-          return (
-            selected.length >= g.min &&
-            selected.length <= g.max &&
-            selected.every((id) =>
-              g.options.some(
-                (o) =>
-                  o.id === id &&
-                  o.isActive &&
-                  (!o.variantIds.length || o.variantIds.includes(variantId)),
-              ),
-            )
-          );
-        })));
-  const restoredUsual = useRef("");
-  const [savedMessage, setSavedMessage] = useState("");
-  useEffect(() => {
-    const key = new URLSearchParams(window.location.search).get("usual");
-    if (!key || !pizza || restoredUsual.current === `${id}:${key}`) return;
-    const usual = readUsualPizzas().find((p) => p.id === key);
-    if (!usual) return;
-    const timer = setTimeout(() => {
-      restoredUsual.current = `${id}:${key}`;
-      setSize(usual.size);
-      setExtras(usual.extras);
-      setChosenVariant(usual.variantId ?? "");
-      setSelections(usual.selections);
-      setSecondHalfItemId(
-        menuItems.find((p) => (p.pizzaId ?? p.id) === usual.secondHalfPizzaId)
-          ?.id ?? "",
-      );
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [id, menuItems, pizza]);
-  const [qty, setQty] = useState(1);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  const unit = useMemo(
-    () =>
-      pizza?.customization
-        ? ((variant?.priceCents ?? 0) +
-            pizza.customization.groups.reduce(
-              (sum, g) =>
-                sum +
-                g.options
-                  .filter((o) =>
-                    selections
-                      .find((s) => s.groupId === g.id)
-                      ?.optionIds.includes(o.id),
-                  )
-                  .reduce(
-                    (n, o) =>
-                      n +
-                      (o.priceOverrides?.find((p) => p.variantId === variantId)
-                        ?.priceCents ?? o.priceCents),
-                    0,
-                  ),
-              0,
-            )) /
-          100
-        : pizza
-          ? Math.max(
-              0,
-              (secondHalf
-                ? Math.round((pizza.price + secondHalf.price) * 50) / 100 + 1
-                : pizza.price) + (sizes.find((s) => s.id === size)?.delta ?? 0),
-            ) +
-            extras.reduce(
-              (sum, id) =>
-                sum + (extraOptions.find((e) => e.id === id)?.price ?? 0),
-              0,
-            )
-          : 0,
-    [
-      pizza,
-      secondHalf,
-      size,
-      extras,
-      sizes,
-      extraOptions,
-      variant,
-      selections,
-      variantId,
-    ],
-  );
-  const total = unit * qty;
-
-  if (isLoading && !pizza) {
-    return (
-      <FormScope>
-        <AppFrame padded={false}>
-          <div
-            className="h-dvh animate-pulse bg-card"
-            aria-label="Loading pizza details"
-          />
-        </AppFrame>
-      </FormScope>
-    );
-  }
+  if (!pizza && isLoading) return <PizzaDetailSkeleton backHref={fromFeatured ? "/home/" : "/menu/"} />;
 
   if (!pizza) {
     return (
-      <FormScope>
-        <AppFrame>
-          <Typography type="h2" className={hx.h2}>
-            {t("pizza.notFound")}
-          </Typography>
-          <div className="mt-6">
-            <Link
-              href="/menu/"
-              className={cn(
-                buttonVariants({ variant: "primary", fullWidth: true }),
-                hx.btnPrimary,
-              )}
-            >
-              {t("common.browseMenu")}
-            </Link>
-          </div>
-        </AppFrame>
-      </FormScope>
+      <AppFrame>
+        <p role="status">
+          {isLoading
+            ? language === "de"
+              ? "Wird geladen…"
+              : "Loading pizza details…"
+            : language === "de"
+              ? "Pizza nicht gefunden"
+              : "Pizza not found"}
+        </p>
+        {!isLoading && (
+          <Link href="/menu/">
+            {language === "de" ? "Zur Speisekarte" : "Back to menu"}
+          </Link>
+        )}
+      </AppFrame>
     );
   }
 
-  const fav = isFavorite(pizza.pizzaId ?? pizza.id);
-  const image = resolveProductImage(pizza);
+  const usual = usualPizzas.find((item) => item.id === usualId && item.pizzaId === (pizza.pizzaId ?? pizza.id));
+  const validUsualSelections = (usual?.selections ?? []).filter((selection) => {
+    const group = pizza.customization?.groups.find((item) => item.id === selection.groupId);
+    return !!group && selection.optionIds.every((optionId) => group.options.some((option) => option.id === optionId && option.isActive));
+  });
+  const usualIngredients = (usual?.extras ?? []).flatMap((ingredientId) => {
+    const ingredient = pizza.ingredientOptions?.find((option) => option.ingredientId === ingredientId);
+    return ingredient ? [{ ingredientId, action: ingredient.includedByDefault ? "remove" as const : "add" as const }] : [];
+  });
+  const activeSelections = selections ?? validUsualSelections;
+  const activeIngredientChanges = ingredientState.id === id && ingredientState.changes !== null
+    ? ingredientState.changes
+    : usualIngredients;
 
-  const saveUsual = () => {
-    const label = pizza.customization
-      ? [
-          variant?.name,
-          ...pizza.customization.groups.flatMap((g) =>
-            g.options
-              .filter((o) =>
-                selections
-                  .find((s) => s.groupId === g.id)
-                  ?.optionIds.includes(o.id),
-              )
-              .map((o) => o.name),
-          ),
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : [size, ...extras].join(" · ");
-    const ok = saveUsualPizza({
-      pizzaId: pizza.pizzaId ?? pizza.id,
-      name: secondHalf ? `${pizza.name} / ${secondHalf.name}` : pizza.name,
-      secondHalfPizzaId: secondHalf
-        ? (secondHalf.pizzaId ?? secondHalf.id)
-        : undefined,
-      size,
-      extras,
-      variantId: pizza.customization ? variantId : undefined,
-      selections,
-      label,
-    });
-    setSavedMessage(
-      ok
-        ? language === "de"
-          ? "In deinen Kombinationen gespeichert"
-          : "Saved to your usuals"
-        : language === "de"
-          ? "Speichern nicht verfügbar"
-          : "Storage is unavailable",
-    );
-  };
-  const add = () => {
-    addItem({
-      menuItemId: pizza.id,
-      secondHalfItemId: secondHalf?.id,
-      variantId: pizza.customization ? variantId : undefined,
-      selections: pizza.customization
-        ? [...selections]
-            .sort((a, b) => a.groupId.localeCompare(b.groupId))
-            .map((s) => ({ ...s, optionIds: [...s.optionIds].sort() }))
-        : undefined,
-      selectionLabels: pizza.customization
-        ? [
-            variant?.name ?? "",
-            ...pizza.customization.groups.flatMap((g) =>
-              g.options
-                .filter((o) =>
-                  selections
-                    .find((s) => s.groupId === g.id)
-                    ?.optionIds.includes(o.id),
-                )
-                .map((o) => `${g.name}: ${o.name}`),
-            ),
-          ]
-        : undefined,
-      menuVersion: fromApi ? menuVersion : 0,
-      name: secondHalf ? `${pizza.name} / ${secondHalf.name}` : pizza.name,
-      size,
-      extras,
-      quantity: qty,
-      unitPrice: unit,
-      image,
-    });
-    startAdding(() => router.push("/cart/"));
-  };
+  const sizeOptions = pizza.customization
+    ? pizza.customization.variants
+        .filter((variant) => variant.isActive)
+        .map((variant) => ({
+          id: variant.id,
+          label: variant.name,
+          price: variant.priceCents / 100,
+        }))
+    : sizes.map((size) => ({
+        id: size.id,
+        label: size.label,
+        price: Math.max(0, pizza.price + size.delta),
+      }));
+  const defaultSize =
+    sizeOptions.find((size) => /^(medium|m|mittel)$/i.test(size.label)) ??
+    sizeOptions[0];
+  const usualSize = usual?.variantId ?? (!pizza.customization ? usual?.size : undefined);
+  const selectedSize = sizeOptions.find((size) => sizeChoice?.pizzaId === id && size.id === sizeChoice.sizeId)
+    ?? sizeOptions.find((size) => size.id === usualSize)
+    ?? defaultSize;
+  const hasMultipleSizes = sizeOptions.length > 1;
+  const selectedIndex = Math.max(
+    0,
+    sizeOptions.findIndex((size) => size.id === selectedSize?.id),
+  );
+  const options = pizzaOptions(
+    pizza.customization,
+    selectedSize?.id ?? "",
+    activeSelections,
+  );
+  const ingredientOptions = pizza.ingredientOptions ?? [];
+  const ingredientChanges = activeIngredientChanges.filter(change => ingredientOptions.some(option => option.ingredientId === change.ingredientId && change.action === (option.includedByDefault ? 'remove' : 'add')));
+  const ingredientExtra = ingredientChanges.reduce((sum, change) => sum + (change.action === 'add' ? ingredientOptions.find(o => o.ingredientId === change.ingredientId)?.priceCents ?? 0 : 0), 0) / 100;
+  const ingredientLabels = ingredientChanges.map(change => `${change.action === 'add' ? (language === 'de' ? 'Extra' : 'Add') : (language === 'de' ? 'Ohne' : 'No')} ${ingredientOptions.find(o => o.ingredientId === change.ingredientId)?.name ?? ''}`);
+  const displayPrice =
+    (selectedSize?.price ?? pizza.price) + options.extraPrice + ingredientExtra;
+  const favoriteId = pizza.pizzaId ?? pizza.id;
+  const fav = isFavorite(favoriteId);
+  const image = resolveProductImage(pizza);
+  const { rating, reviewCount } = reviewMetrics(pizza.presentation);
+
+  const discountField = pizza.presentation?.fields.find(({ name }) =>
+    ["discountpercent", "discountpercentage", "discount"].includes(
+      name.toLowerCase().replace(/[^a-z]/g, ""),
+    ),
+  );
+  const discountValue = Number(discountField?.value.trim().replace(/%$/, ""));
+  const discountPercent =
+    Number.isFinite(discountValue) && discountValue > 0 && discountValue <= 100
+      ? discountValue
+      : null;
+
+  const description = pizzaDescription(pizza, language);
+  const cookingTimeField =
+    pizza.presentation?.fields.find(({ name }) =>
+      ["cookingtime", "preparationtime", "preptime"].includes(
+        name.toLowerCase().replace(/[^a-z]/g, ""),
+      ),
+    )?.value;
+  const cookingTime = typeof pizza.cookTimeSeconds === "number" && Number.isFinite(pizza.cookTimeSeconds) && pizza.cookTimeSeconds > 0
+    ? `${Math.max(1, Math.ceil(pizza.cookTimeSeconds / 60))} ${language === "de" ? "Min." : "min"}`
+    : cookingTimeField || (language === "de" ? "Beim Checkout bestätigt" : "Confirmed at checkout");
+  const category =
+    categories.find(({ id }) => id === pizza.categoryId)?.name ||
+    pizza.presentation?.fields.find(({ name }) =>
+      /^(food ?category|category)$/i.test(name),
+    )?.value ||
+    (pizza.categoryId
+      ? language === "de"
+        ? "Nicht angegeben"
+        : "Not provided"
+      : "Pizza");
 
   return (
-    <FormScope>
-      <AppFrame padded={false} className="!pb-32">
-        <section
-          className="relative isolate h-[min(46dvh,420px)] min-h-[300px] overflow-hidden bg-accent/15"
-          aria-label={pizza.name}
-        >
-          <ProductImage
-            src={selectedImage ?? image}
-            alt={pizza.name}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,color-mix(in_oklab,var(--background)_25%,transparent),transparent_35%,var(--background)_100%)]" />
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[max(24px,env(safe-area-inset-top))]">
-            <IconBadgeButton
-              aria-label="Back"
-              onPress={() => router.back()}
-              className="bg-surface text-foreground shadow-sm"
-            >
-              <ArrowLeft size={20} />
-            </IconBadgeButton>
-            <div className="flex gap-2">
-              <IconBadgeButton
-                aria-label={
-                  fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
-                }
-                onPress={() => toggleFavorite(pizza.pizzaId ?? pizza.id)}
-                className="bg-surface text-foreground shadow-sm"
-              >
-                <Heart
-                  size={18}
-                  fill={fav ? "var(--danger)" : "transparent"}
-                  color={fav ? "var(--danger)" : "var(--foreground)"}
-                />
-              </IconBadgeButton>
-              <IconBadgeButton
-                href="/cart/"
-                aria-label="Cart"
-                badge={count}
-                className="bg-surface text-foreground shadow-sm"
-              >
-                <ShoppingBag size={18} />
-              </IconBadgeButton>
-            </div>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-6 pb-14">
-            <div className="min-w-0">
-              <Typography
-                type="h1"
-                className="text-[clamp(32px,9vw,44px)] leading-[1.08] font-extrabold tracking-tight text-foreground"
-              >
-                {pizza.name}
-              </Typography>
-              <Typography type="body-sm" className="mt-3 text-foreground/80">
-                {pizzaTagline(pizza, language)}
-              </Typography>
-            </div>
-            {!!pizza.presentation?.gallery.length && (
-              <div className="flex max-h-64 shrink-0 flex-col gap-2 overflow-y-auto">
-                {[...new Set([image, ...pizza.presentation.gallery])].map(
-                  (src, index) => (
-                    <button
-                      key={src}
-                      type="button"
-                      aria-label={`View ${pizza.name} photo ${index + 1}`}
-                      aria-pressed={(selectedImage ?? image) === src}
-                      onClick={() => setSelectedImage(src)}
-                      className={cn(
-                        "size-16 overflow-hidden rounded-2xl border-2 focus-visible:outline-2 focus-visible:outline-accent",
-                        (selectedImage ?? image) === src
-                          ? "border-accent"
-                          : "border-border",
-                      )}
-                    >
-                      <ProductImage
-                        src={src}
-                        alt=""
-                        className="size-full object-cover"
-                      />
-                    </button>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-        <div className="relative z-10 -mt-7 flex-1 rounded-t-[32px] bg-surface px-6 pt-7 pb-10 text-foreground">
-          <div className="grid grid-cols-3 gap-3 border-b border-border pb-6 text-center">
-            <div>
-              <Typography type="body-xs" className="text-muted">
-                {language === "de" ? "Preis" : "Price"}
-              </Typography>
-              <AppText
-                as="span"
-                className="mt-2 block font-bold text-foreground"
-              >
-                <AnimatedNumber currency value={unit} />
-              </AppText>
-            </div>
-            <div>
-              <Typography type="body-xs" className="text-muted">
-                {t("common.delivery")}
-              </Typography>
-              <AppText
-                as="span"
-                className="mt-2 flex items-center justify-center gap-1 font-bold text-foreground"
-              >
-                <Truck size={14} />
-                <AnimatedNumber currency value={baseDeliveryFee} />
-              </AppText>
-            </div>
-            <div>
-              <Typography type="body-xs" className="text-muted">
-                {t("pizza.quantity")}
-              </Typography>
-              <AppText
-                as="span"
-                className="mt-2 block font-bold text-foreground"
-              >
-                <AnimatedNumber value={qty} />
-              </AppText>
-            </div>
-          </div>
-          {isOffline && (
-            <Typography type="body-xs" className="mt-4 text-muted">
-              {language === "de"
-                ? "Gespeicherte Karte. Preise werden vor der Zahlung geprüft."
-                : "Saved menu. Prices will be checked before payment."}
-            </Typography>
-          )}
-          <Typography type="h2" className="mt-6 text-xl font-bold">
-            {language === "de" ? "Über diese Pizza" : "About this pizza"}
-          </Typography>
-          {!!pizza.presentation?.fields.length && (
-            <dl className="mt-4 grid gap-2">
-              {pizza.presentation.fields.map((f, index) => (
-                <div key={index} className="flex justify-between gap-4 text-sm">
-                  <dt className="font-semibold">{f.name}</dt>
-                  <dd>
-                    {f.type === "boolean"
-                      ? f.value === "true"
-                        ? "Yes"
-                        : "No"
-                      : f.value}
-                  </dd>
+    <AppFrame
+      padded={false}
+      className={`${styles.page} ${adding ? styles.adding : ""}`}
+    >
+      <div
+        ref={hero}
+        inert={adding}
+        className={`${styles.hero} ${hasMultipleSizes ? styles.sizeHero : ""} ${ingredientOptions.length ? styles.customizableHero : ''}`}
+      >
+        {!!ingredientOptions.length && <ToppingStudio key={`${id}:${menuVersion}`} heroId={heroId} name={pizza.name} image={image} baseImage={pizza.toppingBaseImageUrl} options={ingredientOptions} changes={ingredientChanges} onChange={changes => setIngredientState({ id, changes })} language={language} scale={.86 + selectedIndex / Math.max(1, sizeOptions.length - 1) * .22} />}
+        {hasMultipleSizes ? (
+          <>
+            <div className={styles.pizzaStage} hidden={!!ingredientOptions.length}>
+              <PageHero id={ingredientOptions.length ? `inactive-${heroId}` : heroId}>
+                <div
+                  className={`${styles.sizedPizza} t-resize`}
+                  style={{
+                    width: `${56 + (selectedIndex / Math.max(1, sizeOptions.length - 1)) * 16}cqw`,
+                    height: `${56 + (selectedIndex / Math.max(1, sizeOptions.length - 1)) * 16}cqw`,
+                    rotate: `${(selectedIndex - 1) * 12}deg`,
+                  }}
+                >
+                  <ProductImage
+                    src={resolveProductImage(pizza)}
+                    alt={pizza.name}
+                    className={styles.pizzaSizeImage}
+                  />
                 </div>
-              ))}
-            </dl>
-          )}
-          <Typography
-            type="body"
-            className="mt-4 text-[14px] leading-6 text-muted"
-          >
-            {pizzaDescription(pizza, language)}
-          </Typography>
-          <div className="mt-5 rounded-2xl border border-current/15 p-4 text-sm">
-            <AppText as="h2" className="font-bold">
-              {language === "de" ? "Allergene" : "Allergens"}
-            </AppText>
-            <AppText as="p" className="mt-2">
-              {pizza.allergens?.length
-                ? pizza.allergens.join(", ")
-                : language === "de"
-                  ? "Angaben noch nicht verfügbar. Kontaktiere Yespizz vor der Bestellung, wenn du Allergien hast."
-                  : "Details are not available yet. Contact Yespizz before ordering if you have food allergies."}
-            </AppText>
-          </div>
-
-          <Typography
-            type="h6"
-            className="mt-7 mb-3 text-[18px] font-extrabold text-foreground"
-          >
-            {t("pizza.ingredients")}
-          </Typography>
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-            {pizzaIngredients(pizza, language).map((ingredient, index) => (
-              <div key={ingredient} className="w-[78px] shrink-0 text-center">
-                <AppText
-                  as="span"
-                  className="mx-auto flex size-16 items-center justify-center rounded-full bg-surface-secondary text-[24px] shadow-sm"
-                >
-                  {["🍅", "🧀", "🌿", "🫒", "🌶️"][index % 5]}
-                </AppText>
-                <AppText
-                  as="span"
-                  className="mt-2 block line-clamp-2 text-[11px] font-bold text-foreground"
-                >
-                  {ingredient}
-                </AppText>
-              </div>
-            ))}
-          </div>
-
-          {pizza.customization ? (
-            <PizzaChoices
-              config={pizza.customization}
-              variantId={variantId}
-              selections={selections}
-              onChange={(id, values) => {
-                setChosenVariant(id);
-                setSelections(values);
-              }}
+              </PageHero>
+            </div>
+            <div className={styles.sizeOrbit} role="radiogroup" aria-label={language === "de" ? "Pizzagröße" : "Pizza size"}>
+              {sizeOptions.map((size, index) => {
+                const angle = Math.PI * (0.25 + 0.5 * index / (sizeOptions.length - 1));
+                const short = /^(small|klein|s)$/i.test(size.label) ? "S" : /^(medium|mittel|m)$/i.test(size.label) ? "M" : /^(large|groß|l)$/i.test(size.label) ? "L" : size.label;
+                return <label key={size.id} className={styles.sizeOption} style={{left: `${50 - 50 * Math.cos(angle)}%`, top: `${50 + 50 * Math.sin(angle)}%`}} title={`${size.label} · ${new Intl.NumberFormat(locale, currencyFormat).format(size.price)}`}>
+                  <input type="radio" name={sizeGroupId} checked={selectedSize?.id === size.id} disabled={adding} aria-label={size.label} onChange={() => { setSizeChoice({pizzaId: id, sizeId: size.id}); setSelections([]); }} />
+                  <span>{short}</span>
+                </label>;
+              })}
+            </div>
+          </>
+        ) : !ingredientOptions.length ? (
+          <PageHero id={heroId}>
+            <ProductImage
+              src={image}
+              alt={pizza.name}
+              className={styles.heroImage}
             />
-          ) : (
-            <>
-              <RadioField
-                name="size"
-                label={t("pizza.chooseSize")}
-                required
-                value={size}
-                onChange={(v) => setSize(v as typeof size)}
-                options={sizes.map((s) => ({
-                  id: s.id,
-                  label: `${t(`size.${s.id}`)} · ${formatPrice((secondHalf ? Math.round((pizza.price + secondHalf.price) * 50) / 100 + 1 : pizza.price) + s.delta)}`,
-                }))}
-              />
-              {fromApi && (
-                <label className="my-5 block text-sm font-semibold">
-                  {language === "de" ? "Halb & Halb" : "Half & half"}
-                  <select
-                    value={secondHalfItemId}
-                    onChange={(e) => setSecondHalfItemId(e.target.value)}
-                    className="mt-2 min-h-12 w-full rounded-xl border border-border bg-surface-secondary px-3"
-                  >
-                    <option value="">
-                      {language === "de" ? "Eine Sorte" : "One favourite"}
-                    </option>
-                    {menuItems
-                      .filter((p) => p.id !== pizza.id && !p.customization)
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </select>
-                  <small className="mt-2 block font-normal leading-5 text-muted">
-                    {language === "de"
-                      ? "Durchschnitt beider Grundpreise + 1 €. Größe und Extras zusätzlich."
-                      : "Average of both base prices + €1. Size and extras are added."}
-                  </small>
-                  {secondHalf && (
-                    <small className="mt-2 block font-normal text-warning">
-                      {language === "de"
-                        ? "Zusätzliche Allergene: "
-                        : "Second-half allergens: "}
-                      {secondHalf.allergens?.length
-                        ? secondHalf.allergens.join(", ")
-                        : language === "de"
-                          ? "Nicht angegeben — bitte nachfragen"
-                          : "Not supplied — please ask before ordering"}
-                    </small>
-                  )}
-                </label>
-              )}
-              <CheckboxGroupField
-                name="extras"
-                label={t("pizza.addExtras")}
-                value={extras}
-                onChange={setExtras}
-                options={extraOptions.map((extra) => ({
-                  id: extra.id,
-                  label: `${t(`extra.${extra.id}`)} +${formatPrice(extra.price)}`,
-                }))}
-              />
-            </>
-          )}
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 rounded-[24px] bg-surface-secondary p-4">
-            <Typography
-              type="h6"
-              className="text-[17px] font-extrabold text-foreground"
+          </PageHero>
+        ) : null}
+        <FlowReveal variant="detail">
+          <ScrollHeader className={styles.header}>
+            <IconBadgeButton
+              aria-label={fromFeatured ? "Back to home" : "Back to menu"}
+              href={fromFeatured ? "/home/" : "/menu/"}
+              className={styles.iconButton}
             >
-              {t("pizza.quantity")}
-            </Typography>
-            <span className="inline-flex">
-              <Stepper value={qty} onChange={setQty} max={99} />
-            </span>
+              <ChevronLeft size={23} />
+            </IconBadgeButton>
+            <span>Details</span>
+            <IconBadgeButton
+              aria-label={
+                fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
+              }
+              aria-pressed={fav}
+              onPress={() => toggleFavorite(favoriteId)}
+              className={styles.iconButton}
+            >
+              <Bookmark size={23} fill={fav ? "currentColor" : "none"} />
+            </IconBadgeButton>
+          </ScrollHeader>
+        </FlowReveal>
+        {discountPercent !== null && (
+          <div className={styles.discountFlag}>
+            <PercentageCircle size={26} aria-hidden="true" />
+            <SlidingNumber
+              value={discountPercent}
+              locale={locale}
+              suffix={language === "de" ? "% RABATT" : "% OFF"}
+            />
           </div>
-        </div>
-
-        {fromApi && <PizzaComments id={pizza.id} language={language} />}
-
-        <div className="px-6 pb-5">
+        )}
+      </div>
+        <section
+          className={styles.sheet}
+          aria-labelledby="pizza-title"
+          inert={adding}
+        >
+          <svg
+            className={styles.sheetCurve}
+            viewBox="0 0 558 144"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              d="M0 144 V132 C0 89 22 72 72 72 H220 C272 72 273 0 342 0 H486 C537 0 558 16 558 72 V144 Z"
+              fill="currentColor"
+            />
+          </svg>
+          <FlowReveal variant="detail" step={2}><div className={styles.delivery}>
+            <div
+              className={styles.reviews}
+              aria-label={rating === null ? (language === "de" ? "Noch keine Bewertungen" : "No reviews yet") : undefined}
+            >
+              {rating !== null && <><Star size={18} aria-hidden="true" />
+                <SlidingNumber
+                  value={rating}
+                  locale={locale}
+                  format={{
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  }}
+                />
+              </>}
+              <span className={styles.reviewCount}>
+                {reviewCount !== null && <>({
+                  <SlidingNumber
+                    value={reviewCount}
+                    locale={locale}
+                    format={{ notation: "compact", maximumFractionDigits: 1 }}
+                  />
+                } {language === "de" ? "Bewertungen" : "reviews"})</>}
+                {reviewCount === null && (language === "de" ? "Noch keine Bewertungen" : "No reviews yet")}
+              </span>
+            </div>
+          </div></FlowReveal>
+          <FlowReveal variant="detail" step={3}>
+            <h1 id="pizza-title" className={styles.title}>
+              {pizza.name}
+            </h1>
+          </FlowReveal>
+          <p className={styles.allergens}>
+            <strong>{language === "de" ? "Allergene:" : "Allergens:"}</strong>{" "}
+            {pizza.allergens?.length
+              ? pizza.allergens.join(", ")
+              : language === "de"
+                ? "Bitte frage unser Team nach aktuellen Allergeninformationen."
+                : "Please ask our team for current allergen information."}
+          </p>
+          <FlowReveal variant="detail" step={4}>
+            <div className={styles.price}>
+              <SlidingNumber
+                value={displayPrice}
+                locale={locale}
+                format={currencyFormat}
+              />
+            </div>
+          </FlowReveal>
+          <FlowReveal variant="detail" step={5}>
+            <PizzaDescription key={description} text={description} language={language} />
+          </FlowReveal>
+          <FlowReveal variant="detail" step={6}>
+            <dl className={styles.facts}>
+              <div className={styles.fact}>
+                <span className={styles.factIcon}>
+                  <Clock size={22} aria-hidden="true" />
+                </span>
+                <div>
+                  <dt>
+                    {language === "de" ? "Zubereitungszeit" : "Cooking Time"}
+                  </dt>
+                  <dd>{cookingTime}</dd>
+                </div>
+              </div>
+              <div className={styles.fact}>
+                <span className={styles.factIcon}>
+                  <TakeoutFood size={22} aria-hidden="true" />
+                </span>
+                <div>
+                  <dt>{language === "de" ? "Kategorie" : "Food Category"}</dt>
+                  <dd>{category}</dd>
+                </div>
+              </div>
+            </dl>
+          </FlowReveal>
+          <ProductOptions
+            hideSizes
+            sizes={sizeOptions}
+            sizeId={selectedSize?.id ?? ""}
+            onSize={sizeId => { setSizeChoice({ pizzaId: id, sizeId }); setSelections([]); }}
+            config={pizza.customization}
+            selections={activeSelections}
+            onSelections={(next) => setSelections(next)}
+            language={language}
+            disabled={adding}
+          />
           <button
             type="button"
-            disabled={!choicesValid}
-            onClick={saveUsual}
-            className="min-h-12 w-full rounded-full border border-border px-5 text-sm font-semibold disabled:opacity-50"
+            className={styles.saveUsual}
+            onClick={() => {
+              const size = /small|klein|^s$/i.test(selectedSize?.label ?? "") ? "small" : /large|groß|^l$/i.test(selectedSize?.label ?? "") ? "large" : "medium";
+              setUsualSaved(saveUsualPizza({ pizzaId: pizza.pizzaId ?? pizza.id, name: pizza.name, size, extras: ingredientChanges.map((change) => change.ingredientId), variantId: pizza.customization ? selectedSize?.id : undefined, selections: activeSelections, label: [selectedSize?.label, ...options.labels, ...ingredientLabels].filter(Boolean).join(" · ") }));
+            }}
           >
-            {language === "de"
-              ? "Als meine Kombination speichern"
-              : "Save as my usual"}
+            {usualSaved ? (language === "de" ? "Übliche Auswahl gespeichert" : "Usual saved") : (language === "de" ? "Als meine übliche Auswahl speichern" : "Save as my usual")}
           </button>
-          {savedMessage && (
-            <p role="status" className="mt-3 text-center text-sm text-muted">
-              {savedMessage}
+          <span className="sr-only" role="status" aria-live="polite">{usualSaved ? (language === "de" ? "Übliche Auswahl gespeichert" : "Usual saved") : ""}</span>
+          {!options.valid && (
+            <p className={styles.choiceHint} role="status">
+              {language === "de"
+                ? "Bitte wähle die erforderlichen Optionen."
+                : "Choose the required options to add your pizza."}
             </p>
           )}
-        </div>
-        <MobileActionBar
-          expandingArrow
-          isPending={adding}
-          onPress={add}
-          isDisabled={!choicesValid}
-          icon={<ShoppingBag size={20} />}
-          className="!bg-surface"
-          label={
-            <span className="flex items-center justify-center gap-2">
-              <AppText as="span">{t("pizza.addToCart")}</AppText>
-              <AppText
-                as="span"
-                className="text-[13px] font-semibold text-muted"
-              >
-                <AnimatedNumber currency value={total} />
-              </AppText>
-            </span>
-          }
-        />
-      </AppFrame>
-    </FormScope>
+          <PizzaComments id={id} language={language} rating={rating} reviewCount={reviewCount} />
+        </section>
+      <AddToCart
+        key={id}
+        hero={hero}
+        onAnimating={setAdding}
+        valid={options.valid && !isLoading}
+        item={{
+          menuItemId: pizza.id,
+          menuVersion,
+          name: pizza.name,
+          variantId: pizza.customization ? selectedSize?.id : undefined,
+          selections: pizza.customization ? activeSelections : undefined,
+          selectionLabels: [
+            selectedSize?.label ?? "",
+            ...options.labels,
+            ...ingredientLabels,
+          ].filter(Boolean),
+          size:
+            !pizza.customization && (selectedSize?.id === "small" || selectedSize?.id === "large")
+              ? selectedSize.id
+              : "medium",
+          extras: [],
+          ingredientChanges,
+          unitPrice: displayPrice,
+          image,
+        }}
+      />
+    </AppFrame>
   );
 }

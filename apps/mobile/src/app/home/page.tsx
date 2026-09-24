@@ -1,34 +1,25 @@
 "use client";
-import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { HomeBanners } from "@/components/HomeBanners";
+import { HomeHeader } from "@/components/HomeHeader";
+import { FlowReveal } from "@/components/motion/FlowReveal";
 
-import { ReferenceHeader } from "@/components/ReferenceHeader";
+import { FoodCategorySection } from "@/components/FoodCategorySection";
 import { UsualPizzas } from "@/components/UsualPizzas";
-import { AppText } from "@/components/Text";
 
-import { Button, Typography } from "@heroui/react";
-import {
-  Bookmark,
-  MapPin,
-  Search,
-  Heart,
-  Pizza,
-  Leaf,
-  Crown1,
-  MenuGrid,
-  Fire1,
-} from "@repo/icons";
+import { Typography } from "@heroui/react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { HomeOrderCard } from "@/components/HomeOrderCard";
+import { HomeOrderCard, LastOrderRail } from "@/components/HomeOrderCard";
 import { AppFrame } from "@/components/AppFrame";
-import { IconBadgeButton } from "@/components/IconBadgeButton";
 import { useApp } from "@/context/AppContext";
-import { ProductCard } from "@/features/catalog/components/ProductCard";
-import { ProductImage } from "@/features/catalog/components/ProductImage/ProductImage";
+import { MenuPizzaCard, MenuPizzaCardSkeleton } from "@/features/catalog/components/MenuPizzaCard";
+import { ComboMenuCard } from "@/features/catalog/components/ComboMenuCard";
+import pizzaStyles from "@/features/catalog/components/PizzaBrowse.module.css";
 import { useMenuCatalog, type CatalogPizza } from "@/lib/catalog";
 import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
+import { Users, Gift, ArrowUpRight } from "lucide-react";
 
 const CATEGORIES = [
   "All",
@@ -90,63 +81,97 @@ function filterByCategory(
 }
 
 export default function HomePage() {
-  const { t, language, addresses, selectedAddressId } = useApp();
-  const address = addresses.find((entry) => entry.id === selectedAddressId);
+  const { t, language } = useApp();
+  const [search, setSearch] = useState("");
   const { items, fromApi, isOffline, isLoading } = useMenuCatalog();
   const [cat, setCat] = useState<(typeof CATEGORIES)[number]>("All");
 
-  const list = useMemo(
-    () => filterByCategory(items, cat, fromApi),
-    [items, cat, fromApi],
+  const combos = useMemo(
+    () => items.filter((item) => item.comboComponents?.length),
+    [items],
   );
-  const featured = list[0] ?? null;
+  const pizzas = useMemo(
+    () => items.filter((item) => !item.comboComponents?.length),
+    [items],
+  );
+
+  const list = useMemo(
+    () =>
+      filterByCategory(pizzas, cat, fromApi).filter((pizza) =>
+        [pizza.name, ...pizza.ingredients, ...pizza.tags]
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(search.trim().toLocaleLowerCase()),
+      ),
+    [pizzas, cat, fromApi, search],
+  );
+  const matchingCombos = useMemo(
+    () =>
+      combos.filter((combo) =>
+        [
+          combo.name,
+          combo.description,
+          ...(combo.comboComponents?.map((component) => component.name) ?? []),
+        ]
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(search.trim().toLocaleLowerCase()),
+      ),
+    [combos, search],
+  );
 
   return (
     <AppFrame withTabs className="reference-screen home-screen">
-      <ReferenceHeader />
-      <header className="browse-hero">
-        <div className="flex items-center justify-between gap-3">
-          <Link href="/addresses/" className="home-delivery min-w-0 flex-1">
-            <MapPin size={18} />
-            <span className="min-w-0">
-              <small>{t("home.deliveryLabel")}</small>
-              <strong>{address?.detail || t("home.addAddress")}</strong>
-            </span>
-          </Link>
-          <IconBadgeButton href="/saved/" aria-label={t("home.savedLabel")}>
-            <Bookmark size={19} />
-          </IconBadgeButton>
-        </div>
-        <Typography type="h1" className="mt-5 font-extrabold">
-          {t("home.orderHeading")}
-        </Typography>
-      </header>
-      <Link href="/menu/" className="home-search mt-4">
-        <Search size={20} />
-        <span>{t("home.search")}</span>
-      </Link>
-      <nav className="mt-4 flex gap-2" aria-label="More ways to enjoy pizza">
+      <FlowReveal>
+        <HomeHeader search={search} onSearchChange={setSearch} />
+      </FlowReveal>
+      <FlowReveal step={2}>
+        <HomeBanners
+          key={`${cat}:${search}`}
+          pizzas={list.slice(0, 5)}
+          loading={isLoading}
+        />
+      </FlowReveal>
+      <nav className="mt-5 grid grid-cols-2 gap-3" aria-label="More ways to enjoy pizza">
         <Link
           href="/group/"
-          className="data-surface flex min-h-11 flex-1 items-center justify-center rounded-full px-3 text-xs font-semibold"
+          className="home-shortcut"
         >
+          <Users aria-hidden="true" /><ArrowUpRight className="home-shortcut-arrow" aria-hidden="true" />
           {language === "de" ? "Zusammen bestellen" : "Pizza together"}
         </Link>
         <Link
           href="/rewards/"
-          className="data-surface flex min-h-11 flex-1 items-center justify-center rounded-full px-3 text-xs font-semibold"
+          className="home-shortcut"
         >
+          <Gift aria-hidden="true" /><ArrowUpRight className="home-shortcut-arrow" aria-hidden="true" />
           {language === "de" ? "Prämien & Plus" : "Rewards & Plus"}
         </Link>
-        <Link
-          href="/bundles/"
-          className="data-surface flex min-h-11 flex-1 items-center justify-center rounded-full px-3 text-xs font-semibold"
-        >
-          {language === "de" ? "Pizza-Pakete" : "Pizza packs"}
-        </Link>
       </nav>
+      {(isLoading || matchingCombos.length > 0) && (
+        <section className="mt-6" aria-labelledby="home-combos-title">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.16em] text-muted">{language === "de" ? "Mehr zusammen" : "Better together"}</p>
+              <Typography id="home-combos-title" type="h3" className={hx.h3}>{language === "de" ? "Unsere Combos" : "Our combos"}</Typography>
+            </div>
+            <Link href="/bundles/" className="inline-flex min-h-11 items-center px-3 text-[13px] font-semibold text-muted">{language === "de" ? "Alle ansehen" : "See all"}</Link>
+          </div>
+          <div className="home-combo-rail">
+            {isLoading && !matchingCombos.length
+              ? Array.from({ length: 2 }, (_, index) => <div key={index} className="home-combo-skeleton" />)
+              : matchingCombos.map((combo) => <ComboMenuCard key={combo.id} combo={combo} products={pizzas} language={language} />)}
+          </div>
+        </section>
+      )}
+      <section className="pizza-night-banner mt-6 overflow-hidden rounded-[30px] p-6 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[.18em]">{language === "de" ? "Heute frisch" : "Made for tonight"}</p>
+        <h2 className="mt-2 max-w-[16ch] text-3xl font-extrabold leading-tight">{language === "de" ? "Dein Lieblingsabend beginnt hier." : "Your best pizza night starts here."}</h2>
+        <Link href="/menu/" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-bold text-accent-foreground">{language === "de" ? "Menü entdecken" : "Explore the menu"}</Link>
+      </section>
       <UsualPizzas />
       <HomeOrderCard />
+      <LastOrderRail />
       {isOffline ? (
         <div className="mt-4 rounded-[18px] border border-warning/40 bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-4 py-3">
           <Typography type="body-xs" className={cn(hx.caption, "text-warning")}>
@@ -155,103 +180,47 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      <div className="category-illustrations" aria-label="Pizza categories">
-        {CATEGORIES.map((c) => (
-          <Button
-            key={c}
-            data-id={c}
-            aria-pressed={cat === c}
-            variant={cat === c ? "primary" : "secondary"}
-            className="category-illustration"
-            onPress={() => setCat(c)}
-          >
-            {(() => {
-              const Icon = {
-                All: MenuGrid,
-                Popular: Heart,
-                Classic: Pizza,
-                Spicy: Fire1,
-                Veggie: Leaf,
-                Premium: Crown1,
-              }[c];
-              return <Icon size={24} />;
-            })()}
-            <AppText as="span">{t(`category.${c}`)}</AppText>
-          </Button>
-        ))}
-      </div>
+      <FoodCategorySection
+        categories={CATEGORIES.map((id) => {
+          const categoryPizzas = filterByCategory(pizzas, id, fromApi);
+          return {
+            id,
+            label: t(`category.${id}`),
+            count: categoryPizzas.length,
+            image: categoryPizzas[0]?.imageUrl || categoryPizzas[0]?.image || "",
+          };
+        })}
+        selected={cat}
+        onSelect={(id) => setCat(id as (typeof CATEGORIES)[number])}
+        language={language}
+        loading={isLoading}
+      />
 
-      {featured ? (
-        <Link
-          href={`/pizza/?id=${encodeURIComponent(featured.id)}`}
-          className="product-showcase relative mt-6 block overflow-hidden rounded-[36px] transition-transform active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-focus"
-        >
-          <div className="absolute top-5 left-5 z-10 rounded-full bg-accent px-4 py-2 text-[12px] font-bold text-accent-foreground">
-            {cat === "All" ? t("home.featuredLabel") : t(`category.${cat}`)}
-          </div>
-          <div className="home-featured-image grid h-[200px] place-items-center px-8 pb-2 pt-12">
-            <ProductImage
-              src={featured.imageUrl || featured.image}
-              alt={featured.name}
-              className="product-showcase-image aspect-square h-full max-w-full rounded-full object-contain"
-            />
-          </div>
-          <div className="product-showcase-caption flex items-end justify-between gap-3 px-5 py-5">
-            <div className="min-w-0">
-              <Typography
-                type="h2"
-                className={cn(hx.h2, "text-[24px] text-balance")}
-              >
-                {featured.name}
-              </Typography>
-              <Typography type="body-sm" className={cn(hx.bodySm, "mt-1")}>
-                {t("home.choosePizza")}
-              </Typography>
-            </div>
-            <AppText
-              as="span"
-              className="shrink-0 rounded-full bg-accent px-4 py-2 text-[14px] font-extrabold text-accent-foreground"
-            >
-              <AnimatedNumber currency value={featured.price} />
-            </AppText>
-          </div>
-        </Link>
-      ) : isLoading ? (
-        <div
-          className="mt-6 h-[390px] animate-pulse rounded-[44px] bg-card"
-          aria-label="Loading pizzas"
-        />
-      ) : (
-        <div className="mt-6 rounded-[30px] border border-border p-6 text-center">
-          <Typography type="h3" className={hx.h3}>
-            {t("home.noCategoryResults")}
-          </Typography>
-          <Link
-            href="/menu/"
-            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-5 text-[14px] font-bold text-accent-foreground"
-          >
-            Try the menu
-          </Link>
-        </div>
-      )}
-
-      {list.length > 1 ? (
+      {isLoading || list.length > 0 ? (
         <section className="mt-8 pb-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <Typography type="h3" className={hx.h3}>
-              Popular pizzas
+              {language === "de" ? "Unsere Pizzen" : "Our pizzas"}
             </Typography>
             <Link
               href="/menu/"
-              className="text-[13px] font-semibold text-muted"
+              className="relative z-10 inline-flex min-h-11 items-center px-3 text-[13px] font-semibold text-muted"
             >
-              See all
+              {language === "de" ? "Alle ansehen" : "See all"}
             </Link>
           </div>
-          <div className="home-pizza-rail">
-            {list.slice(1, 5).map((pizza) => (
-              <ProductCard key={pizza.id} pizza={pizza} variant="grid" />
-            ))}
+          <div className={cn(pizzaStyles.grid, pizzaStyles.homeGrid)} aria-busy={isLoading}>
+            {isLoading && list.length === 0
+              ? Array.from({ length: 4 }, (_, index) => (
+                  <MenuPizzaCardSkeleton key={index} />
+                ))
+              : list.map((pizza) => (
+                  <MenuPizzaCard
+                    key={pizza.id}
+                    pizza={pizza}
+                    language={language}
+                  />
+                ))}
           </div>
         </section>
       ) : null}

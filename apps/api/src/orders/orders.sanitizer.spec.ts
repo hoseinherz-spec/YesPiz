@@ -65,3 +65,22 @@ describe("toCustomerView blind identity", () => {
     expect(view.providerId).toBeUndefined();
   });
 });
+
+describe("customer journey projection", () => {
+  it("counts actual views separately from invitations without exposing restaurants", () => {
+    const view = toCustomerView({ status: OrderStatus.PENDING_OFFERS, offers: [
+      { providerId: "private-a" },
+      { providerId: "private-b", viewedAt: new Date() },
+      { providerId: "private-c", respondedAt: new Date(), viewedAt: new Date() },
+    ] });
+    expect(view.matching).toEqual({ notified: 3, viewed: 2 });
+    assertBlindIdentity(view);
+    expect(JSON.stringify(view)).not.toContain("private-");
+  });
+  it.each([[OrderStatus.READY_FOR_PICKUP, "ready"], [OrderStatus.PICKED_UP, "picked_up"], [OrderStatus.ON_THE_WAY, "onway"]])("distinguishes %s", (status, stage) => {
+    expect(toCustomerView({ status }).fulfillmentStage).toBe(stage);
+  });
+  it("hides matching statistics after confirmation", () => {
+    expect(toCustomerView({ status: OrderStatus.ACCEPTED_BY_PROVIDER, offers: [] }).matching).toBeUndefined();
+  });
+});

@@ -16,9 +16,9 @@ test("ordered tabs stay spatially consistent when revisited", () => {
 test("specific route pairs take priority over sheets and hierarchy", () => {
   for (const [from, to, effect, reverse] of [
     ["/cart", "/checkout", "axis-forward", "axis-back"],
-    ["/menu", "/cart", "sheet-in", "sheet-out"],
+    ["/menu", "/cart", "food-in", "food-out"],
     ["/profile", "/profile/edit", "sheet-in", "sheet-out"],
-    ["/menu", "/pizza", "drill-in", "drill-out"],
+    ["/menu", "/menu/test-pizza/", "product-in", "product-out"],
     ["/menu", "/partner", "zoom-in", "zoom-out"],
     ["/onboarding", "/login", "strip-forward", "strip-back"],
   ]) {

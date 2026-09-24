@@ -8,7 +8,7 @@
   pointer-events: none;
 }
 ::view-transition-group(mobile-page) {
-  animation-duration: var(--app-motion-page, 360ms);
+  animation-duration: var(--duration-fast, 250ms);
   animation-timing-function: var(
     --app-motion-ease,
     cubic-bezier(0.22, 1, 0.36, 1)
@@ -202,6 +202,12 @@
   animation-duration: var(--app-motion-page, 360ms);
   animation-timing-function: var(--app-motion-ease, ease);
 }
+/* Fixed cart chrome needs its own snapshot above shared product images. */
+::view-transition-group(.basket-overlay) {
+  z-index: 10;
+  animation-duration: var(--duration-fast, 250ms);
+  animation-timing-function: var(--ease-smooth-out, cubic-bezier(.22,1,.36,1));
+}
 ::view-transition-old(.mobile-hero),
 ::view-transition-new(.mobile-hero) {
   height: 100%;
@@ -256,12 +262,14 @@
 
 @keyframes mobile-axis-enter {
   from {
-    transform: translateX(32px) scale(0.98);
+    transform: translateX(var(--distance-base, 8px)) scale(0.98);
+    filter: blur(var(--blur-medium, 3px));
     opacity: 0;
   }
   to {
     transform: none;
     opacity: 1;
+    filter: blur(0);
   }
 }
 @keyframes mobile-axis-leave {
@@ -270,7 +278,8 @@
     opacity: 1;
   }
   to {
-    transform: translateX(-32px) scale(0.98);
+    transform: translateX(calc(-1 * var(--distance-base, 8px))) scale(0.98);
+    filter: blur(var(--blur-medium, 3px));
     opacity: 0;
   }
 }

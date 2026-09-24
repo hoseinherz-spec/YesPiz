@@ -182,7 +182,8 @@ export function PizzaMenuEditor({
           />
           <Input
             label={<>Image URL</>}
-            type="url"
+            type="text"
+            inputMode="url"
             className={field}
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
@@ -363,6 +364,52 @@ export function PizzaMenuEditor({
               >
                 Add size or style
               </FormButton>
+              <div className="rounded-xl bg-surface-secondary p-4">
+                <p className="mb-3 text-sm text-muted">
+                  Add product options. Set the choices and their extra prices
+                  below; customers see each group as selectable pills.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Crust",
+                    "Topping style",
+                    "Sauce",
+                    "Cheese",
+                    "Toppings",
+                  ].map((name) => (
+                    <FormButton
+                      key={name}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      isDisabled={
+                        busy ||
+                        config.groups.length >= 20 ||
+                        config.groups.some(
+                          (g) => g.name.toLowerCase() === name.toLowerCase(),
+                        )
+                      }
+                      onPress={() =>
+                        setConfig((c) => ({
+                          ...c,
+                          groups: [
+                            ...c.groups,
+                            {
+                              id: uid(),
+                              name,
+                              min: name === "Toppings" ? 0 : 1,
+                              max: name === "Toppings" ? 4 : 1,
+                              options: [],
+                            },
+                          ],
+                        }))
+                      }
+                    >
+                      Add {name.toLowerCase()}
+                    </FormButton>
+                  ))}
+                </div>
+              </div>
               {config.groups.map((g, gi) => (
                 <section
                   key={g.id}

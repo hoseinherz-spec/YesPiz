@@ -1,0 +1,117 @@
+.card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 190px;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 24px;
+  background: var(--nav-background);
+  color: var(--nav-foreground, #fff);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  font-family: inherit;
+  text-align: left;
+}
+.pattern {
+  position: absolute;
+  z-index: -1;
+  top: -3%;
+  right: -4%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 55%;
+  aspect-ratio: 1;
+}
+.pattern i {
+  background: var(--accent);
+  opacity: 0.12;
+  border-radius: 50% 50% 50% 0;
+}
+.pattern i:nth-child(2) {
+  transform: rotate(-90deg);
+}
+.pattern i:nth-child(3) {
+  transform: rotate(90deg);
+}
+.pattern i:nth-child(4) {
+  transform: rotate(180deg);
+}
+.brand {
+  font-size: 24px;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.1;
+  max-width: 70%;
+  overflow-wrap: anywhere;
+}
+.brand[data-visa] {
+  font-style: italic;
+  letter-spacing: -2px;
+}
+.details {
+  display: grid;
+  gap: 18px;
+}
+.caption {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.number {
+  font-size: clamp(18px, 5.3vw, 26px);
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.expiry {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.expiry strong {
+  font-size: 16px;
+}
+.wallet {
+  display: grid;
+  gap: 16px;
+}
+.item {
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+.choice {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  min-width: 0;
+}
+.choice input {
+  position: absolute;
+  z-index: 1;
+  right: 18px;
+  bottom: 24px;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--nav-foreground, #fff);
+}
+.choice:has(input:checked) {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 28px;
+}
+.choice:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 5px;
+  border-radius: 28px;
+}
+.choice:has(input:disabled) {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -1,3 +1,4 @@
+import type { IngredientChange } from "../catalog/catalog.dto";
 import type { PizzaSelection } from "../catalog/catalog.dto";
 export type OrderStatus =
   | "DRAFT"
@@ -63,6 +64,7 @@ export type DeliveryAddress = {
 };
 
 export type OrderLineRequest = {
+  ingredientChanges?: IngredientChange[];
   secondHalfItemId?: string;
   variantId?: string;
   selections?: PizzaSelection[];
@@ -127,6 +129,10 @@ export type CourierLocationView = {
 };
 
 export type CustomerOrderLine = {
+  ingredientChanges?: IngredientChange[];
+  productId?: string;
+  productRevisionId?: string;
+  productType?: string;
   variantId?: string;
   selections?: PizzaSelection[];
   selectionLabels?: string[];
@@ -140,6 +146,8 @@ export type CustomerOrderLine = {
 
 /** Blind-identity customer projection from orders.sanitizer.toCustomerView */
 export type CustomerOrderView = {
+  matching?: { notified: number; viewed: number };
+  fulfillmentStage?: CustomerOrderProjection | "ready" | "picked_up" | "review" | null;
   canCancel?: boolean;
   refundStatus?: string;
   id: string;
@@ -319,4 +327,40 @@ export type AtRiskDashboardResponse = {
     delayedCount: number;
     sosCount: number;
   };
+};
+
+/** Order-owner-only tracking projection. Personal phone numbers and pickup origins are excluded. */
+export type OrderTrackingView = {
+  order: CustomerOrderView;
+  destination: { latitude: number; longitude: number } | null;
+  location: CourierLocationView;
+  rider: {
+    name: string;
+    avatarUrl: string | null;
+    vehicleModel: string | null;
+    plateNumber: string | null;
+    memberSince: string | null;
+    completedOrders: number;
+  } | null;
+  route: [number, number][] | null;
+};
+
+export type LiveOperationsView = {
+  generatedAt: string;
+  truncated: boolean;
+  orders: {
+    orderId: string;
+    status: string;
+    courierId: string | null;
+    totalCents: number;
+    destination: { latitude: number; longitude: number } | null;
+    promisedAt: string | null;
+  }[];
+  couriers: {
+    courierId: string;
+    location: { latitude: number; longitude: number } | null;
+    updatedAt: string | null;
+    orderCount: number;
+  }[];
+  last24Hours: { status: string; count: number; revenueCents: number }[];
 };

@@ -1,0 +1,325 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-block: 6px 26px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  transition: transform var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)), opacity var(--duration-quick, 150ms) ease-out;
+  isolation: isolate;
+  background: transparent;
+}
+.header::before,
+.header::after {
+  content: "";
+  position: absolute;
+  inset: -28px -16px -16px;
+  z-index: -1;
+  pointer-events: none;
+}
+.header::before {
+  background: linear-gradient(to bottom, var(--background) 10%, transparent 100%);
+  backdrop-filter: blur(16px);
+  mask-image: linear-gradient(to bottom, black 15%, transparent 90%);
+}
+.header::after {
+  backdrop-filter: blur(4px);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+}
+.header[data-hidden] { transform: translateY(calc(-100% - 12px)); opacity: 0; pointer-events: none; }
+.avatar,
+.roundButton {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--foreground);
+}
+.avatar {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 24px;
+  font-weight: 700;
+}
+.location {
+  min-width: 0;
+  flex: 1;
+  text-align: center;
+}
+.headerSpacer {
+  flex: 1;
+}
+.location > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.search .searchInner {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.search .searchInner:has(input:focus-visible) {
+  background: var(--surface-secondary);
+  box-shadow: inset 0 -2px 0 var(--muted);
+}
+.location strong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 5px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.location strong > span:first-of-type {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.location svg {
+  flex-shrink: 0;
+}
+.searchRow {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.search {
+  min-width: 0;
+  flex: 1;
+}
+.searchInner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  height: 54px;
+  padding: 0 17px;
+  background: var(--surface);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.search input[type="search"], .search :global(.input) {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  box-shadow: none;
+  padding-inline: 0;
+}
+.banners {
+  margin-top: 24px;
+  min-width: 0;
+}
+.carousel {
+  width: 100%;
+  overflow: visible;
+  padding-bottom: 35px;
+  --swiper-pagination-color: var(--foreground);
+  --swiper-pagination-bullet-inactive-color: var(--muted);
+}
+.slide {
+  border-radius: 34px;
+  overflow: hidden;
+  background: var(--accent);
+  opacity: .36;
+  transition: opacity var(--duration-fast, 250ms) ease-in-out;
+}
+.slide:global(.swiper-slide-active) { opacity: 1; }
+.banner {
+  position: relative;
+  isolation: isolate;
+  min-height: 450px;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.eyebrow {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 40%;
+  height: 50px;
+  padding: 0 20px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 19px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+/* Round-outs extend the label surface into the banner, as in the
+   CSS-Tricks pseudo-element technique. Keep both fills theme-aware. */
+.eyebrow::before,
+.eyebrow::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--surface);
+}
+.eyebrow::before {
+  left: 0;
+  top: 100%;
+  width: 44px;
+  height: 44px;
+  /* The outside of a circle rounds the banner's upper-left shoulder. */
+  mask: radial-gradient(circle at 100% 100%, transparent 43.5px, black 44px);
+}
+.eyebrow::after {
+  left: calc(100% - 1px);
+  top: 0;
+  width: 90px;
+  height: 50px;
+  /* Horizontal tangents at both ends join the inset to the top edge
+     with the reference's rounded diagonal, rather than a quarter-circle. */
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 50'%3E%3Cpath d='M0 0H90C65 0 61 0 46 16L27 37C16 49 10 50 0 50Z'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+}
+.eyebrow span {
+  font-size: 27px;
+}
+.favorite {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+  z-index: 3;
+}
+.favorite[aria-pressed="true"] {
+  color: var(--danger);
+}
+.copy {
+  position: relative;
+  z-index: 2;
+  padding: 25px 22px 0;
+  pointer-events: none;
+}
+.name {
+  max-width: 85%;
+  font-size: clamp(23px, 7vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -1px;
+}
+.copy h2 {
+  margin-top: 5px;
+  font-size: clamp(37px, 10vw, 51px);
+  line-height: 1.08;
+  font-weight: 750;
+  letter-spacing: -2px;
+}
+.ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 75%;
+  margin-top: 22px;
+}
+.ingredients span {
+  border: 1px solid
+    color-mix(in oklab, var(--accent-foreground) 30%, transparent);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+}
+.price {
+  margin-top: 18px;
+  font-size: 35px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+.artwork {
+  position: absolute;
+  width: 88%;
+  aspect-ratio: 1;
+  right: -32%;
+  bottom: -27%;
+  z-index: 1;
+  pointer-events: none;
+}
+.pizza {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: rotate(-18deg);
+  filter: drop-shadow(
+    -7px 12px 10px
+      color-mix(in oklab, var(--accent-foreground) 20%, transparent)
+  );
+}
+.order {
+  position: absolute;
+  bottom: 24px;
+  left: 22px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+.skeleton,
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 450px;
+  margin-top: 24px;
+  border-radius: 34px;
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  padding: 24px;
+}
+@media (max-width: 360px) {
+  .header {
+    gap: 8px;
+  }
+  .avatar,
+  .roundButton {
+    width: 46px;
+    height: 46px;
+  }
+  .location strong {
+    font-size: 14px;
+  }
+  .banner {
+    min-height: 430px;
+  }
+  .eyebrow {
+    font-size: 16px;
+  }
+  .ingredients {
+    max-width: 90%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header, .slide { transition: none; }
+  .carousel :global(.swiper-wrapper),
+  .carousel :global(.swiper-slide) {
+    transition-duration: 0ms !important;
+  }
+}

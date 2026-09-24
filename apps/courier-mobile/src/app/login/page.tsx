@@ -6,6 +6,7 @@ import { accountClient, ApiError } from "@repo/api";
 import { Button } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Bike, ShieldCheck } from "lucide-react";
 
 import {
   AccountField,
@@ -14,8 +15,8 @@ import {
   AccountScreen,
   PasswordField,
 } from "@/components/AccountScreen";
+import { CourierBrand } from "@/components/CourierBrand";
 import { getCourierToken, setCourierToken } from "@/lib/auth";
-import { cn } from "@/lib/cn";
 import { hx } from "@/lib/heroui-classes";
 
 export default function CourierLoginPage() {
@@ -49,14 +50,23 @@ export default function CourierLoginPage() {
   };
 
   return (
-    <AccountScreen title="Log In">
-      <AccountHero title="Log In" description="Enter details to log in" />
+    <AccountScreen title="Courier sign in" className="courier-screen">
+      <CourierBrand className="mx-auto mb-8" />
+      <div className="courier-hero mb-7 text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-[20px] bg-accent text-accent-foreground">
+          <Bike size={28} />
+        </span>
+        <AccountHero
+          title="Ready for the road?"
+          description="Sign in to manage your shift, pickups, and deliveries."
+        />
+      </div>
 
       {error ? <AccountNotice tone="danger">{error}</AccountNotice> : null}
       {notice ? <AccountNotice>{notice}</AccountNotice> : null}
 
       <Form
-        className="mt-4 grid gap-5"
+        className="grid gap-4"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
@@ -87,7 +97,7 @@ export default function CourierLoginPage() {
           onPress={() =>
             setNotice("Contact dispatch to reset your courier password.")
           }
-          className="h-auto justify-end self-end px-1 py-1 font-semibold text-danger"
+          className="h-auto justify-end self-end px-1 py-1 text-sm font-semibold text-muted"
         >
           Forget Password?
         </Button>
@@ -103,7 +113,7 @@ export default function CourierLoginPage() {
       </Form>
 
       <p className="mt-6 text-center text-sm font-medium text-muted">
-        Don&apos;t Have Account?{" "}
+        Need a courier account?{" "}
         <FormButton
           variant="ghost"
           type="button"
@@ -112,30 +122,13 @@ export default function CourierLoginPage() {
             setNotice("Courier accounts are created by your dispatch manager.")
           }
         >
-          Sign Up
+          Contact dispatch
         </FormButton>
       </p>
 
-      <div className="mt-auto pt-10">
-        <div className="flex items-center gap-3 text-muted">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-sm font-semibold">Or Use</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          {["Google", "Apple"].map((provider) => (
-            <Button
-              key={provider}
-              variant="secondary"
-              onPress={() => {
-                setNotice(`${provider} login is not configured yet.`);
-              }}
-              className={cn(hx.btnSecondary, "h-16 rounded-2xl")}
-            >
-              {provider}
-            </Button>
-          ))}
-        </div>
+      <div className="mt-auto flex items-center justify-center gap-2 pt-10 text-center text-xs leading-relaxed text-muted">
+        <ShieldCheck size={16} className="shrink-0 text-success" />
+        Courier access is issued and protected by your dispatch team.
       </div>
     </AccountScreen>
   );

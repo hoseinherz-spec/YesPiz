@@ -21,6 +21,11 @@ export class CourierProfile {
   @Prop()
   vehicleType?: string;
 
+  @Prop() vehicleModel?: string;
+  @Prop() plateNumber?: string;
+  @Prop() avatarUrl?: string;
+  createdAt?: Date;
+
   @Prop({ default: false })
   onDuty!: boolean;
 }

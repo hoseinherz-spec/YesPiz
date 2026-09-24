@@ -6,13 +6,13 @@ import { useReducedMotion, type Transition } from "motion/react";
 /** CSS tokens are the source of truth for both Motion and native transitions. */
 export function useAppMotion(): Transition {
   const reducedMotion = useReducedMotion();
-  const [duration, setDuration] = useState(0.22);
+  const [duration, setDuration] = useState(0.25);
   useEffect(() => {
     const token = getComputedStyle(document.documentElement).getPropertyValue(
       "--app-motion-control",
     );
     const milliseconds = Number.parseFloat(token);
-    if (Number.isFinite(milliseconds)) setDuration(milliseconds / 1000);
+    if (Number.isFinite(milliseconds)) setDuration(token.trim().endsWith("ms") ? milliseconds / 1000 : milliseconds);
   }, [reducedMotion]);
   return {
     type: "tween",

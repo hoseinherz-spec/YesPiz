@@ -82,11 +82,8 @@ for (const role of roles) {
     await page.waitForLoadState("networkidle");
     await page.locator('input[type="email"]').fill(role.email);
     await page.locator('input[type="password"]').fill(role.password);
-    await page
-      .locator("form")
-      .getByRole("button", { name: /^(sign in|log in)$/i })
-      .click();
-    await expect(page).not.toHaveURL(/\/login/);
+    await page.getByRole("button", { name: /^(sign in|log in)$/i }).click();
+    await expect(page).not.toHaveURL(/\/(?:login|auth\/sign-in)(?:\/|$)/);
     for (const route of role.routes) {
       await test.step(route, async () => {
         console.log(`Review ${role.role}: /${route}`);
@@ -155,7 +152,7 @@ for (const role of roles) {
       });
       await page.getByRole("button", { name: "English", exact: true }).click();
       await page.getByRole("button", { name: "Log Out", exact: true }).click();
-      await expect(page).toHaveURL(/login/);
+      await expect(page).toHaveURL(/(?:login|auth\/sign-in)/);
     }
     expect.soft(errors, "uncaught browser errors").toEqual([]);
   });
@@ -234,12 +231,9 @@ for (const role of roles) {
     await page
       .locator('input[type="password"]')
       .fill(role.role === "customer" ? "Admin123!" : "Customer123!");
-    await page
-      .locator("form")
-      .getByRole("button", { name: /^(sign in|log in)$/i })
-      .click();
+    await page.getByRole("button", { name: /^(sign in|log in)$/i }).click();
     await expect(page.getByRole("alert").first()).toBeVisible();
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/(?:\/login|\/auth\/sign-in)/);
   });
 }
 
@@ -250,37 +244,33 @@ test("customer: new delivery address persists through navigation and reload", as
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="email"]').fill("customer@yespizz.local");
   await page.locator('input[type="password"]').fill("Customer123!");
-  await page
-    .locator("form")
-    .getByRole("button", { name: /sign in|log in/i })
-    .click();
-  await expect(page).not.toHaveURL(/login/);
+  await page.getByRole("button", { name: /sign in|log in/i }).click();
+  await expect(page).not.toHaveURL(/\/(?:login|auth\/sign-in)(?:\/|$)/);
   await page.goto("http://localhost:8151/addresses/new/?from=checkout");
   await page.waitForLoadState("networkidle");
+  await page.getByLabel("Delivery location on map").click({ position: { x: 180, y: 140 } });
+  await expect(page.getByText("Pin placed", { exact: true })).toBeVisible();
   await page.locator('input[name="street"]').fill("New destination 48");
+  await page.locator('input[name="houseNumber"]').fill("48");
   await page.locator('input[name="postalCode"]').fill("80539");
-  await page.locator('input[name="latitude"]').fill("48.14");
-  await page.locator('input[name="longitude"]').fill("11.58");
+  await page.locator('input[name="city"]').fill("Munich");
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith("/orders/addresses") &&
       response.request().method() === "POST",
   );
-  await page
-    .locator("form")
-    .getByRole("button", { name: /save|add address/i })
-    .click();
+  await page.getByRole("button", { name: /save|add address/i }).click();
   const address = await (await saved).json();
-  expect(address).toMatchObject({ latitude: 48.14, longitude: 11.58 });
+  expect(address.latitude).toBeCloseTo(48.14, 1);
+  expect(address.longitude).toBeCloseTo(11.58, 1);
   await expect(page).toHaveURL(/\/checkout\/?$/);
-  const selected = () =>
-    page.getByRole("radio", { name: /New destination 48/ });
-  await expect(selected()).toBeChecked();
+  const selected = () => page.getByText(/New destination 48.*80539 Munich/).first();
+  await expect(selected()).toBeVisible();
   await page.goto("http://localhost:8151/menu/");
   await page.goto("http://localhost:8151/checkout/");
-  await expect(selected()).toBeChecked();
+  await expect(selected()).toBeVisible();
   await page.reload();
-  await expect(selected()).toBeChecked();
+  await expect(selected()).toBeVisible();
   const token = await page.evaluate(() =>
     localStorage.getItem("yespizz_access_token"),
   );
@@ -298,5 +288,26 @@ test("customer: new delivery address persists through navigation and reload", as
   ).toBe(token);
   await page.unroute("**/api/v1/account/profile/me");
   await page.reload();
-  await expect(selected()).toBeChecked();
+  await expect(selected()).toBeVisible();
+});
+
+test("customer: save a usual pizza and restore its current configuration", async ({ page }) => {
+  await page.goto("http://localhost:8151/login/");
+  await page.waitForLoadState("networkidle");
+  await page.locator('input[type="email"]').fill("customer@yespizz.local");
+  await page.locator('input[type="password"]').fill("Customer123!");
+  await page.getByRole("button", { name: /sign in|log in/i }).click();
+  await expect(page).not.toHaveURL(/\/(?:login|auth\/sign-in)(?:\/|$)/);
+  await page.goto("http://localhost:8151/menu/");
+  await page.getByRole("link", { name: /^Margherita/ }).first().click();
+  await page.getByRole("radio", { name: "Large" }).click();
+  await page.getByRole("button", { name: "Save as my usual" }).click();
+  await expect(page.getByRole("button", { name: "Usual saved" })).toBeVisible();
+  await page.goto("http://localhost:8151/saved/");
+  await page.getByText("Your usual orders", { exact: true }).click();
+  const usual = page.getByRole("link", { name: /Review & add/ });
+  await expect(usual).toBeVisible();
+  await usual.click();
+  await expect(page).toHaveURL(/\?usual=/);
+  await expect(page.getByRole("radio", { name: "Large" })).toBeChecked();
 });

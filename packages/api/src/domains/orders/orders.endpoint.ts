@@ -1,4 +1,5 @@
 export const ordersEndpoints = {
+  tracking: (id: string) => `/api/v1/orders/${encodeURIComponent(id)}/tracking`,
   quote: "/api/v1/orders/quote",
   addresses: "/api/v1/orders/addresses",
   address: (id: string) => `/api/v1/orders/addresses/${id}`,

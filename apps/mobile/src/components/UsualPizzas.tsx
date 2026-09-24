@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowRight, Trash1 as Trash } from "@repo/icons";
+import { ArrowRight, Trash1 as Trash } from "@/components/animated-icon/icons";
 import { useUsualPizzas } from "@/lib/usual-pizzas";
 import { useMenuCatalog } from "@/lib/catalog";
 import { useApp } from "@/context/AppContext";
@@ -41,7 +41,7 @@ export function UsualPizzas({ editable = false }: { editable?: boolean }) {
                 {pizza && secondAvailable ? (
                   <Link
                     className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold"
-                    href={`/pizza/?id=${encodeURIComponent(pizza.id)}&usual=${encodeURIComponent(item.id)}`}
+                    href={`/menu/${encodeURIComponent(pizza.id)}/?usual=${encodeURIComponent(item.id)}`}
                   >
                     {de ? "Auswahl prüfen" : "Review & add"}
                     <ArrowRight size={16} />

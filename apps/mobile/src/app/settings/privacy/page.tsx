@@ -21,10 +21,10 @@ export default function PrivacyPage() {
       <ScreenHeader title={t("privacy.title")} backHref="/settings/" />
       <article className="pb-[max(40px,env(safe-area-inset-bottom))]">
         {SECTIONS.map(([title, body]) => (
-          <section key={title} className="mb-9">
+          <section key={title} className="mb-4 rounded-[26px] bg-surface p-5">
             <AppText
-              as="h1"
-              className="text-[26px] font-bold tracking-[-0.02em] text-foreground"
+              as="h2"
+              className="text-[19px] font-semibold tracking-[-0.02em] text-foreground"
             >
               {t(title)}
             </AppText>

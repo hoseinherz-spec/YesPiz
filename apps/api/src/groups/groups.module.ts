@@ -43,6 +43,16 @@ class GroupsController {
   ) {
     return this.service.create(u.userId, dto);
   }
+  @Roles(UserRole.ADMIN)
+  @Get("admin/refunds")
+  refundQueue() {
+    return this.service.refundQueue();
+  }
+  @Roles(UserRole.ADMIN)
+  @Post("admin/refunds/:token")
+  retryRefund(@Param("token") token: string) {
+    return this.service.retryRefund(token);
+  }
   @Get(":token") read(
     @CurrentUser() u: JwtPayloadUser,
     @Param("token") token: string,

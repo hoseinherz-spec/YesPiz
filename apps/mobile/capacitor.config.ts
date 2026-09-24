@@ -4,6 +4,9 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const nativePlugins = [
   "@capacitor/app",
+  "@capacitor/browser",
+  "@repo/native-stripe",
+  "@capgo/capacitor-social-login",
   "@capacitor/splash-screen",
   "@capacitor/status-bar",
 ];
@@ -35,6 +38,10 @@ const config: CapacitorConfig = {
     androidScheme: "https",
   },
   plugins: {
+    SocialLogin: {
+      providers: { google: true, apple: true, facebook: false, twitter: false },
+      logLevel: 1,
+    },
     SplashScreen: {
       launchAutoHide: true,
       backgroundColor: "#ffffff",

@@ -1,0 +1,200 @@
+.orders-screen {
+  padding-inline: 20px;
+}
+.orders-screen .reference-brand {
+  margin-bottom: 12px;
+}
+.orders-tabs {
+  flex-shrink: 0;
+}
+.orders-tabs > button {
+  min-height: 48px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.orders-tabs > button[aria-pressed="true"] {
+  font-weight: 700;
+}
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 20px;
+  padding-bottom: 16px;
+}
+.orders-screen .orders-card {
+  padding: 16px;
+  border-radius: 26px;
+}
+.orders-screen .reference-order-top {
+  gap: 12px;
+}
+.orders-screen .reference-order-image {
+  width: 30%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 24px;
+}
+.orders-screen .reference-order-image img {
+  object-fit: contain;
+}
+.orders-name {
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 750;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.orders-details {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.orders-screen .reference-order-meta {
+  margin-top: 12px;
+  gap: 4px;
+}
+.orders-screen .reference-order-meta strong {
+  background: transparent;
+  padding: 0;
+  font-size: 21px;
+  color: var(--selection-ink);
+}
+.orders-screen .reference-order-status {
+  border: 1px solid currentColor;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.orders-status-completed {
+  color: var(--success);
+}
+.orders-status-cancelled {
+  color: var(--danger);
+}
+.orders-screen .orders-status-active {
+  background: var(--selection-soft);
+  border-color: transparent;
+  color: var(--selection-ink);
+}
+.orders-screen .reference-order-actions {
+  margin-top: 18px;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.orders-screen .reference-order-actions > button {
+  min-width: 0;
+  min-height: 50px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  white-space: normal;
+}
+.orders-screen .reference-order-actions > button:not(.orders-reorder) {
+  background: var(--surface-tertiary);
+  color: var(--foreground);
+}
+.orders-screen .reference-order-actions .orders-track {
+  border: 2px solid currentColor;
+  background: transparent;
+}
+.orders-screen .reference-order-actions .orders-reorder {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.orders-progress {
+  position: relative;
+  height: 4px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  margin: 32px 2px 30px;
+}
+.orders-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--selection);
+}
+.orders-progress-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--selection-foreground);
+  background: var(--selection);
+  box-shadow: 0 3px 4px #0003;
+}
+.orders-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 35px 4px 70px;
+}
+.orders-empty img {
+  width: min(240px, 68vw);
+  height: 210px;
+  object-fit: contain;
+  margin-bottom: 20px;
+  filter: drop-shadow(
+    0 20px 16px color-mix(in oklab, var(--background) 62%, transparent)
+  );
+}
+.orders-empty h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 750;
+}
+.orders-empty p {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.light .orders-screen .reference-order-actions > button:not(.orders-reorder),
+[data-theme="light"]
+  .orders-screen
+  .reference-order-actions
+  > button:not(.orders-reorder) {
+  color: var(--foreground);
+}
+.dark .orders-screen .reference-order-meta strong,
+[data-theme="dark"] .orders-screen .reference-order-meta strong {
+  color: var(--selection-ink);
+}
+@media (max-width: 360px) {
+  .orders-tabs > button {
+    font-size: 14px;
+  }
+  .orders-screen .reference-order-top {
+    gap: 12px;
+  }
+  .orders-name {
+    font-size: 14px;
+  }
+  .orders-details {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .orders-screen .reference-order-meta {
+    margin-top: 10px;
+  }
+  .orders-screen .reference-order-meta strong {
+    font-size: 18px;
+  }
+  .orders-screen .reference-order-actions > button {
+    font-size: 12px;
+    padding-inline: 8px;
+  }
+}
+.dark .orders-status-completed,
+[data-theme="dark"] .orders-status-completed {
+  color: var(--success);
+}

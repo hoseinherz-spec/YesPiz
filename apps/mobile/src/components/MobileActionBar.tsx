@@ -4,7 +4,7 @@ import { AppText } from "@/components/Text";
 
 import { useFormAction } from "@repo/ui/forms";
 import { Button } from "@heroui/react";
-import { ShoppingBag } from "@repo/icons";
+import { ShoppingBag } from "@/components/animated-icon/icons";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 

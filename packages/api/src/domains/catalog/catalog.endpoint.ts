@@ -1,5 +1,6 @@
 export const catalogEndpoints = {
   menu: '/api/v1/catalog/menu',
+  combo: (id: string) => `/api/v1/catalog/combos/${encodeURIComponent(id)}`,
   versions: '/api/v1/catalog/versions',
   version: (id: string) => `/api/v1/catalog/versions/${id}`,
   publish: (id: string) => `/api/v1/catalog/versions/${id}/publish`,

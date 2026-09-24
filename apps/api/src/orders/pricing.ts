@@ -27,3 +27,16 @@ export function linePrice(
     extras.reduce((sum, extra) => sum + (pricing.extras[extra] ?? 0), 0)
   );
 }
+
+/** Legacy size surcharges apply only to pizzas; all other products use their offer price. */
+export function productLinePrice(
+  type: string | undefined,
+  base: number,
+  size: "small" | "medium" | "large",
+  extras: string[],
+  config: Partial<AppConfig>,
+) {
+  return !type || type === "pizza"
+    ? linePrice(base, size, extras, config)
+    : base;
+}

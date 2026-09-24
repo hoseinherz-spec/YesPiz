@@ -4,7 +4,7 @@ import { AppText } from "@/components/Text";
 import { Input } from "@repo/ui/forms";
 
 import { Button, Typography } from "@heroui/react";
-import { Eye, EyeSlash } from "@repo/icons";
+import { Eye, EyeSlash } from "@/components/animated-icon/icons";
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
 

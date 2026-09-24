@@ -1,10 +1,12 @@
+import { expandComboLines } from "./combo-lines";
+import { customizeRecipe } from "../catalog/ingredient-options";
 import { selectedRecipe } from "../catalog/recipe-coverage";
 import { RewardPolicyService } from "../rewards/policy.module";
-import { priceCustomization } from "../catalog/customization";
+import { priceOrderItem, productOrderSnapshot } from "./order-item";
 import { GrowthService } from "../growth/growth.module";
 import { ConfigService } from "@nestjs/config";
 import { SlotsService } from "../slots/slots.module";
-import { linePrice, pricingOptions } from "./pricing";
+import { productLinePrice, pricingOptions } from "./pricing";
 import {
   BadRequestException,
   ConflictException,
@@ -96,7 +98,11 @@ export class OrdersService implements OnModuleInit {
   }
 
   async createAddress(userId: string, dto: CreateAddressDto) {
-    if (dto.isDefault) {
+    const hasAddress = await this.addresses.exists({
+      userId: new Types.ObjectId(userId),
+    });
+    const isDefault = dto.isDefault === true || !hasAddress;
+    if (isDefault) {
       await this.addresses
         .updateMany(
           { userId: new Types.ObjectId(userId) },
@@ -117,7 +123,7 @@ export class OrdersService implements OnModuleInit {
         type: "Point",
         coordinates: [dto.longitude, dto.latitude],
       },
-      isDefault: dto.isDefault ?? false,
+      isDefault,
       entrance: dto.entrance,
       floor: dto.floor,
       unit: dto.unit,
@@ -127,7 +133,10 @@ export class OrdersService implements OnModuleInit {
   }
 
   listAddresses(userId: string) {
-    return this.addresses.find({ userId: new Types.ObjectId(userId) }).exec();
+    return this.addresses
+      .find({ userId: new Types.ObjectId(userId) })
+      .sort({ isDefault: -1, updatedAt: -1 })
+      .exec();
   }
 
   async deleteAddress(userId: string, addressId: string) {
@@ -173,7 +182,7 @@ export class OrdersService implements OnModuleInit {
         "The price changed. Review the updated total, then submit again.",
       );
     }
-    const loyaltyPolicy=await this.rewardPolicy?.current();
+    const loyaltyPolicy = await this.rewardPolicy?.current();
     try {
       const persist = () =>
         this.orders.create({
@@ -185,7 +194,7 @@ export class OrdersService implements OnModuleInit {
       const order = dto.deliverySlotId
         ? await this.slots!.reserve(
             dto.deliverySlotId,
-            dto.lines.reduce((n, l) => n + l.quantity, 0),
+            data.lines.reduce((n, l) => n + l.quantity, 0),
             persist,
           )
         : await persist();
@@ -268,70 +277,91 @@ export class OrdersService implements OnModuleInit {
     );
     if (items.length !== new Set(itemIds).size) {
       throw new BadRequestException(
-        "A pizza is no longer available at the selected time. Please review your cart.",
+        "A product is no longer available at the selected time. Please review your cart.",
       );
     }
 
+    const componentIds = [
+      ...new Set(
+        items.flatMap(
+          (item) => item.comboComponents?.map((c) => c.menuItemId) ?? [],
+        ),
+      ),
+    ];
+    const componentItems = componentIds.length
+      ? (
+          await this.catalog.getActiveItemsByIds(
+            componentIds,
+            dto.menuVersion,
+            scheduledAt ? new Date(scheduledAt) : new Date(),
+          )
+        ).items
+      : [];
+    const expanded = expandComboLines(dto.lines, items, componentItems);
     const pricingConfig = await this.appConfig.get();
-    const byId = new Map(items.map((i) => [i.id, i]));
+    const byId = new Map([...items, ...componentItems].map((i) => [i.id, i]));
     let subtotalCents = 0;
-    const lines = dto.lines.map((line) => {
+    const lines = expanded.map(({ line, combo, comboPriceCents }) => {
       const item = byId.get(line.menuItemId)!;
       const secondHalf = line.secondHalfItemId
         ? byId.get(line.secondHalfItemId)
         : undefined;
-      if (
-        line.secondHalfItemId &&
-        (!secondHalf ||
-          item.customization ||
-          secondHalf.customization ||
-          line.secondHalfItemId === line.menuItemId)
-      )
-        throw new BadRequestException(
-          "Choose two different standard pizzas for half & half.",
-        );
-      const size = line.size ?? "medium";
-      const extras = line.extras ?? [];
-      if (
-        item.customization &&
-        ((line.extras?.length ?? 0) > 0 ||
-          (line.size && line.size !== "medium"))
-      )
-        throw new BadRequestException("Use this pizza's configured choices.");
-      if (!item.customization && (line.variantId || line.selections?.length))
-        throw new BadRequestException(
-          "This pizza does not accept those choices.",
-        );
-      const custom = item.customization
-        ? priceCustomization(
-            item.customization,
-            line.variantId,
-            line.selections,
-          )
-        : undefined;
-      const unitPriceCents =
-        custom?.unitPriceCents ??
-        linePrice(
-          secondHalf
-            ? Math.round((item.priceCents + secondHalf.priceCents) / 2) + 100
-            : item.priceCents,
+      const {
+        size,
+        extras,
+        custom,
+        unitPriceCents: regularPriceCents,
+        ingredientSelection,
+      } = priceOrderItem(item, line, pricingConfig, secondHalf);
+      const unitPriceCents = comboPriceCents ?? regularPriceCents;
+      subtotalCents += unitPriceCents * line.quantity;
+      const recipe = customizeRecipe(
+        selectedRecipe(
+          item,
           size,
           extras,
-          pricingConfig,
-        );
-      subtotalCents += unitPriceCents * line.quantity;
-      const recipe=selectedRecipe(item,size,extras,custom?.variantId,custom?.selections);
-      const otherRecipe=secondHalf?selectedRecipe(secondHalf,size,extras):undefined;
+          custom?.variantId,
+          custom?.selections,
+        ),
+        ingredientSelection.changes,
+      );
+      const otherRecipe = secondHalf
+        ? selectedRecipe(secondHalf, size, extras)
+        : undefined;
       return {
         menuItemId: item._id,
+        productId: item.productId,
+        productRevisionId: item.productRevisionId,
+        productType: item.productType,
+        productSnapshot: {
+          ...productOrderSnapshot(item, custom?.variantId, secondHalf),
+          ...(combo
+            ? {
+                comboComponents: combo.comboComponents,
+                comboName: combo.name,
+                comboItemId: combo.id,
+              }
+            : {}),
+        },
         secondHalfItemId: secondHalf?.id,
         pizzaId: item.pizzaId ?? item.id,
         variantId: custom?.variantId,
         selections: custom?.selections ?? [],
-        selectionLabels: custom?.selectionLabels ?? [],
+        selectionLabels: [
+          ...(combo ? [combo.name] : []),
+          ...(custom?.selectionLabels ?? []),
+          ...ingredientSelection.labels,
+        ],
+        ingredientChanges: ingredientSelection.changes,
         recipeSnapshot: {
-          inventoryComplete:recipe.complete&&(!otherRecipe||otherRecipe.complete),
-          recipeIngredients:otherRecipe?[...recipe.ingredients,...otherRecipe.ingredients].map(i=>({name:i.name,weightGrams:i.weightGrams/2})):recipe.ingredients,
+          inventoryComplete:
+            recipe.complete && (!otherRecipe || otherRecipe.complete),
+          recipeIngredients: otherRecipe
+            ? [...recipe.ingredients, ...otherRecipe.ingredients].map((i) => ({
+                name: i.name,
+                weightGrams: i.weightGrams / 2,
+              }))
+            : recipe.ingredients,
           checklistTemplate: [
             ...new Set([
               ...(item.checklistTemplate ?? []),
@@ -372,7 +402,11 @@ export class OrdersService implements OnModuleInit {
       ? 0
       : pricingOptions(pricingConfig).deliveryFeeCents;
     const discountCents =
-      (await this.growth?.discount(dto.couponCode, subtotalCents)) ?? 0;
+      (await this.growth?.discount(dto.couponCode, {
+        userId,
+        subtotalCents,
+        lines,
+      })) ?? 0;
     const totalCents = subtotalCents - discountCents + deliveryFeeCents;
 
     const walletCents = dto.walletCents ?? 0;
@@ -476,6 +510,86 @@ export class OrdersService implements OnModuleInit {
       .exec();
   }
 
+  async liveOperations() {
+    const terminal = [
+      OrderStatus.COMPLETED,
+      OrderStatus.CANCELLED,
+      OrderStatus.FAILED_CASH,
+    ];
+    const now = Date.now();
+    const [orders, sessions, totals] = await Promise.all([
+      this.orders
+        .find({
+          status: { $nin: terminal },
+          paymentStatus: PaymentStatus.CAPTURED,
+        })
+        .sort({ createdAt: 1 })
+        .limit(500)
+        .exec(),
+      this.courierSessions.find({ status: "active" }).exec(),
+      this.orders.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: new Date(now - 86400000) },
+            isTestOrder: { $ne: true },
+          },
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+            revenueCents: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$paymentStatus", PaymentStatus.CAPTURED] },
+                  "$totalCents",
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+    const active = orders.map((o) => ({
+      orderId: o.id,
+      status: o.status,
+      courierId: o.courierId ? String(o.courierId) : null,
+      totalCents: o.totalCents,
+      destination:
+        Number.isFinite(o.deliveryLatitude) &&
+        Number.isFinite(o.deliveryLongitude)
+          ? { latitude: o.deliveryLatitude!, longitude: o.deliveryLongitude! }
+          : null,
+      promisedAt: o.promisedDeliveryAt ?? null,
+    }));
+    return {
+      generatedAt: new Date(now),
+      truncated: orders.length === 500,
+      orders: active,
+      couriers: sessions.map((s) => ({
+        courierId: String(s.courierId),
+        location:
+          s.locationUpdatedAt &&
+          now - s.locationUpdatedAt.getTime() <= 90000 &&
+          Number.isFinite(s.lastLatitude) &&
+          Number.isFinite(s.lastLongitude)
+            ? { latitude: s.lastLatitude!, longitude: s.lastLongitude! }
+            : null,
+        updatedAt: s.locationUpdatedAt ?? null,
+        orderCount: active.filter((o) => o.courierId === String(s.courierId))
+          .length,
+      })),
+      last24Hours: totals.map(
+        (r: { _id: string; count: number; revenueCents: number }) => ({
+          status: r._id,
+          count: r.count,
+          revenueCents: r.revenueCents,
+        }),
+      ),
+    };
+  }
+
   async listAtRisk() {
     const now = Date.now();
     const activeStatuses = [
@@ -577,7 +691,10 @@ export class OrdersService implements OnModuleInit {
       throw new NotFoundException("errors.notFound");
     }
 
-    const menu = await this.catalog.getPublishedMenu();
+    const menu = await this.catalog.getPublishedMenu(
+      undefined,
+      order.menuVersion,
+    );
     if (!menu.version) {
       throw new BadRequestException("errors.badRequest");
     }
@@ -628,7 +745,9 @@ export class OrdersService implements OnModuleInit {
       const match =
         byId ??
         publishedItems.find(
-          (i) => line.pizzaId && i.pizzaId === line.pizzaId,
+          (i) =>
+            (line.productId && i.productId === String(line.productId)) ||
+            (line.pizzaId && i.pizzaId === line.pizzaId),
         ) ??
         publishedByName.get(line.name.toLowerCase()) ??
         null;
@@ -643,18 +762,25 @@ export class OrdersService implements OnModuleInit {
         continue;
       }
 
-      if (line.secondHalfItemId || line.variantId || match.customization) {
+      if (
+        line.secondHalfItemId ||
+        line.variantId ||
+        match.customization ||
+        line.ingredientChanges?.length
+      ) {
         unavailable.push({
           menuItemId: match.id,
           name: match.name,
           quantity: line.quantity,
-          reason: "Review this pizza's current choices before ordering again.",
+          reason:
+            "Review this product's current choices before ordering again.",
         });
         continue;
       }
       const size = line.size ?? "medium";
       const extras = line.extras ?? [];
-      const currentPrice = linePrice(
+      const currentPrice = productLinePrice(
+        match.productType,
         match.priceCents,
         size,
         extras,

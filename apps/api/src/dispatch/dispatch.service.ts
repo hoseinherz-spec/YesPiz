@@ -146,6 +146,18 @@ export class DispatchService {
     };
   }
 
+  async markOfferViewed(orderId: string, providerId: string) {
+    if (!Types.ObjectId.isValid(orderId)) throw new NotFoundException("errors.notFound");
+    // Atomic and idempotent: only the invited restaurant may acknowledge its offer.
+    const order = await this.orders.findOneAndUpdate({
+      _id: orderId,
+      status: OrderStatus.PENDING_OFFERS,
+      offers: { $elemMatch: { providerId: new Types.ObjectId(providerId), status: OfferStatus.PENDING, viewedAt: { $exists: false } } },
+    }, { $set: { "offers.$.viewedAt": new Date() } }, { new: true }).exec();
+    if (order) this.realtime.emitOrderStatus(order.id, String(order.customerId), order.status);
+    return { acknowledged: Boolean(order) };
+  }
+
   rankProviders(
     providers: ProviderDocument[],
     lng: number,

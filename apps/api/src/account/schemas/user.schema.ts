@@ -54,10 +54,14 @@ export class User {
     at: Date;
     revision: number;
   }[];
+  @Prop() membershipCheckoutId?: string;
+  @Prop() membershipSubscriptionId?: string;
+  @Prop() membershipStatus?: string;
   @Prop() membershipUntil?: Date;
   @Prop({ default: false }) membershipCancelled!: boolean;
   @Prop({ type: [String], default: [] }) membershipReceipts!: string[];
 
+  @Prop() stripeCustomerId?: string;
   @Prop() stripeConnectedAccountId?: string;
   @Prop({ unique: true, sparse: true }) referralCode?: string;
   @Prop({ required: true, trim: true })
@@ -142,11 +146,17 @@ export class User {
   @Prop()
   cashRestoreReason?: string;
 
-  @Prop()
+  @Prop({ default: 0 })
+  profileRevision!: number;
+
+  @Prop({ unique: true, sparse: true })
   googleSub?: string;
 
   @Prop({ unique: true, sparse: true })
   appleSub?: string;
+
+  @Prop({ unique: true, sparse: true })
+  facebookSub?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

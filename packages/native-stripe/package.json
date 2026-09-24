@@ -1,0 +1,29 @@
+{
+  "name": "@repo/native-stripe",
+  "version": "8.2.1",
+  "private": true,
+  "license": "MIT",
+  "description": "Native-only Capacitor Stripe 8.2.1 adapter; see UPSTREAM.md",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  },
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/capacitor-community/stripe.git"
+  },
+  "author": "Masahiko Sakakibara"
+}

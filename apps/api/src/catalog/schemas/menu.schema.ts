@@ -20,8 +20,24 @@ export class RecipeIngredient {
 
 const RecipeIngredientSchema = SchemaFactory.createForClass(RecipeIngredient);
 
+@Schema({ timestamps: true, collection: "menus" })
+export class Menu {
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "MenuVersion" })
+  publishedVersionId?: Types.ObjectId;
+  @Prop({ required: true }) name!: string;
+  @Prop({ default: "" }) description!: string;
+  @Prop({ default: true }) isActive!: boolean;
+  @Prop({ type: Date }) deletedAt?: Date;
+  @Prop({ unique: true, sparse: true }) legacyKey?: string;
+}
+export type MenuDocument = HydratedDocument<Menu>;
+export const MenuSchema = SchemaFactory.createForClass(Menu);
+
 @Schema({ timestamps: true, collection: "menu_versions" })
 export class MenuVersion {
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: Menu.name, index: true })
+  menuId?: Types.ObjectId;
+  @Prop({ type: Date }) deletedAt?: Date;
   @Prop({ type: Date }) scheduledPublishAt?: Date;
   @Prop() publishError?: string;
   @Prop({ required: true, unique: true })
@@ -41,6 +57,7 @@ export const MenuVersionSchema = SchemaFactory.createForClass(MenuVersion);
 
 @Schema({ timestamps: true, collection: "categories" })
 export class Category {
+  @Prop({ type: Date }) deletedAt?: Date;
   @Prop({
     type: MongoSchema.Types.ObjectId,
     ref: MenuVersion.name,
@@ -62,8 +79,27 @@ export const CategorySchema = SchemaFactory.createForClass(Category);
 
 @Schema({ timestamps: true, collection: "menu_items" })
 export class MenuItem {
-  @Prop({type:[MongoSchema.Types.Mixed],default:[]}) recipeChoices!:RecipeChoice[];
-  @Prop({default:0}) recipeRevision!:number;
+  @Prop({ type: [MongoSchema.Types.Mixed], default: undefined }) comboComponents?: import("../combo").ComboComponent[];
+  @Prop({ type: [MongoSchema.Types.Mixed], default: [] }) ingredientOptions!: import('../ingredient-options').IngredientOption[];
+  @Prop() toppingBaseImageUrl?: string;
+  @Prop({ type: Date }) deletedAt?: Date;
+  @Prop({ type: MongoSchema.Types.ObjectId, ref: "Product", index: true })
+  productId?: Types.ObjectId;
+  @Prop({
+    type: MongoSchema.Types.ObjectId,
+    ref: "ProductRevision",
+    index: true,
+  })
+  productRevisionId?: Types.ObjectId;
+  @Prop({ type: MongoSchema.Types.Mixed }) attributes?: Record<string, unknown>;
+  @Prop() attributesSchemaVersion?: number;
+  @Prop({ type: MongoSchema.Types.Mixed })
+  preparation?: import("../products/product.dto").PreparationProfileDto;
+  @Prop({ type: [MongoSchema.Types.ObjectId], ref: "Ingredient", default: [] })
+  ingredientIds!: Types.ObjectId[];
+  @Prop({ type: [MongoSchema.Types.Mixed], default: [] })
+  recipeChoices!: RecipeChoice[];
+  @Prop({ default: 0 }) recipeRevision!: number;
   @Prop({ type: [MongoSchema.Types.ObjectId], default: [] })
   additionalCategoryIds!: Types.ObjectId[];
   @Prop({ type: MongoSchema.Types.Mixed }) presentation?: PizzaPresentation;
@@ -76,7 +112,7 @@ export class MenuItem {
   @Prop({ default: 0 })
   sortOrder!: number;
 
-  @Prop({ enum: ["pizza", "unclassified"], default: "unclassified" })
+  @Prop({ default: "unclassified" })
   productType!: string;
 
   @Prop({ type: [String], default: [] })
@@ -148,3 +184,9 @@ export class MenuItem {
 
 export const MenuItemSchema = SchemaFactory.createForClass(MenuItem);
 MenuItemSchema.index({ menuVersionId: 1, categoryId: 1 });
+
+// Keep `id` available to SDK consumers while retaining `_id` for compatibility.
+MenuSchema.set("toJSON", { virtuals: true });
+MenuVersionSchema.set("toJSON", { virtuals: true });
+CategorySchema.set("toJSON", { virtuals: true });
+MenuItemSchema.set("toJSON", { virtuals: true });

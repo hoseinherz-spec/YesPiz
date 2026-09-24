@@ -12,12 +12,13 @@ async function login(
   await page.goto(`${base}/login/`);
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
-  const submit = page
-    .locator("form")
-    .getByRole("button", { name: /^(sign in|log in)$/i });
-  await submit.focus();
-  await submit.press("Enter");
-  await expect(page).not.toHaveURL(/\/login/);
+  const submit = page.getByRole("button", {
+    name: /^(sign in|log in)$/i,
+  });
+  await submit.click();
+  await expect(page).not.toHaveURL(/\/(?:login|auth\/sign-in)(?:\/|$)/, {
+    timeout: 60_000,
+  });
 }
 
 let shiftCode = "";
@@ -104,6 +105,7 @@ for (const method of ["card", "cash"] as const) {
   test(`${method}: customer checkout → kitchen → courier → customer delivery`, async ({
     browser,
   }) => {
+    test.setTimeout(600_000); // Cold compilation of three role apps can take several minutes.
     const customerContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
       geolocation: { longitude: 11.58, latitude: 48.14 },
@@ -144,17 +146,17 @@ for (const method of ["card", "cash"] as const) {
       );
       await expect(
         courier
-          .getByRole("button", { name: "Start session", exact: true })
+          .getByRole("button", { name: /Start (session|shift)/ })
           .or(courier.getByText(/^On duty/)),
       ).toBeVisible();
       if (
         await courier
-          .getByRole("button", { name: "Start session", exact: true })
+          .getByRole("button", { name: /Start (session|shift)/ })
           .isVisible()
       ) {
         await courier.getByLabel("Start QR / OTP").fill(shiftCode);
         await courier
-          .getByRole("button", { name: "Start session", exact: true })
+          .getByRole("button", { name: /Start (session|shift)/ })
           .click();
         await expect(courier.getByText(/^On duty/)).toBeVisible();
       }
@@ -185,12 +187,16 @@ for (const method of ["card", "cash"] as const) {
       console.log(`${method}: saving address and building cart`);
       // Save a real delivery coordinate through the customer's address screen.
       await customer.goto("http://localhost:8151/addresses/new/?from=checkout");
-      await customer
-        .locator('input[name="street"]')
-        .fill("Maximilianstrasse 12");
+      await customer.locator('input[name="street"]').fill("Maximilianstrasse");
+      await customer.locator('input[name="houseNumber"]').fill("12");
       await customer.locator('input[name="postalCode"]').fill("80539");
-      await customer.locator('input[name="latitude"]').fill("48.14");
-      await customer.locator('input[name="longitude"]').fill("11.58");
+      await customer.locator('input[name="city"]').fill("Munich");
+      await customer
+        .getByLabel("Delivery location on map")
+        .click({ position: { x: 180, y: 140 } });
+      await expect(
+        customer.getByText("Pin placed", { exact: true }),
+      ).toBeVisible();
       const addressSaved = customer.waitForResponse(
         (response) =>
           response.url().endsWith("/orders/addresses") &&
@@ -201,46 +207,68 @@ for (const method of ["card", "cash"] as const) {
         .getByRole("button", { name: /save|add address/i })
         .click();
       const savedAddress = await (await addressSaved).json();
-      expect(savedAddress.latitude).toBe(48.14);
-      expect(savedAddress.longitude).toBe(11.58);
+      expect(savedAddress.latitude).toBeCloseTo(48.14, 1);
+      expect(savedAddress.longitude).toBeCloseTo(11.58, 1);
       await expect(customer).toHaveURL(/\/checkout\/?$/);
       await customer.goto("http://localhost:8151/menu/");
       await customer
-        .getByRole("link", { name: "Margherita", exact: true })
+        .getByRole("link", { name: /^Margherita/ })
         .first()
         .click();
-      await expect(customer).toHaveURL(/pizza/);
-      await customer.getByText("Large · €11.99", { exact: true }).click();
-      await expect(
-        customer.getByRole("radio", { name: /Large/ }),
-      ).toBeChecked();
-      await customer.getByText("Extra Cheese +€1.50", { exact: true }).click();
-      await customer.getByRole("button", { name: /Add to cart/i }).click();
-      await expect(customer).toHaveURL(/cart/);
+      await expect(customer).toHaveURL(/\/menu\/[^/]+\//);
+      const largeSize = customer.getByRole("radio", { name: /Large/ });
+      await largeSize.click();
+      await expect(largeSize).toBeChecked();
+      await customer.getByRole("checkbox", { name: /Extra Cheese/ }).click();
+      await customer.getByRole("button", { name: /^Add\s+€13\.49$/ }).click();
+      await customer.getByRole("button", { name: "Add to cart" }).click();
+      await expect(customer).toHaveURL(/menu\/?$/);
+      await customer.goto("http://localhost:8151/cart/");
+      await customer.bringToFront();
       await customer.reload();
       await expect(
         customer.getByText("Margherita", { exact: true }),
       ).toBeVisible();
-      await customer.getByRole("button", { name: /checkout/i }).click();
+      const slideToOrder = customer.getByRole("button", {
+        name: "Slide to order",
+      });
+      await slideToOrder.focus();
+      await slideToOrder.press("Enter");
+      await expect(customer).toHaveURL(/\/checkout\/?$/);
+      await customer
+        .getByRole("button", {
+          name: "Edit address and delivery instructions",
+          exact: true,
+        })
+        .click();
+      await customer
+        .getByRole("button", { name: /^Drop.off details/i })
+        .click();
       await customer.locator('input[name="floor"]').fill("3");
       await customer.locator('input[name="instructions"]').fill("Ring once");
       await customer
-        .getByText(
-          method === "cash" ? "Cash on Delivery" : "Online payment · Stripe",
-          { exact: true },
-        )
+        .getByRole("button", { name: "Save delivery details", exact: true })
         .click();
       await customer
         .getByRole("button", { name: /continue.*payment/i })
         .click();
-      await expect(customer).toHaveURL(/payment/);
+      await expect(customer).toHaveURL(/payment/, { timeout: 90_000 });
+      const paymentMethod = customer.getByRole("radio", {
+        name: method === "cash" ? /Cash on Delivery/ : /Card/,
+      });
+      if (!(await paymentMethod.isChecked())) {
+        await paymentMethod.focus();
+        await paymentMethod.press("Space");
+      }
+      await expect(paymentMethod).toBeChecked();
+      const placeOrder = customer.getByRole("button", {
+        name: method === "cash" ? /Place order.*pay on delivery/ : /Pay.*16.48/,
+      });
       // 8.99 pizza + 3.00 large + 1.50 extra cheese + 2.99 delivery.
-      await expect(
-        customer.getByRole("button", { name: /Pay.*16.48/ }),
-      ).toBeEnabled();
+      await expect(placeOrder).toBeEnabled();
       await customer.screenshot({
         path: `.qa/ui/customer-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       console.log(`${method}: submitting payment`);
       const created = customer.waitForResponse(
@@ -248,7 +276,7 @@ for (const method of ["card", "cash"] as const) {
           response.url().endsWith("/api/v1/orders") &&
           response.request().method() === "POST",
       );
-      await customer.getByRole("button", { name: /Pay.*16.48/ }).click();
+      await placeOrder.click();
       const createdResponse = await created;
       const order = await createdResponse.json();
       expect(
@@ -258,6 +286,7 @@ for (const method of ["card", "cash"] as const) {
       await expect(customer).toHaveURL(/order-success/);
       await customer.getByRole("button", { name: /track/i }).click();
       await expect(customer).toHaveURL(/tracking/);
+      await expect(customer.getByRole("heading", { name: "Finding your restaurant" })).toBeVisible();
       await expect(customer.getByText(/Maximilianstrasse 12/)).toBeVisible();
 
       await kitchen.bringToFront();
@@ -265,6 +294,10 @@ for (const method of ["card", "cash"] as const) {
       await kitchen
         .getByRole("button", { name: "Refresh", exact: true })
         .click();
+      await customer.bringToFront();
+      await expect(customer.locator(".journey-matching strong")).toContainText(/[1-9]/);
+      await customer.screenshot({ path: `.qa/ui/matching-live-${method}.png`, fullPage: true, animations: "disabled", timeout: 60_000 });
+      await kitchen.bringToFront();
       await kitchen
         .getByRole("button", { name: "Declare ready", exact: true })
         .click();
@@ -276,7 +309,7 @@ for (const method of ["card", "cash"] as const) {
       await expect(kitchen.getByRole("checkbox").first()).toBeVisible();
       await kitchen.screenshot({
         path: `.qa/ui/kitchen-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       await kitchen.setViewportSize({ width: 390, height: 844 });
       await expect
@@ -288,7 +321,7 @@ for (const method of ["card", "cash"] as const) {
         .toBe(true);
       await kitchen.screenshot({
         path: `.qa/ui/kitchen-mobile-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       await kitchen.setViewportSize({ width: 1280, height: 720 });
       for (const check of await kitchen.getByRole("checkbox").all()) {
@@ -348,7 +381,7 @@ for (const method of ["card", "cash"] as const) {
       await courier.bringToFront();
       console.log(`${method}: courier delivery`);
       await courier
-        .getByRole("button", { name: "Refresh", exact: true })
+        .getByRole("button", { name: "Refresh assigned batches", exact: true })
         .click();
       await courier.locator('a[href*="/home/batch/"]').last().click();
       await expect(courier).toHaveURL(/\/home\/batch\//, { timeout: 60_000 });
@@ -357,7 +390,7 @@ for (const method of ["card", "cash"] as const) {
       });
       await courier.screenshot({
         path: `.qa/ui/courier-batch-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       await courier.locator('a[href*="/home/order/"]').click();
       await courier
@@ -374,16 +407,20 @@ for (const method of ["card", "cash"] as const) {
       ).toBeVisible();
       await expect(courier.getByText(/Floor 3/)).toBeVisible();
       await courierContext.setGeolocation({
-        latitude: 48.14,
-        longitude: 11.58,
+        latitude: Number(savedAddress.latitude),
+        longitude: Number(savedAddress.longitude),
       });
+      await customer.bringToFront();
       await customer.reload();
+      await customer
+        .getByRole("button", { name: /Driver information:/ })
+        .click();
       const pin = await customer
         .locator('[data-testid="delivery-pin"]')
         .innerText();
       await courier.screenshot({
         path: `.qa/ui/courier-delivery-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       await expect
         .poll(() =>
@@ -418,13 +455,14 @@ for (const method of ["card", "cash"] as const) {
         );
         await courier.screenshot({
           path: ".qa/ui/courier-cash-receipt.png",
-          fullPage: true,
+          fullPage: true, animations: "disabled", timeout: 60_000,
         });
         await courier
           .getByRole("button", { name: /record.*receipt|save.*receipt/i })
           .click();
       }
       await courier.getByRole("button", { name: "Mark completed" }).click();
+      await customer.bringToFront();
       await customer.reload();
       await expect(
         customer.getByText(/delivered|arrived/i).first(),
@@ -436,16 +474,16 @@ for (const method of ["card", "cash"] as const) {
       await stopRoleApp("courier-mobile");
       await customer.goto("http://localhost:8151/orders/");
       await customer
-        .getByRole("button", { name: /history/i, exact: true })
+        .getByRole("button", { name: "Completed", exact: true })
         .click();
       await customer
-        .getByRole("button", { name: /reorder/i })
+        .getByRole("button", { name: /order again|reorder/i })
         .first()
         .click();
       await expect(
         customer.getByRole("dialog", { name: "Review reorder" }),
       ).toContainText(
-        "Review this pizza's current choices before ordering again.",
+        /Review this (?:pizza|product)'s current choices before ordering again\./,
       );
       await expect(
         customer
@@ -476,6 +514,7 @@ for (const method of ["card", "cash"] as const) {
       await expect(
         customer.getByText("Thanks for helping us improve"),
       ).toBeVisible();
+      await customer.bringToFront();
       await customer.reload();
       await expect(
         customer.getByText("Thanks for helping us improve"),
@@ -492,7 +531,7 @@ for (const method of ["card", "cash"] as const) {
       );
       await customer.screenshot({
         path: `.qa/ui/customer-care-${method}.png`,
-        fullPage: true,
+        fullPage: true, animations: "disabled", timeout: 60_000,
       });
       expect(await customer.locator("body").innerText()).not.toContain(
         "Secret source",
@@ -515,7 +554,7 @@ for (const method of ["card", "cash"] as const) {
         ).toBeVisible();
         await admin.screenshot({
           path: `.qa/ui/admin-private-feedback-${method}.png`,
-          fullPage: true,
+          fullPage: true, animations: "disabled", timeout: 60_000,
         });
         await admin.goto("http://localhost:8152/support");
         const requestCard = admin
@@ -531,7 +570,8 @@ for (const method of ["card", "cash"] as const) {
           .getByRole("button", { name: "Resolve request", exact: true })
           .click();
         await expect(requestCard).toHaveCount(0);
-        await customer.reload();
+        await customer.bringToFront();
+      await customer.reload();
         await expect(
           customer
             .locator("article")

@@ -1,4 +1,6 @@
 "use client";
+import { ComboEditor } from "@/components/ComboEditor";
+import type { IngredientOptionConfig } from "@repo/api";
 import { FormAction, FormScope, Input, Form, Select } from "@repo/ui/forms";
 import { Button as FormButton } from "@heroui/react";
 
@@ -6,12 +8,15 @@ import {
   PizzaMenuEditor,
   MenuCategoryEditor,
 } from "@/components/PizzaMenuEditor";
+import { IngredientLibrary } from "@/components/IngredientLibrary";
+import { IngredientRulesEditor } from "@/components/IngredientRulesEditor";
 import { MenuIngredients } from "@/components/MenuIngredients";
 
 import {
   ApiError,
   apiRequest,
   catalogClient,
+  type Ingredient,
   type Category,
   type MenuItem,
   type MenuVersion,
@@ -23,6 +28,7 @@ import { entityId } from "@/lib/ids";
 import { useLoadOnMount } from "@/lib/load-on-mount";
 
 export default function MenuPage() {
+  const [ingredientLibrary, setIngredientLibrary] = useState<Ingredient[]>([]);
   const [versions, setVersions] = useState<MenuVersion[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -30,6 +36,9 @@ export default function MenuPage() {
   const [publishAt, setPublishAt] = useState("");
   const [notes, setNotes] = useState("");
   const [categoryName, setCategoryName] = useState("");
+  const [newIngredientIds, setNewIngredientIds] = useState<string[]>([]);
+  const [newIngredientOptions, setNewIngredientOptions] = useState<IngredientOptionConfig[]>([]);
+  const [newBaseImage, setNewBaseImage] = useState("");
   const [itemForm, setItemForm] = useState({
     categoryId: "",
     name: "",
@@ -154,10 +163,12 @@ export default function MenuPage() {
           name: itemForm.name.trim(),
           description: itemForm.description || undefined,
           priceCents,
+          ingredientIds: newIngredientIds, ingredientOptions: newIngredientOptions, toppingBaseImageUrl: newBaseImage,
         },
         { accessToken: token },
       );
       setItemForm((f) => ({ ...f, name: "", description: "" }));
+      setNewIngredientIds([]); setNewIngredientOptions([]); setNewBaseImage('');
       await loadDetail(selectedId);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Add item failed");
@@ -207,8 +218,8 @@ export default function MenuPage() {
           </div>
 
           <p className="text-sm text-muted">
-            Only pizza can be sold. Existing unclassified items stay hidden
-            until an administrator confirms they are pizza. Ingredients and
+            Create products and combos for your menu. Existing unclassified items stay hidden
+            until an administrator classifies them. Ingredients and
             allergens must match the actual recipe.
           </p>
 
@@ -220,6 +231,9 @@ export default function MenuPage() {
               {error}
             </p>
           ) : null}
+
+          <IngredientLibrary onChange={setIngredientLibrary} />
+          {selectedId && <ComboEditor key={selectedId} versionId={selectedId} items={items} categories={categories} onSaved={() => loadDetail(selectedId)} />}
 
           <Card className="p-4">
             <Card.Content className="flex flex-col gap-3 p-0">
@@ -527,7 +541,7 @@ export default function MenuPage() {
                                   {item.isActive === false
                                     ? "Hidden"
                                     : "Active"}
-                                  {item.productType !== "pizza" && (
+                                  {item.productType === "unclassified" && (
                                     <FormButton
                                       variant="ghost"
                                       type="button"
@@ -581,7 +595,13 @@ export default function MenuPage() {
                             onSaved={() => loadDetail(selectedId)}
                           />
                           <MenuIngredients
+                            key={`${entityId(item)}:${(item.ingredientIds ?? []).join(",")}`}
                             id={entityId(item)}
+                            ingredientIds={item.ingredientIds ?? []}
+                            ingredientOptions={item.ingredientOptions ?? []}
+                            toppingBaseImageUrl={item.toppingBaseImageUrl}
+                            library={ingredientLibrary}
+                            onSaved={() => loadDetail(selectedId)}
                             ingredients={item.ingredients ?? []}
                             allergens={item.allergens ?? []}
                           />
@@ -652,6 +672,8 @@ export default function MenuPage() {
                         className="border-border bg-background rounded-md border px-3 py-2"
                       />
                     </div>
+                    <IngredientRulesEditor library={ingredientLibrary} selected={newIngredientIds} options={newIngredientOptions} onSelected={setNewIngredientIds} onOptions={setNewIngredientOptions} disabled={busy} />
+                    <Input label="Pizza base image URL (optional)" value={newBaseImage} onChange={e => setNewBaseImage(e.target.value)} placeholder="Pizza without customer-changeable toppings" />
                     <FormAction
                       variant="secondary"
                       isDisabled={busy}

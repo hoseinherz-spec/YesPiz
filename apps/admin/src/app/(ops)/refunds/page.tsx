@@ -1,20 +1,25 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { paymentsClient } from "@repo/api";
+import { paymentsClient, groupsClient } from "@repo/api";
 import { requireAdminToken } from "@/lib/auth";
 export default function RefundsPage() {
   const [rows, setRows] = useState<
     Awaited<ReturnType<typeof paymentsClient.refunds>>
   >([]);
+  const [groups, setGroups] = useState<
+    Awaited<ReturnType<typeof groupsClient.refundQueue>>
+  >([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const load = useCallback(
-    async () =>
-      setRows(
-        await paymentsClient.refunds({ accessToken: requireAdminToken() }),
-      ),
-    [],
-  );
+  const load = useCallback(async () => {
+    const options = { accessToken: requireAdminToken() };
+    const [refunds, groupRefunds] = await Promise.all([
+      paymentsClient.refunds(options),
+      groupsClient.refundQueue(options),
+    ]);
+    setRows(refunds);
+    setGroups(groupRefunds);
+  }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void load().catch(() => setError("Unable to load refunds."));
@@ -44,6 +49,32 @@ export default function RefundsPage() {
         create a second refund.
       </p>
       {error && <p role="alert">{error}</p>}
+      {groups.map((group) => (
+        <div key={group.token} className="rounded-xl border p-4 space-y-2">
+          <strong>Unplaced group: {group.title}</strong>
+          <p>{group.refundError || "Refund processing"}</p>
+          <button
+            className="rounded-lg border px-4 py-2"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                await groupsClient.retryRefund(group.token, {
+                  accessToken: requireAdminToken(),
+                });
+                await load();
+              } catch {
+                setError("Group refund needs review.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Refresh group refund status
+          </button>
+        </div>
+      ))}
       {!rows.length && <p>No refunds recorded.</p>}
       {rows.map((row) => (
         <div className="rounded-xl border p-4 space-y-2" key={row._id}>

@@ -5,11 +5,10 @@ async function login(page: Page, port: number, role: "customer" | "admin") {
   await page
     .locator('input[type="password"]')
     .fill(role === "admin" ? "Admin123!" : "Customer123!");
-  await page
-    .locator("form")
-    .getByRole("button", { name: /sign in|log in/i })
-    .click();
-  await expect(page).not.toHaveURL(/login/);
+  await page.getByRole("button", { name: /sign in|log in/i }).click();
+  await expect(page).not.toHaveURL(/\/(?:login|auth\/sign-in)(?:\/|$)/, {
+    timeout: 60_000,
+  });
 }
 test("approved pizza comments, referral configuration and scheduled ordering", async ({
   browser,
@@ -26,7 +25,7 @@ test("approved pizza comments, referral configuration and scheduled ordering", a
     const admin = await adminContext.newPage();
     await login(customer, 8151, "customer");
     const token = await customer.evaluate(() =>
-      localStorage.getItem("yespizz_access_token"),
+      sessionStorage.getItem("yespiz_auth_session_v1"),
     );
     const orders = await request.get("http://localhost:8158/api/v1/orders", {
       headers: { Authorization: `Bearer ${token}` },
@@ -54,10 +53,10 @@ test("approved pizza comments, referral configuration and scheduled ordering", a
     await expect(
       customer.getByText("Thanks for helping us improve"),
     ).toBeVisible();
-    await customer.goto(`http://localhost:8151/pizza/?id=${pizzaId}`);
+    await customer.goto(`http://localhost:8151/menu/${pizzaId}/`);
     await expect(
-      customer.getByText("No published comments yet."),
-    ).toBeVisible();
+      customer.getByText("Great crust.", { exact: true }),
+    ).toHaveCount(0);
     await login(admin, 8152, "admin");
     await admin.goto("http://localhost:8152/feedback");
     const review = admin
@@ -87,9 +86,7 @@ test("approved pizza comments, referral configuration and scheduled ordering", a
       review.getByText("Not published", { exact: true }),
     ).toBeVisible();
     await customer.reload();
-    await expect(
-      customer.getByText("No published comments yet."),
-    ).toBeVisible();
+    await expect(customer.locator("blockquote")).toHaveCount(0);
     await admin.goto("http://localhost:8152/growth");
     await admin.getByLabel("Credit per person (€)").fill("3");
     await admin.getByRole("button", { name: "Save referral reward" }).click();
@@ -119,17 +116,24 @@ test("approved pizza comments, referral configuration and scheduled ordering", a
     await expect(
       admin.locator("article").filter({ hasText: order.id.slice(-6) }),
     ).toContainText(/€\s*7[.,]50/);
-    await customer.goto(`http://localhost:8151/pizza/?id=${pizzaId}`);
-    await customer.getByRole("button", { name: /Add to cart/i }).click();
-    await expect(customer).toHaveURL(/cart/);
-    await customer.getByRole("button", { name: /checkout/i }).click();
+    await customer.goto(`http://localhost:8151/menu/${pizzaId}/`);
+    await customer.getByRole("button", { name: /Add\s+€/ }).click();
+    await customer.getByRole("button", { name: "Add to cart" }).click();
+    await customer.goto("http://localhost:8151/cart/");
+    await customer
+      .getByRole("button", { name: "Slide to order" })
+      .press("Enter");
+    await customer
+      .locator("summary")
+      .filter({ hasText: /^Order start/ })
+      .click();
     await customer.getByRole("radio", { name: /45/ }).press("Space");
     await customer.getByRole("button", { name: /continue.*payment/i }).click();
     await expect(customer).toHaveURL(/\/payment\/?$/);
     await expect(
-      customer.getByRole("button", { name: /Pay.*11.98/ }),
+      customer.getByRole("button", { name: /Pay.*12.89/ }),
     ).toBeEnabled();
-    await customer.getByRole("button", { name: /Pay.*11.98/ }).click();
+    await customer.getByRole("button", { name: /Pay.*12.89/ }).click();
     await expect(customer).toHaveURL(/order-success/);
     await customer.getByRole("button", { name: /track/i }).click();
     await expect(customer.getByText(/Order starts/)).toBeVisible();
@@ -194,7 +198,7 @@ test("customer Zod login shows inline errors before sending credentials", async 
   });
   await page.locator('input[name="email"]').fill("not-an-email");
   await page.locator('input[name="password"]').fill("short");
-  await page.locator('form button[type="submit"]').click();
+  await page.getByRole("button", { name: /sign in|log in/i }).click();
   await expect(
     page.getByText("Enter a valid email address.", { exact: true }),
   ).toBeVisible();
@@ -317,32 +321,29 @@ test("customer dynamic pizza choices reach the cart", async ({
   try {
     const customer = await context.newPage();
     await login(customer, 8151, "customer");
-    await customer.goto(`http://localhost:8151/pizza/?id=${pizza.id}`);
-    await expect(customer.getByRole("radio", { name: /32 cm/ })).toBeChecked();
-    await customer.getByRole("button", { name: /add to cart/i }).click();
-    await expect(customer).toHaveURL(/cart/);
+    await customer.goto(`http://localhost:8151/menu/${pizza.id}/`);
+    await expect(
+      customer.getByRole("button", { name: /Add\s+€12\.5/ }),
+    ).toBeVisible();
+    await customer.getByRole("button", { name: /Add\s+€12\.5/ }).click();
+    await customer.getByRole("button", { name: "Add to cart" }).click();
+    await customer.goto("http://localhost:8151/cart/");
     await expect(customer.getByText("32 cm", { exact: true })).toBeVisible();
     const checkoutButton = customer.getByRole("button", {
-      name: /proceed to checkout/i,
+      name: "Slide to order",
     });
-    expect(
-      await checkoutButton.evaluate(
-        (el) => el.scrollWidth <= el.clientWidth + 1,
-      ),
-    ).toBeTruthy();
+    await expect
+      .poll(() =>
+        customer.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
     await customer.screenshot({
       path: ".qa/ui/dynamic-pizza-cart.png",
       fullPage: true,
     });
-    await customer.getByRole("button", { name: /checkout/i }).click();
-    await expect(
-      customer.getByRole("radiogroup", { name: /address/i }),
-    ).toBeVisible();
-    await customer
-      .getByRole("radiogroup", { name: /address/i })
-      .getByRole("radio")
-      .first()
-      .press("Space");
+    await checkoutButton.press("Enter");
     await customer.getByRole("button", { name: /continue.*payment/i }).click();
     await expect(customer).toHaveURL(/payment/);
     await expect(

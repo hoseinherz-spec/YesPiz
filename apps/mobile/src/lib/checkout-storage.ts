@@ -70,10 +70,18 @@ export function writeCheckoutPrefs(
   }
 }
 
-export function readPaymentMethod(): "card" | "cash" {
+export function writePaymentMethod(method: "card" | "cash" | "wallet") {
+  try {
+    sessionStorage.setItem(KEYS.paymentMethod, method);
+  } catch {
+    // Payment remains usable when optional storage is unavailable.
+  }
+}
+
+export function readPaymentMethod(): "card" | "cash" | "wallet" {
   try {
     const stored = sessionStorage.getItem(KEYS.paymentMethod);
-    return stored === "cash" ? "cash" : "card";
+    return stored === "cash" || stored === "wallet" ? stored : "card";
   } catch {
     return "card";
   }

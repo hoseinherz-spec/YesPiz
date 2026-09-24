@@ -3,9 +3,11 @@
 import { ApiQueryProvider } from '@repo/api';
 import { ThemeProvider } from '@repo/theme';
 import { MobilePageTransition } from "@repo/ui/mobile-page-transition";
+import { Toast } from "@heroui/react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from 'react';
 
+import { OrderPushNavigation } from "@/features/tracking/OrderPushNavigation";
 import { AppProvider } from '@/context/AppContext';
 import { CartProvider } from '@/context/CartContext';
 
@@ -19,8 +21,10 @@ export function Providers({ children }: ProvidersProps) {
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <ApiQueryProvider>
         <AppProvider>
+          <OrderPushNavigation />
           <CartProvider>
             <MobilePageTransition pathname={pathname} app="customer">{children}</MobilePageTransition>
+            <Toast.Provider placement="top" maxVisibleToasts={3} />
           </CartProvider>
         </AppProvider>
       </ApiQueryProvider>

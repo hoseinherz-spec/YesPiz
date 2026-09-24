@@ -1,3 +1,4 @@
+import { Cron } from "@nestjs/schedule";
 import {
   BadRequestException,
   ConflictException,
@@ -61,6 +62,8 @@ export class GroupsService {
       split: g.split,
       state: g.state,
       revision: g.revision,
+      mock: this.payments.isMockGateway(),
+      refundPending: g.state === "cancelling",
       deadline: g.deadline,
       expired: g.deadline.getTime() <= Date.now(),
       owner: g.ownerId === userId,
@@ -97,7 +100,11 @@ export class GroupsService {
     ).map((g) => this.view(g, userId));
   }
   async read(userId: string, token: string) {
-    return this.view(await this.get(token), userId);
+    return this.exclusive(token, async () => {
+      const g = await this.get(token);
+      if (g.state === "locked") await this.syncShares(g);
+      return this.view(g, userId);
+    });
   }
   async create(userId: string, dto: CreateGroupDto) {
     const deadline = new Date(dto.deadline);
@@ -106,10 +113,7 @@ export class GroupsService {
       throw new BadRequestException(
         "Choose a title and a deadline within 24 hours.",
       );
-    if (dto.split && this.config.get("NODE_ENV") === "production")
-      throw new BadRequestException(
-        "Split mock payments are unavailable in production.",
-      );
+
     return this.view(
       await this.groups.create({
         ...dto,
@@ -197,6 +201,15 @@ export class GroupsService {
       }));
       g.checkout = checkout;
       g.quote = quote;
+      if (
+        !this.payments.isMockGateway() &&
+        shares.some((amount) => amount < 50)
+      )
+        throw new BadRequestException(
+          "Each card share must be at least €0.50.",
+        );
+      g.paymentRound = (g.paymentRound ?? 0) + 1;
+      g.deadline = new Date(Date.now() + 30 * 60000);
       g.state = "locked";
       g.revision++;
       await g.save();
@@ -210,15 +223,43 @@ export class GroupsService {
   }
   async payShare(userId: string, token: string) {
     return this.exclusive(token, async () => {
-      if (this.config.get("NODE_ENV") === "production")
-        throw new BadRequestException(
-          "Mock payments are unavailable in production.",
-        );
       const g = await this.get(token);
-      if (g.state !== "locked" || !g.split)
+      if (
+        g.state !== "locked" ||
+        g.deadline.getTime() <= Date.now() ||
+        !g.split
+      )
         throw new BadRequestException("The group must be reviewed first.");
       const member = g.members.find((m) => m.userId === userId);
       if (!member) throw new ForbiddenException();
+      if (!this.payments.isMockGateway()) {
+        await this.syncShares(g);
+        const current = g.members.find((m) => m.userId === userId)!;
+        if (current.paid) return this.view(g, userId);
+        if (!current.checkoutId) {
+          const session = await this.payments.createGroupCheckout(
+            g.token,
+            g.paymentRound,
+            userId,
+            current.shareCents,
+          );
+          current.checkoutId = session.id;
+          g.markModified("members");
+          await g.save();
+        }
+        const state = await this.payments.groupCheckoutState(
+          current.checkoutId,
+          g.token,
+          g.paymentRound,
+          userId,
+          current.shareCents,
+        );
+        if (!state.checkoutUrl)
+          throw new BadRequestException(
+            "Checkout expired. Cancel and reopen the group to try again.",
+          );
+        return { ...this.view(g, userId), checkoutUrl: state.checkoutUrl };
+      }
       if (!member.paid) {
         g.members = g.members.map((m) =>
           m.userId === userId ? { ...m, paid: true } : m,
@@ -236,6 +277,10 @@ export class GroupsService {
       if (g.state !== "locked" || g.orderId)
         throw new BadRequestException(
           "This group cannot be reopened after checkout has begun.",
+        );
+      if (g.members.some((m) => !!m.checkoutId))
+        throw new BadRequestException(
+          "Cancel this group to refund its payments before making changes.",
         );
       const current = await this.catalog.getPublishedVersionNumber();
       if (!current)
@@ -262,12 +307,121 @@ export class GroupsService {
         throw new BadRequestException(
           "Manage the placed order from order history.",
         );
-      g.state = "cancelled";
-      g.members = g.members.map((m) => ({ ...m, paid: false }));
+      g.state = g.members.some((m) => !!m.checkoutId)
+        ? "cancelling"
+        : "cancelled";
+      await g.save();
+      if (g.state === "cancelling") await this.refundShares(g);
+      else g.members = g.members.map((m) => ({ ...m, paid: false }));
       g.revision++;
       await g.save();
       return this.view(g, userId);
     });
+  }
+  async refundQueue() {
+    return this.groups
+      .find({ state: "cancelling" })
+      .select("token title state refundError updatedAt")
+      .sort({ updatedAt: 1 })
+      .limit(100)
+      .lean()
+      .exec();
+  }
+  async retryRefund(token: string) {
+    return this.exclusive(token, async () => {
+      const g = await this.get(token);
+      if (g.state !== "cancelling" || g.orderId)
+        throw new BadRequestException("No unplaced group refund is pending.");
+      await this.refundShares(g);
+      return { state: g.state, refundError: g.refundError };
+    });
+  }
+  private async syncShares(g: GroupCartDocument) {
+    if (this.payments.isMockGateway()) return;
+    let changed = false;
+    for (const m of g.members) {
+      if (!m.checkoutId) continue;
+      const state = await this.payments.groupCheckoutState(
+        m.checkoutId,
+        g.token,
+        g.paymentRound,
+        m.userId,
+        m.shareCents,
+      );
+      if (m.paid !== state.paid || m.intentId !== state.intentId) {
+        m.paid = state.paid;
+        m.intentId = state.intentId;
+        changed = true;
+      }
+    }
+    if (changed) {
+      g.markModified("members");
+      await g.save();
+    }
+  }
+  private async refundShares(g: GroupCartDocument) {
+    let complete = true;
+    try {
+      for (const m of g.members)
+        if (m.checkoutId)
+          complete =
+            (await this.payments.refundGroupShare(
+              m.checkoutId,
+              g.token,
+              g.paymentRound,
+              m.userId,
+              m.shareCents,
+            )) && complete;
+      g.refundError = undefined;
+    } catch {
+      complete = false;
+      g.refundError =
+        "Refund reconciliation pending; operations must review persistent failures.";
+    }
+    if (complete) {
+      g.state = "cancelled";
+      g.members = g.members.map((m) => ({ ...m, paid: false }));
+    }
+    await g.save();
+  }
+  @Cron("*/30 * * * * *")
+  async reconcileGroups() {
+    const interrupted = await this.groups
+      .find({ state: "locked", orderId: { $exists: true } })
+      .limit(100)
+      .exec();
+    for (const g of interrupted) {
+      try {
+        await this.submit(g.ownerId, g.token, {
+          revision: g.revision,
+          expectedTotalCents: Number(g.quote?.totalCents),
+        });
+      } catch {
+        /* A persisted order cannot be refunded as an unplaced group. Retry settlement. */
+      }
+    }
+    const rows = await this.groups
+      .find({
+        $or: [
+          { state: "cancelling" },
+          { state: "locked", deadline: { $lte: new Date() } },
+        ],
+      })
+      .limit(100)
+      .exec();
+    for (const row of rows) {
+      try {
+        await this.exclusive(row.token, async () => {
+          const g = await this.get(row.token);
+          if (g.orderId || !["locked", "cancelling"].includes(g.state)) return;
+          g.state = "cancelling";
+          await g.save();
+          await this.refundShares(g);
+        });
+      } catch {
+        /* The persisted state is retried on the next sweep. */
+      }
+    }
   }
   async submit(userId: string, token: string, dto: GroupSubmitDto) {
     return this.exclusive(token, async () => {
@@ -281,25 +435,42 @@ export class GroupsService {
         Number(g.quote?.totalCents) !== dto.expectedTotalCents
       )
         throw new BadRequestException("Review the group total first.");
+      await this.syncShares(g);
       if (g.split && g.members.some((m) => !m.paid))
         throw new BadRequestException(
           "Waiting for everyone to confirm their share.",
         );
-      if (!this.payments.isMockGateway())
+      if (g.deadline.getTime() <= Date.now() && !g.orderId)
         throw new BadRequestException(
-          "Group checkout requires the mock payment gateway.",
+          "Group payment deadline passed. Cancel the group for a refund.",
         );
       const order = await this.orders.createOrder(userId, {
         ...g.checkout,
-        idempotencyKey: `group:${g.token}`,
+        idempotencyKey: `group:${g.token}:${g.paymentRound}`,
         expectedTotalCents: dto.expectedTotalCents,
       });
       g.orderId = String(order.id);
       await g.save();
-      await this.payments.initiate(userId, {
-        orderId: g.orderId,
-        method: PaymentMethod.CARD,
-      });
+      if (!this.payments.isMockGateway() && g.split) {
+        await this.payments.captureGroupOrder(
+          userId,
+          g.orderId,
+          g.token,
+          g.paymentRound,
+          g.members.map((m) => ({
+            userId: m.userId,
+            amountCents: m.shareCents,
+            intentId: m.intentId!,
+          })),
+        );
+      } else if (this.payments.isMockGateway()) {
+        await this.payments.initiate(userId, {
+          orderId: g.orderId,
+          method: PaymentMethod.CARD,
+        });
+      }
+      // Owner-paid groups continue through the ordinary authenticated checkout.
+
       g.state = "ordered";
       g.revision++;
       await g.save();

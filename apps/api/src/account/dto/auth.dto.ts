@@ -1,11 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEmail,
+  Matches,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
   MinLength,
+  MaxLength,
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
@@ -78,7 +80,8 @@ export class RegisterDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
+  @MaxLength(72)
   password!: string;
 
   /** Ignored if present; public registration is always customer. */
@@ -97,6 +100,9 @@ export class RegisterDto {
 export class SendOtpDto {
   @ApiProperty()
   @IsString()
+  @Matches(/^\+[1-9]\d{7,14}$/, {
+    message: "Use international phone format, for example +4915123456789.",
+  })
   phone!: string;
 
   @ApiPropertyOptional({ enum: PUBLIC_ROLES })
@@ -106,17 +112,21 @@ export class SendOtpDto {
 
   @ApiPropertyOptional({ default: "sms" })
   @IsOptional()
-  @IsString()
+  @IsIn(["sms"])
   channel?: string;
 }
 
 export class ConfirmOtpDto {
   @ApiProperty()
   @IsString()
+  @Matches(/^\+[1-9]\d{7,14}$/, {
+    message: "Use international phone format, for example +4915123456789.",
+  })
   phone!: string;
 
   @ApiProperty()
   @IsString()
+  @Matches(/^\d{6}$/)
   code!: string;
 
   @ApiPropertyOptional({ enum: PUBLIC_ROLES })
@@ -294,6 +304,18 @@ export class ForgotPasswordDto {
   email!: string;
 }
 
+export class ConfirmPasswordResetOtpDto {
+  @ApiProperty()
+  @IsString()
+  @Matches(/^[a-f0-9]{64}$/)
+  challengeId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @Matches(/^\d{5}$/)
+  code!: string;
+}
+
 export class ResetPasswordDto {
   @ApiProperty()
   @IsString()
@@ -301,13 +323,14 @@ export class ResetPasswordDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
+  @MaxLength(72)
   password!: string;
 }
 
 export class SocialLoginDto {
-  @IsIn(["google", "apple"])
-  provider!: "google" | "apple";
+  @IsIn(["google", "apple", "facebook"])
+  provider!: "google" | "apple" | "facebook";
 
   @IsString()
   @MinLength(1)

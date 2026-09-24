@@ -32,6 +32,11 @@ export class Payment {
   @Prop({ required: true })
   amountCents!: number;
 
+  @Prop({ type: [Object], default: undefined }) groupShares?: {
+    userId: string;
+    amountCents: number;
+    intentId: string;
+  }[];
   @Prop() providerRef?: string;
   @Prop() refundId?: string;
   @Prop() refundStatus?: string;

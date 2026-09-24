@@ -1,13 +1,20 @@
 import { apiRequest, withAuth, type AuthRequestOptions } from "../../core";
 export type RewardsSummary = {
   rules: {
-    version:number;
+    version: number;
     ordersPerReward: number;
     rewardCents: number;
     minimumOrderCents: number;
   };
-  nextRewardCents:number;
-  campaigns:Array<{version:number;ordersPerReward:number;rewardCents:number;completed:number;progress:number;available:number}>;
+  nextRewardCents: number;
+  campaigns: Array<{
+    version: number;
+    ordersPerReward: number;
+    rewardCents: number;
+    completed: number;
+    progress: number;
+    available: number;
+  }>;
   completed: number;
   claimed: number;
   available: number;
@@ -21,6 +28,8 @@ export type RewardsSummary = {
     until: string | null;
     cancelled: boolean;
     mock: boolean;
+    status: string | null;
+    canManage: boolean;
     canEnroll: boolean;
   };
 };
@@ -36,9 +45,19 @@ export const rewardsClient = {
       withAuth({ ...options, method: "POST" }),
     ),
   enroll: (requestId: string, options?: AuthRequestOptions) =>
-    apiRequest<RewardsSummary>(
+    apiRequest<{ checkoutUrl: string }>(
       "/api/v1/rewards/membership",
       withAuth({ ...options, method: "POST", body: { requestId } }),
+    ),
+  refresh: (options?: AuthRequestOptions) =>
+    apiRequest<RewardsSummary>(
+      "/api/v1/rewards/membership/refresh",
+      withAuth({ ...options, method: "POST" }),
+    ),
+  portal: (options?: AuthRequestOptions) =>
+    apiRequest<{ checkoutUrl: string }>(
+      "/api/v1/rewards/membership/portal",
+      withAuth({ ...options, method: "POST" }),
     ),
   cancel: (options?: AuthRequestOptions) =>
     apiRequest<RewardsSummary>(

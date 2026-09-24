@@ -10,7 +10,7 @@ import {
 } from "@repo/api";
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
-import { requireProviderToken } from "@/lib/auth";
+import { getProviderToken, requireProviderToken } from "@/lib/auth";
 import { formatCents } from "@/lib/ids";
 
 type WaveOutcome = {
@@ -97,6 +97,18 @@ export default function OffersPage() {
       window.clearInterval(countdown);
     };
   }, [load]);
+
+  useEffect(() => {
+    const acknowledge = () => {
+      if (document.hidden) return;
+      const token = getProviderToken();
+      if (!token) return;
+      for (const offer of offers) void dispatchClient.markViewed(offer.orderId, { accessToken: token }).catch(() => undefined);
+    };
+    acknowledge();
+    document.addEventListener("visibilitychange", acknowledge);
+    return () => document.removeEventListener("visibilitychange", acknowledge);
+  }, [offers]);
 
   function recordOutcome(orderId: string, label: string) {
     setRecentOutcomes((prev) => {

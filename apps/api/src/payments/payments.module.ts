@@ -1,3 +1,4 @@
+import { BillingModule } from "../billing/billing.module";
 import { WalletModule } from "../wallet/wallet.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -12,6 +13,7 @@ import { StripeWebhookController } from "./stripe-webhook.controller";
 @Module({
   imports: [
     WalletModule,
+    BillingModule,
     MongooseModule.forFeature([
       { name: Payment.name, schema: PaymentSchema },
       { name: Order.name, schema: OrderSchema },

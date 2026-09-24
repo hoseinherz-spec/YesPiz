@@ -1,0 +1,141 @@
+.options {
+  margin: 30px -24px 28px;
+  padding: 28px 24px;
+  background: var(--background);
+  border-radius: 30px;
+  min-width: 0;
+}
+.intro {
+  margin-bottom: 28px;
+}
+.intro h2 {
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.045em;
+}
+.intro p {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.group {
+  border: 0;
+  padding: 0;
+  margin: 0 0 30px;
+  min-width: 0;
+}
+.group:last-child {
+  margin-bottom: 0;
+}
+.group legend {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  padding: 0;
+  margin-bottom: 14px;
+}
+.hint {
+  margin: -6px 0 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  margin: -4px -24px -10px;
+  padding: 4px 24px 16px;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+.pill {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+.pill input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.pill > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 22px;
+  min-height: 54px;
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 550;
+  white-space: nowrap;
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--foreground) 4%, transparent);
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+.pill small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.pill input:checked + span {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.pill input:checked + span small {
+  color: inherit;
+}
+.pill input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.pill input:disabled + span {
+  opacity: 0.45;
+}
+.pill input:disabled {
+  cursor: not-allowed;
+}
+.clear {
+  display: block;
+  margin-top: 12px;
+  padding: 6px 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.toppings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.toppings .pill > span {
+  padding: 10px 18px;
+  min-height: 58px;
+}
+.ingredientImage {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.ingredientCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill > span {
+    transition: none;
+  }
+}

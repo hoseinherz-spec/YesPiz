@@ -1,9 +1,9 @@
 "use client";
-import { AppText } from "@/components/Text";
+import { BrandLogo } from "@/components/BrandLogo";
 
 
 import Image from "next/image";
-import { EnvelopeOpen1, Lock1, UserPlus } from "@repo/icons";
+import { EnvelopeOpen1, Lock1, UserPlus } from "@/components/animated-icon/icons";
 import type { ReactNode } from "react";
 import { AppFrame } from "@/components/AppFrame";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -34,9 +34,7 @@ export function AuthScreen({
       >
         {variant === "welcome" ? (
           <div className={styles.brand}>
-            <AppText as="span" className={styles.wordmark}>
-              yespiz<AppText as="span">.</AppText>
-            </AppText>
+            <BrandLogo />
             <Image
               src="/images/banners/pizza-editorial-v1.png"
               alt=""

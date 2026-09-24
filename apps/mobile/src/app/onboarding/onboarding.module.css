@@ -1,0 +1,758 @@
+.root {
+  --ink: var(--foreground);
+  --field: var(--field-background);
+  --top: max(48px, env(safe-area-inset-top));
+  --bottom: max(24px, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+.root * {
+  box-sizing: border-box;
+}
+.root button,
+.root input,
+.root textarea {
+  font: inherit;
+}
+.root button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.root button:disabled {
+  cursor: default;
+}
+.root button:focus-visible,
+.root a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.root button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.app {
+  position: relative;
+  width: 100%;
+  max-width: 473px;
+  margin: 0 auto;
+  height: var(--visible-height, 100dvh);
+  min-height: 420px;
+  overflow: hidden;
+  background: var(--background);
+}
+.splash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+}
+.splashArt {
+  width: 150px;
+  height: 150px;
+  background: url("/images/pizzacraft/Pizza.png") center / contain no-repeat;
+  filter: drop-shadow(
+    0 18px 28px color-mix(in oklab, var(--accent) 15%, transparent)
+  );
+  animation: breathe 2s ease-in-out infinite alternate;
+}
+.welcome {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-secondary);
+}
+.hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--background);
+  box-shadow: var(--reference-shadow);
+  z-index: 2;
+}
+.skipOnboarding {
+  position: absolute;
+  top: var(--top);
+  right: 20px;
+  z-index: 4;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    color var(--app-motion-control, 220ms) var(--app-motion-ease),
+    opacity var(--app-motion-control, 220ms) var(--app-motion-ease);
+}
+.skipOnboarding:hover {
+  color: var(--accent);
+}
+.artworkScene {
+  position: absolute;
+  top: calc(var(--top) + 24px);
+  left: 0;
+  right: 0;
+  height: 51vh;
+  pointer-events: none;
+}
+.artTile {
+  position: absolute;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.artTile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 8px 8px color-mix(in oklab, var(--background) 36%, transparent)
+  );
+  animation: float var(--float-duration, 5s) ease-in-out var(--float-delay, 0s)
+    infinite;
+}
+.heroCopy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+.wordmark {
+  color: var(--selection-ink, var(--accent));
+  font-size: 25px;
+  line-height: 30px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+}
+.wordmark span {
+  font-size: 10px;
+  vertical-align: top;
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+.heroCopy h1 {
+  margin: 10px 0 0;
+  font-size: clamp(36px, 10.2vw, 44px);
+  line-height: 1.03;
+  letter-spacing: -1px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.heroCopy h1 > span {
+  display: inline-block;
+  color: var(--selection-ink, var(--accent));
+  margin-top: 3px;
+}
+.start {
+  position: absolute;
+  bottom: 5.8vh;
+  left: 50%;
+  margin-left: -24px;
+  width: 49px;
+  height: 49px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--accent) 16%, transparent);
+}
+.handleButton {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 76px;
+  height: 22px;
+  margin-left: -38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+.handleButton span,
+.grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--border);
+}
+.options {
+  height: 37.6%;
+  overflow: auto;
+  padding: 22px 20px var(--bottom);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.options > p {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  margin: 0 0 12px;
+  flex-shrink: 0;
+}
+.primary,
+.secondary {
+  position: relative;
+  width: 100%;
+  min-height: 49px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 17px !important;
+  line-height: 25px;
+  font-weight: 500 !important;
+  box-shadow: var(--reference-shadow);
+  border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+  transition:
+    background var(--app-motion-control, 220ms) var(--app-motion-ease),
+    transform var(--app-motion-control, 220ms) var(--app-motion-ease);
+}
+.primary {
+  color: var(--accent-foreground);
+  background: var(--accent);
+}
+.primary:disabled {
+  background: var(--surface-tertiary);
+  color: var(--muted);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.secondary {
+  color: var(--ink);
+  background: var(--surface-secondary);
+  border-color: var(--border);
+}
+.socials {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.socials button {
+  height: 49px;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  box-shadow: var(--reference-shadow);
+  color: var(--ink);
+}
+.socials button:last-child {
+  width: 49px;
+  flex: none;
+}
+.socials strong {
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  font-size: 26px;
+}
+.options small {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-top: 12px;
+  flex-shrink: 0;
+}
+.options a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+}
+.toolbar {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  height: calc(var(--top) + 62px);
+  padding: calc(var(--top) + 9px) 16px 0;
+  z-index: 2;
+}
+.round {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--ink);
+  box-shadow: var(--reference-shadow);
+  font-size: 17px !important;
+  font-weight: 500 !important;
+}
+.round:disabled {
+  opacity: 0.35;
+}
+.right {
+  margin-left: auto;
+}
+.grabber {
+  position: absolute;
+  top: calc(var(--top) + 8px);
+  left: calc(50% - 20px);
+}
+.content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 3px 20px 24px;
+  overscroll-behavior: contain;
+}
+.badge {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--field);
+  margin: 0 auto 16px;
+}
+.content > h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: -0.45px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink);
+}
+.subtitle {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 15.5px;
+  line-height: 21px;
+  text-align: center;
+}
+.subtitle strong {
+  color: var(--ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.root input,
+.root textarea {
+  color: var(--ink);
+  background: var(--field);
+  width: 100%;
+  border: 0;
+  border-radius: 28px;
+  min-height: 49px;
+  padding: 12px 16px;
+  font-size: 17px;
+  line-height: 24px;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.root input::placeholder,
+.root textarea::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
+}
+.contactForm {
+  margin: 28px 0 0;
+}
+.codeField {
+  position: relative;
+  margin: 29px auto 0;
+  width: 220px;
+  height: 62px;
+  border-radius: 27px;
+  background: var(--field);
+  cursor: text;
+}
+.digits {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.digits span {
+  position: relative;
+  width: 20px;
+  text-align: center;
+  color: var(--ink);
+  font:
+    500 29px/1 "SFMono-Regular",
+    Menlo,
+    monospace;
+}
+.digits span[data-empty="true"] {
+  color: var(--field-placeholder);
+}
+.codeField:focus-within .digits span[data-cursor="true"]::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 1.5px;
+  height: 34px;
+  background: var(--foreground);
+  animation: blink 1.05s step-end infinite;
+}
+.root .codeField input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  opacity: 0.015;
+  padding: 0;
+  caret-color: transparent;
+}
+.footer {
+  padding: 8px 20px var(--bottom);
+  flex-shrink: 0;
+}
+.spinner {
+  position: absolute;
+  left: 14px;
+  width: 19px;
+  height: 19px;
+  border: 2px solid color-mix(in oklab, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.passkey .content {
+  padding-top: 17px;
+}
+.passkey .badge {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 23px;
+}
+.benefits {
+  display: grid;
+  gap: 28px;
+  padding-top: 43px;
+}
+.benefits > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.benefits > div > svg {
+  margin-top: 14px;
+  flex-shrink: 0;
+}
+.benefits h2 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+  margin: 0;
+}
+.benefits p {
+  font-size: 15.5px;
+  line-height: 21px;
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+.profile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 185px;
+  background: radial-gradient(circle, var(--accent) 1.5px, transparent 2px) 0
+    0 / 24px 24px;
+  opacity: 0.14;
+  mask-image: linear-gradient(black, transparent);
+  pointer-events: none;
+}
+.profile .content {
+  position: relative;
+}
+.avatar {
+  position: relative;
+  display: block;
+  width: 82px;
+  height: 82px;
+  border: 0;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  background: var(--surface-secondary)
+    url("/images/pizzacraft/Pizza%20Chef.png") center / 82% no-repeat;
+  box-shadow: var(--reference-shadow);
+}
+.avatar span {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 33px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+}
+.profileForm {
+  display: grid;
+  gap: 24px;
+  padding-top: 31px;
+}
+.profileForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 600;
+  text-indent: 16px;
+}
+.profileForm input,
+.profileForm textarea {
+  background: var(--field-background);
+  font-weight: 400;
+  text-indent: 0;
+}
+.profileForm textarea {
+  height: 88px;
+  resize: none;
+  border-radius: 26px;
+}
+.hidden {
+  display: none;
+}
+.toast {
+  position: absolute;
+  top: calc(var(--top) + 12px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 10;
+  width: max-content;
+  max-width: calc(100% - 48px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 24px;
+  background: var(--danger);
+  color: var(--danger-foreground);
+  font-size: 14px;
+  line-height: 19px;
+}
+.toast svg {
+  flex-shrink: 0;
+}
+.dialog {
+  color: var(--ink);
+  background: var(--surface);
+  border: 0;
+  border-radius: 22px;
+  padding: 24px;
+  width: 310px;
+  max-width: calc(100% - 40px);
+  margin: auto;
+  font-family: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+.dialog::backdrop {
+  background: color-mix(in oklab, var(--background) 65%, transparent);
+  backdrop-filter: blur(3px);
+}
+.dialog h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.dialog p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--muted);
+}
+.dialog .primary,
+.dialog .secondary {
+  margin-top: 12px;
+  font-size: 15px !important;
+}
+.dismiss {
+  display: block;
+  margin: 14px auto 0;
+  padding: 8px 18px;
+  background: none;
+  border: 0;
+  color: var(--ink);
+}
+@keyframes breathe {
+  to {
+    transform: scale(1.06);
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  35% {
+    transform: translate3d(4px, -13px, 0) rotate(var(--float-turn, 3deg))
+      scale(1.025);
+  }
+  70% {
+    transform: translate3d(-3px, -5px, 0)
+      rotate(calc(var(--float-turn, 3deg) * -0.65)) scale(0.99);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (max-height: 720px) {
+  .root {
+    --top: max(24px, env(safe-area-inset-top));
+    --bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .heroCopy h1 {
+    font-size: 34px;
+  }
+  .options {
+    padding-top: 14px;
+    gap: 7px;
+  }
+  .options > p {
+    font-size: 13px;
+    line-height: 17px;
+    margin-bottom: 4px;
+  }
+  .options small {
+    margin-top: 5px;
+  }
+  .primary,
+  .secondary,
+  .socials button {
+    min-height: 44px;
+    height: 44px;
+  }
+  .benefits {
+    gap: 20px;
+    padding-top: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.root input:focus-visible,
+.root textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.codeField:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (max-height: 720px) {
+  .start {
+    bottom: 3vh;
+  }
+}
+
+/* Refined semantic surfaces and a calmer hierarchy. */
+.badge {
+  background: color-mix(in oklch, var(--accent) 10%, var(--surface));
+  color: var(--selection-ink, var(--accent));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in oklch, var(--accent) 16%, transparent);
+}
+.heroCopy h1 {
+  line-height: 1.1;
+  letter-spacing: -1.3px;
+}
+.options {
+  background: inherit;
+  border: 0;
+}
+.options > p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.secondary,
+.socials button {
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.contactForm input {
+  border: 1px solid var(--field-border);
+}
+.textLink {
+  display: block;
+  text-align: right;
+  color: var(--foreground);
+  font-size: 13px;
+  margin-top: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.accountHint {
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.accountHint a {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.contactForm input + input {
+  margin-top: 12px;
+}
+
+.browseLink {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 8px;
+  text-underline-offset: 4px;
+}
+
+.nameFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.nameFields input + input {
+  margin-top: 0;
+}
+.authError {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 12px;
+}

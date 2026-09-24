@@ -14,6 +14,15 @@ export class PasswordReset {
   })
   userId!: Types.ObjectId;
 
+  @Prop({ required: true, index: true })
+  challengeId!: string;
+
+  @Prop({ required: true })
+  codeHash!: string;
+
+  @Prop({ default: 0 })
+  attempts!: number;
+
   @Prop({ required: true, unique: true })
   tokenHash!: string;
 
@@ -22,6 +31,9 @@ export class PasswordReset {
 
   @Prop()
   usedAt?: Date;
+
+  @Prop()
+  verifiedAt?: Date;
 }
 
 export const PasswordResetSchema = SchemaFactory.createForClass(PasswordReset);

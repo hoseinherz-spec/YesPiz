@@ -27,6 +27,8 @@ export type Pizza = ProductMedia & {
 
 export const heroImage = '/images/hero-pizza.png';
 
+export const mockPizzaImage = '/images/pizza-transparent.png';
+
 export const PIZZAS: Pizza[] = [
   {
     id: 'margherita',
@@ -37,7 +39,7 @@ export const PIZZAS: Pizza[] = [
     price: 9.9,
     ingredients: ['San Marzano Tomato', 'Fior di Latte', 'Fresh Basil', 'Olive Oil'],
     imageUrl: null,
-    image: '/images/pizza-margherita.png',
+    image: mockPizzaImage,
   },
   {
     id: 'pepperoni',
@@ -47,7 +49,7 @@ export const PIZZAS: Pizza[] = [
       'Stacked with crispy pepperoni cups, melted mozzarella and a touch of chili honey.',
     price: 11.9,
     ingredients: ['Tomato', 'Mozzarella', 'Pepperoni Cups', 'Chili Honey'],
-    image: '/images/pizza-pepperoni.png',
+    image: mockPizzaImage,
   },
   {
     id: 'salami',
@@ -56,7 +58,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Thin-sliced Italian salami, mozzarella and oregano over a rich tomato base.',
     price: 11.5,
     ingredients: ['Tomato', 'Mozzarella', 'Italian Salami', 'Oregano'],
-    image: '/images/pizza-salami.png',
+    image: mockPizzaImage,
   },
   {
     id: 'bbq-chicken',
@@ -65,7 +67,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Grilled chicken, red onion and smoky BBQ drizzle on bubbling mozzarella.',
     price: 13.9,
     ingredients: ['BBQ Sauce', 'Mozzarella', 'Grilled Chicken', 'Red Onion'],
-    image: '/images/pizza-bbq-chicken.png',
+    image: mockPizzaImage,
   },
   {
     id: 'quattro-formaggi',
@@ -74,7 +76,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Mozzarella, gorgonzola, parmesan and fontina melted to golden perfection.',
     price: 13.5,
     ingredients: ['Mozzarella', 'Gorgonzola', 'Parmesan', 'Fontina'],
-    image: '/images/pizza-quattro-formaggi.png',
+    image: mockPizzaImage,
   },
   {
     id: 'diavola',
@@ -83,7 +85,7 @@ export const PIZZAS: Pizza[] = [
     description: "Spicy salami, chili flakes and 'nduja for a fiery, full-flavored bite.",
     price: 12.9,
     ingredients: ['Tomato', 'Mozzarella', 'Spicy Salami', 'Chili Flakes'],
-    image: '/images/pizza-diavola.png',
+    image: mockPizzaImage,
   },
   {
     id: 'tonno',
@@ -92,7 +94,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Line-caught tuna, red onion and capers over a bright tomato base.',
     price: 12.5,
     ingredients: ['Tomato', 'Mozzarella', 'Tuna', 'Red Onion'],
-    image: '/images/pizza-tonno.png',
+    image: mockPizzaImage,
   },
   {
     id: 'vegetariana',
@@ -101,7 +103,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Roasted peppers, zucchini, eggplant and cherry tomatoes, lightly charred.',
     price: 11.9,
     ingredients: ['Tomato', 'Mozzarella', 'Peppers', 'Zucchini', 'Eggplant'],
-    image: '/images/pizza-vegetariana.png',
+    image: mockPizzaImage,
   },
   {
     id: 'funghi',
@@ -110,7 +112,7 @@ export const PIZZAS: Pizza[] = [
     description: 'Sauteed mushrooms, mozzarella and parsley with a hint of garlic.',
     price: 11.5,
     ingredients: ['Tomato', 'Mozzarella', 'Mushrooms', 'Parsley'],
-    image: '/images/pizza-funghi.png',
+    image: mockPizzaImage,
   },
   {
     id: 'yespiz-special',
@@ -120,7 +122,7 @@ export const PIZZAS: Pizza[] = [
       'San Marzano base, creamy burrata, prosciutto di Parma, wild arugula and shaved truffle.',
     price: 15.9,
     ingredients: ['San Marzano', 'Burrata', 'Prosciutto', 'Arugula', 'Truffle'],
-    image: '/images/pizza-yespiz-special.png',
+    image: mockPizzaImage,
   },
 ];
 

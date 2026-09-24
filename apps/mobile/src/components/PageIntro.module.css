@@ -1,0 +1,35 @@
+.intro {
+  padding: 20px 0 28px;
+  text-align: center;
+}
+.icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 22px;
+  background: var(--selection-soft);
+  color: var(--selection-ink);
+}
+.icon svg {
+  width: 28px;
+  height: 28px;
+}
+.intro h1 {
+  max-width: 320px;
+  margin: 0 auto;
+  font-size: clamp(28px, 8vw, 34px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.intro p {
+  max-width: 34ch;
+  margin: 14px auto 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}

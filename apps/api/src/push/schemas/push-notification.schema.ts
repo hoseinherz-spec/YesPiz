@@ -18,6 +18,11 @@ export class PushNotification {
   @Prop({ type: MongoSchema.Types.ObjectId, ref: "Provider", index: true })
   providerId?: Types.ObjectId;
 
+  @Prop({ type: Date })
+  readAt?: Date;
+
+  createdAt!: Date;
+
   @Prop({ required: true })
   title!: string;
 
@@ -34,3 +39,5 @@ export class PushNotification {
 export const PushNotificationSchema =
   SchemaFactory.createForClass(PushNotification);
 PushNotificationSchema.index({ createdAt: -1 });
+
+PushNotificationSchema.index({ userId: 1, _id: -1 });

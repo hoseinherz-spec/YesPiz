@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, Typography } from "@heroui/react";
-import { ArrowLeft } from "@repo/icons";
+import { ChevronLeft } from "@/components/animated-icon/icons";
 import { useRouter } from "next/navigation";
 
 import { screenHeader } from "./ScreenHeader.styles";
 import type { ScreenHeaderProps } from "./ScreenHeader.types";
+import { ScrollHeader } from "@/components/ScrollHeader";
 
 export function ScreenHeader({
   title,
@@ -17,7 +18,7 @@ export function ScreenHeader({
   const styles = screenHeader();
 
   return (
-    <div className={styles.root()}>
+    <ScrollHeader className={styles.root()}>
       <Button
         isIconOnly
         variant="secondary"
@@ -25,7 +26,7 @@ export function ScreenHeader({
         onPress={() => (backHref ? router.push(backHref) : router.back())}
         className={styles.back()}
       >
-        <ArrowLeft size={20} />
+        <ChevronLeft size={20} />
       </Button>
       <div className={styles.content()}>
         <Typography type="h2" className={styles.title()}>
@@ -37,7 +38,7 @@ export function ScreenHeader({
           </Typography>
         ) : null}
       </div>
-      <div className="flex items-center justify-center">{right}</div>
-    </div>
+      <div className="flex min-w-0 items-center justify-end">{right}</div>
+    </ScrollHeader>
   );
 }

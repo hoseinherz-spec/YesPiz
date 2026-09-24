@@ -30,7 +30,7 @@ export function AccountScreen({
     <AppFrame padded={false}>
       <div
         className={cn(
-          "flex min-h-dvh flex-col px-[clamp(20px,8vw,38px)] pt-[max(28px,env(safe-area-inset-top))] pb-[max(30px,env(safe-area-inset-bottom))]",
+          "reference-screen flex min-h-dvh flex-col px-[16px] pt-[max(28px,env(safe-area-inset-top))] pb-[max(30px,env(safe-area-inset-bottom))]",
           className,
         )}
       >

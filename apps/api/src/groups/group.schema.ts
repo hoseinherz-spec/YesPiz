@@ -7,6 +7,8 @@ export type GroupMember = {
   lines: OrderLineDto[];
   paid: boolean;
   shareCents: number;
+  checkoutId?: string;
+  intentId?: string;
 };
 @Schema({ timestamps: true, collection: "group_carts" })
 export class GroupCart {
@@ -16,7 +18,9 @@ export class GroupCart {
   @Prop({ required: true }) menuVersion!: number;
   @Prop({ default: false }) split!: boolean;
   @Prop({ default: "open" }) state!:
-    "open" | "locked" | "ordered" | "cancelled";
+    "open" | "locked" | "ordered" | "cancelling" | "cancelled";
+  @Prop({ default: 0 }) paymentRound!: number;
+  @Prop() refundError?: string;
   @Prop({ default: 0 }) revision!: number;
   @Prop({ required: true }) deadline!: Date;
   @Prop({ type: [MongoSchema.Types.Mixed], default: [] })

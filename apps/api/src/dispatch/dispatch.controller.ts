@@ -42,6 +42,13 @@ export class DispatchController {
   }
 
   @Roles(UserRole.PROVIDER)
+  @Post("orders/:orderId/viewed")
+  async viewed(@CurrentUser() user: JwtPayloadUser, @Param("orderId") orderId: string) {
+    const provider = await this.providers.getSelf(user.userId);
+    return this.dispatch.markOfferViewed(orderId, provider.id);
+  }
+
+  @Roles(UserRole.PROVIDER)
   @Post("orders/:orderId/respond")
   async respond(
     @CurrentUser() user: JwtPayloadUser,

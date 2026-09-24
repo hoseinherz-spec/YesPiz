@@ -251,6 +251,19 @@ export class CouriersService implements OnModuleInit {
       updatedAt: updatedAt.toISOString(),
     });
 
+    // Invalidate only the owning customers' tracking snapshots. GPS stays behind
+    // the existing ownership, active-shift, freshness and pickup-origin checks.
+    const deliveries = await this.orders
+      .find({ courierId: userId, status: OrderStatus.ON_THE_WAY })
+      .select("_id customerId")
+      .exec();
+    for (const order of deliveries) {
+      this.realtime.emitToUser(String(order.customerId), "courier.location", {
+        orderId: String(order._id),
+        updatedAt: updatedAt.toISOString(),
+      });
+    }
+
     return {
       longitude: dto.longitude,
       latitude: dto.latitude,

@@ -3,22 +3,29 @@
 import {
   usePublishedMenuQuery,
   type PublishedMenuItem,
+  type Ingredient,
+  type IngredientOption,
   type PizzaCustomization,
   type PublicPizzaPresentation,
 } from "@repo/api";
 import { useMemo } from "react";
 
-import { PIZZAS, type Pizza } from "@/constants/pizzas";
+import { mockPizzaImage, PIZZAS, type Pizza } from "@/constants/pizzas";
 
-const PLACEHOLDER_IMAGE = "/images/pizza-margherita.png";
+const PLACEHOLDER_IMAGE = mockPizzaImage;
 
 export type CatalogPizza = Pizza & {
+  ingredientOptions?: IngredientOption[];
+  toppingBaseImageUrl?: string;
+  comboComponents?: PublishedMenuItem["comboComponents"];
   tags: string[];
+  ingredientDetails?: Ingredient[];
   customization?: PizzaCustomization;
   presentation?: PublicPizzaPresentation;
   pizzaId?: string;
   categoryId?: string;
   additionalCategoryIds?: string[];
+  cookTimeSeconds?: number;
 };
 
 export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
@@ -32,6 +39,9 @@ export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
   )?.image;
   return {
     id: item.id,
+    comboComponents: item.comboComponents,
+    ingredientOptions: item.ingredientOptions ?? [],
+    toppingBaseImageUrl: item.toppingBaseImageUrl,
     pizzaId: item.pizzaId,
     customization: item.customization,
     presentation: item.presentation,
@@ -41,12 +51,14 @@ export function mapPublishedItem(item: PublishedMenuItem): CatalogPizza {
     price:
       (activePrices.length ? Math.min(...activePrices) : item.priceCents) / 100,
     ingredients: item.ingredients ?? [],
+    ingredientDetails: item.ingredientDetails ?? [],
     allergens: item.allergens ?? [],
     imageUrl: item.imageUrl ?? null,
     image: matchingPhoto ?? PLACEHOLDER_IMAGE,
     tags,
     categoryId: item.categoryId,
     additionalCategoryIds: item.additionalCategoryIds,
+    cookTimeSeconds: item.cookTimeSeconds,
   };
 }
 

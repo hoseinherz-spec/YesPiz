@@ -26,13 +26,17 @@
     "seed:api": "npm run seed --workspace=api",
     "test:e2e": "playwright test",
     "test:e2e:admin": "playwright test --config=playwright.admin.config.ts",
-    "postinstall": "node scripts/native-compat.cjs",
+    "postinstall": "npm run sync-assets --workspace=@repo/animated-icons && node scripts/native-compat.cjs",
     "test:stripe-sandbox": "npm run build --workspace=@repo/i18n && npm run test:stripe-sandbox --workspace=api",
     "test:stripe-browser": "playwright test --config=playwright.stripe.config.ts",
     "stripe:listen": "node scripts/stripe-webhook.cjs",
     "test:e2e:review": "node e2e/run-role-review.cjs",
     "test:customer-ux": "node scripts/test-customer-ux.cjs",
-    "dev:mock-api": "TEST_STRIPE_SANDBOX=0 node e2e/start-api.cjs"
+    "dev:mock-api": "TEST_STRIPE_SANDBOX=0 node e2e/start-api.cjs",
+    "sandbox:stripe": "node scripts/setup-stripe-sandbox.cjs",
+    "sandbox:sms": "node scripts/setup-twilio-sandbox.cjs",
+    "sms:setup": "node scripts/setup-twilio-sandbox.cjs",
+    "native:configure": "node scripts/configure-native-services.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

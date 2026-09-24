@@ -25,3 +25,4 @@ export * from "./domains/rewards";
 export * from "./domains/groups";
 
 export * from "./domains/slots";
+export * from "./domains/notifications";

@@ -1,3 +1,5 @@
+import { ComboComponentDto } from "../combo";
+import { IngredientOptionDto } from "../ingredient-options";
 import type { PizzaPresentation } from "../presentation";
 import type { PizzaCustomization } from "../customization";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
@@ -6,7 +8,6 @@ import {
   IsDateString,
   IsObject,
   IsMongoId,
-  IsIn,
   IsArray,
   ArrayMaxSize,
   MaxLength,
@@ -20,6 +21,7 @@ import {
 } from "class-validator";
 
 export class CreateMenuVersionDto {
+  @IsOptional() @IsMongoId() menuId?: string;
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -49,6 +51,22 @@ export class RecipeIngredientDto {
 }
 
 export class CreateMenuItemDto {
+  @IsOptional() @IsArray() @ArrayMaxSize(12) @ValidateNested({ each: true }) @Type(() => ComboComponentDto) comboComponents?: ComboComponentDto[];
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => IngredientOptionDto)
+  ingredientOptions?: IngredientOptionDto[];
+  @IsOptional() @IsString() @MaxLength(2000) toppingBaseImageUrl?: string;
+  @IsOptional() @IsString() @MaxLength(40) productType?: string;
+  @IsOptional() @IsObject() attributes?: Record<string, unknown>;
+  @IsOptional() @IsInt() @Min(1) attributesSchemaVersion?: number;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @IsMongoId({ each: true })
+  ingredientIds?: string[];
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
@@ -153,6 +171,22 @@ export class CreateMenuItemDto {
 }
 
 export class UpdateMenuItemDto {
+  @IsOptional() @IsArray() @ArrayMaxSize(12) @ValidateNested({ each: true }) @Type(() => ComboComponentDto) comboComponents?: ComboComponentDto[];
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => IngredientOptionDto)
+  ingredientOptions?: IngredientOptionDto[];
+  @IsOptional() @IsString() @MaxLength(2000) toppingBaseImageUrl?: string;
+  @IsOptional() @IsObject() attributes?: Record<string, unknown>;
+  @IsOptional() @IsInt() @Min(1) attributesSchemaVersion?: number;
+  @IsOptional() @IsMongoId() productRevisionId?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(40)
+  @IsMongoId({ each: true })
+  ingredientIds?: string[];
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)
@@ -178,8 +212,9 @@ export class UpdateMenuItemDto {
   sortOrder?: number;
 
   @IsOptional()
-  @IsIn(["pizza", "unclassified"])
-  productType?: "pizza" | "unclassified";
+  @IsString()
+  @MaxLength(40)
+  productType?: string;
 
   @IsOptional()
   @IsArray()

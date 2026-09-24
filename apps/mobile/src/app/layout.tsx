@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 
 import { Providers } from './providers';
 import './globals.css';
+import '@/features/cart/components/basket-motion.css';
 import '@repo/ui/mobile-transitions.css';
+import '@/components/motion/food-flow.css';
 
 export const metadata: Metadata = {
   title: 'YesPiz',
@@ -15,8 +17,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  themeColor: '#000000',
+  themeColor: '#031126',
 };
 
 export default async function RootLayout({

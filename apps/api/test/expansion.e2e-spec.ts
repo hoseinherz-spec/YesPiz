@@ -252,15 +252,17 @@ describe("Expansion: rewards, mixed payments, groups and capacity", () => {
     );
     expect((await call("get", "rewards").expect(200)).body.available).toBe(0);
   });
-  it("activates mock membership idempotently and applies its delivery threshold", async () => {
-    const key = randomUUID();
+  it("refuses membership enrollment without Stripe instead of granting free access", async () => {
     await call("post", "rewards/membership", "customer", {
-      requestId: key,
-    }).expect(201);
-    const a = await call("post", "rewards/membership", "customer", {
-      requestId: key,
-    }).expect(201);
-    expect(a.body.membership.active).toBe(true);
+      requestId: randomUUID(),
+    }).expect(503);
+    expect(
+      (await call("get", "rewards").expect(200)).body.membership.active,
+    ).toBe(false);
+    await users.updateOne(
+      { _id: ids.customer },
+      { $set: { membershipUntil: new Date(Date.now() + 86400000) } },
+    );
     const quote = await call(
       "post",
       "orders/quote",
@@ -268,9 +270,6 @@ describe("Expansion: rewards, mixed payments, groups and capacity", () => {
       checkout({ lines: [{ menuItemId: itemId, quantity: 2 }] }),
     ).expect(201);
     expect(quote.body.deliveryFeeCents).toBe(0);
-    const cancel = await call("post", "rewards/membership/cancel").expect(201);
-    expect(cancel.body.membership.cancelled).toBe(true);
-    expect(cancel.body.membership.active).toBe(true);
   });
   it("locks shared choices, rejects non-owner checkout and preserves split totals", async () => {
     let g = (
@@ -336,7 +335,7 @@ describe("Expansion: rewards, mixed payments, groups and capacity", () => {
       expectedTotalCents: g.quote.totalCents,
     }).expect(201);
     expect(
-      await orders.countDocuments({ idempotencyKey: `group:${g.token}` }),
+      await orders.countDocuments({ idempotencyKey: `group:${g.token}:1` }),
     ).toBe(1);
     const guest = (await call("get", `groups/${g.token}`, "friend").expect(200))
       .body;
@@ -724,13 +723,11 @@ describe("Expansion: rewards, mixed payments, groups and capacity", () => {
       roles: [UserRole.COURIER],
       activeRole: UserRole.COURIER,
     });
-    tokens.chatCourier = app
-      .get(JwtService)
-      .sign({
-        sub: courier.id,
-        roles: [UserRole.COURIER],
-        activeRole: UserRole.COURIER,
-      });
+    tokens.chatCourier = app.get(JwtService).sign({
+      sub: courier.id,
+      roles: [UserRole.COURIER],
+      activeRole: UserRole.COURIER,
+    });
     const order = (
       await call(
         "post",

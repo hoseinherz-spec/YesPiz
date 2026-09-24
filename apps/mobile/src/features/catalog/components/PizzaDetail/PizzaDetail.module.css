@@ -1,0 +1,117 @@
+.page {
+  background: var(--surface);
+  color: var(--foreground);
+  padding-bottom: 0;
+  min-height: 100dvh;
+  flex: 1 0 auto;
+  /* spacing.xs/sm/md/xl/xxl from constants/theme.ts */
+  --detail-space-xs: 4px;
+  --detail-space-sm: 8px;
+  --detail-space-md: 12px;
+  --detail-space-xl: 24px;
+  --detail-space-xxl: 38px;
+  /* Same outer corner geometry as the summary SVG (72 / 558). */
+  --detail-curve-radius: 12.9cqw;
+  container-type: inline-size;
+}
+.hero { position: relative; height: 125.45cqw; flex-shrink: 0; background: var(--surface-secondary); overflow: hidden; }
+/* Static food doodles stay behind every hero variant and adapt to both themes. */
+.hero { isolation: isolate; }
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--foreground);
+  opacity: .065;
+  -webkit-mask: url('/images/pizza-hero-pattern.svg') center top / 320px 320px repeat;
+  mask: url('/images/pizza-hero-pattern.svg') center top / 320px 320px repeat;
+}
+.heroImage { width: 100%; height: 100%; object-fit: cover; }
+.header { display: flex; align-items: center; justify-content: space-between; padding-inline: var(--detail-space-xl); color: var(--foreground); font-size: 19px; }
+.header > span { padding: var(--detail-space-xs) var(--detail-space-md); border-radius: 20px; background: color-mix(in srgb, var(--surface) 65%, transparent); backdrop-filter: blur(8px); }
+.iconButton { width: 48px !important; height: 48px !important; min-width: 48px !important; padding: 0 !important; border-radius: 50%; background: var(--surface) !important; color: var(--foreground) !important; }
+.discountFlag { position: absolute; inset: auto 0 0; height: 23.66cqw; padding: var(--detail-space-md) var(--detail-space-xl) 0; border-radius: var(--detail-curve-radius) var(--detail-curve-radius) 0 0; overflow: hidden; background: color-mix(in srgb, var(--surface) 65%, transparent); color: var(--foreground); backdrop-filter: blur(9px); font-size: clamp(18px, 5cqw, 24px); line-height: 1; font-weight: 600; display: flex; align-items: flex-start; gap: var(--detail-space-sm); }
+/* Continuous curve shared by the raised review area and the product summary. */
+.sheet { position: relative; isolation: isolate; margin-top: -23.66cqw; padding: calc(var(--detail-curve-radius) + var(--detail-space-xl)) var(--detail-space-xl) max(var(--detail-space-xxl), env(safe-area-inset-bottom)); background: transparent; }
+.sheet::after { content: ''; position: absolute; z-index: -1; inset: calc(25.8cqw - 1px) 0 0; background: var(--surface); }
+.sheetCurve { position: absolute; z-index: -1; pointer-events: none; inset: 0 0 auto; width: 100%; height: 25.81cqw; color: var(--surface); }
+.delivery { position: absolute; top: var(--detail-space-xl); right: var(--detail-space-xl); display: grid; gap: var(--detail-space-sm); font-size: clamp(11px, 3cqw, 14px); text-align: right; }
+.reviews, .fee { display: flex; align-items: center; justify-content: flex-end; gap: var(--detail-space-xs); }
+.reviews svg { color: var(--accent); flex-shrink: 0; }
+.reviewCount { display: inline-flex; align-items: center; white-space: pre; color: var(--muted); }
+.allergens { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.allergens strong { color: var(--foreground); }
+.saveUsual { display: inline-flex; min-height: 44px; margin-top: 18px; padding: 10px 16px; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-secondary); color: var(--foreground); font: inherit; font-size: 13px; cursor: pointer; transition: background-color var(--app-motion-fast) var(--app-motion-ease), transform var(--app-motion-fast) var(--app-motion-ease); }
+.saveUsual:hover { background: var(--surface-tertiary); }
+.saveUsual:active { transform: scale(.98); }
+.saveUsual:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.title { margin: 0; padding-top: 0; font-size: 21px; line-height: 1.3; font-weight: 500; letter-spacing: -.7px; }
+.page :is(button,a):focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+@media(min-width: 600px) { .page { border-radius: 42px; overflow: hidden; } }
+.description { position: relative; margin-top: var(--detail-space-xl); color: var(--muted); font-size: 15px; line-height: 1.65; }
+.descriptionText, .descriptionMeasure { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.descriptionMeasure { position: absolute; inset: 0 0 auto; visibility: hidden; pointer-events: none; }
+.descriptionClamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.readMore { display: inline-flex; min-height: 32px; width: auto; padding: 0; color: var(--accent); font-size: inherit; font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--detail-space-md); margin: var(--detail-space-xl) 0 0; }
+.fact { display: flex; align-items: flex-start; gap: var(--detail-space-md); padding: 20px 16px; border-radius: 26px; background: var(--surface-secondary); min-width: 0; }
+.factIcon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--surface-tertiary); color: var(--foreground); }
+.fact dt { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.fact dd { margin: var(--detail-space-xs) 0 0; color: var(--foreground); font-size: 16px; line-height: 1.4; font-weight: 500; overflow-wrap: anywhere; }
+@container (max-width: 360px) { .fact { padding: 16px 12px; gap: 8px; } .factIcon { width: 28px; height: 28px; } .fact dd { font-size: 14px; } }
+
+.price { margin-top: var(--detail-space-sm); color: var(--accent); font-size: 28px; line-height: 1.2; font-weight: 600; }
+.discountFlag svg { flex-shrink: 0; color: var(--accent); }
+
+.sizeHero { background: var(--surface-secondary); --size-selection-duration: 250ms; --size-selection-ease: cubic-bezier(0.22, 1, 0.36, 1); }
+.pizzaStage { position: absolute; top: 20cqw; left: 0; width: 100%; height: 76cqw; display: grid; place-items: center; }
+.sizedPizza { flex-shrink: 0; }
+.pizzaSizeImage { width: 100%; height: 100%; object-fit: contain; }
+.sizeOrbit { position: absolute; top: 20cqw; left: 12cqw; width: 76cqw; height: 76cqw; border: 1px solid var(--border); border-radius: 50%; }
+.sizeOption { position: absolute; transform: translate(-50%, -50%); cursor: pointer; }
+.sizeOption input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; margin: 0; z-index: 1; }
+.sizeOption span { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--foreground); font-size: 18px; line-height: 1; transition: background-color var(--size-selection-duration) var(--size-selection-ease), color var(--size-selection-duration) var(--size-selection-ease), transform var(--size-selection-duration) var(--size-selection-ease); }
+.sizeOption input:checked + span { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); transform: scale(1.04); }
+.sizeOption input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .sizeOption span { transition: none; } }
+
+/* The product remains the same artwork at both ends of the shared transition. */
+.page { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+.heroImage { object-fit: contain; padding: 20cqw 6cqw 24cqw; }
+.sizedPizza { transition: width 400ms var(--food-ease), height 400ms var(--food-ease), rotate 600ms var(--food-ease); }
+.actionBar { position: fixed; z-index: 30; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 473px; display: flex; align-items: center; gap: 12px; padding: 16px 20px max(16px, env(safe-area-inset-bottom)); background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -10px 32px #0000000a; }
+.addButton { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; min-height: 56px; flex: 1; border: 0; border-radius: 99px; background: var(--accent); color: var(--accent-foreground); font-size: 13px; font-weight: 600; padding: 12px; cursor: pointer; }
+.addButton:disabled { cursor: default; }
+.addButton:disabled:not([aria-busy="true"]) { opacity: .45; }
+.addButton > span:last-child { font-variant-numeric: tabular-nums; }
+.hero, .sheet { transition: filter 300ms ease, opacity 300ms ease; }
+.adding .hero, .adding .sheet { filter: blur(5px); opacity: .35; pointer-events: none; }
+.adding .pizzaStage, .adding .heroImage { visibility: hidden; }
+.flyingPizza { position: fixed; z-index: 1000; pointer-events: none; transform-origin: center; }
+.flyingPizza img { width: 100%; height: 100%; object-fit: contain; }
+.choices { border: 0; padding: 0; margin: 26px 0 0; }
+.choices legend { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.choices small, .choiceHint { color: var(--muted); font-size: 12px; }
+.choicePills { display: flex; flex-wrap: wrap; gap: 8px; }
+.choicePills label { position: relative; cursor: pointer; }
+.choicePills input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+.choicePills span { display: block; padding: 12px 16px; border-radius: 99px; background: var(--surface-secondary); font-size: 13px; transition: background-color 200ms ease, color 200ms ease, transform 250ms var(--food-ease); }
+.choicePills input:checked + span { background: var(--accent); color: var(--accent-foreground); transform: scale(1.03); }
+.choicePills input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 3px; }
+.choicePills input:disabled + span { opacity: .5; }
+@media (prefers-reduced-motion: reduce) {
+  .sizedPizza, .hero, .sheet, .choicePills span { transition: none; }
+}
+.quantity { display: flex; align-items: center; flex-shrink: 0; background: var(--background); border-radius: 99px; }
+.quantity button { border: 0; background: transparent; color: var(--foreground); width: 44px; height: 48px; font-size: 22px; cursor: pointer; }
+.quantity button:disabled { opacity: .3; cursor: default; }
+.quantity output { min-width: 24px; text-align: center; }
+.addButton { border-radius: 28px; }
+.addButton > span:last-child { width: 100%; font-size: 12px; justify-content: center; }
+
+.customizableHero { height: auto; min-height: 0; padding-bottom: calc(23.66cqw + 12px); }
+.customizableHero .pizzaStage[hidden] { display: none; }
+.customizableHero .sizeOrbit { top: 16cqw; left: 15cqw; width: 70cqw; height: 70cqw; pointer-events: none; }
+.customizableHero .sizeOption { pointer-events: auto; }

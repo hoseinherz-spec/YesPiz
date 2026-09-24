@@ -1,5 +1,8 @@
 export type UpdateCourierProfileRequest = {
   vehicleType?: string;
+  vehicleModel?: string;
+  plateNumber?: string;
+  avatarUrl?: string;
 };
 
 export type SessionCodeRequest = {
@@ -23,6 +26,9 @@ export type CourierProfile = {
   userId: string;
   isActive: boolean;
   vehicleType?: string;
+  vehicleModel?: string;
+  plateNumber?: string;
+  avatarUrl?: string;
   onDuty: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -35,7 +41,7 @@ export type CourierSession = {
   endCode?: string;
   startedAt?: string;
   endedAt?: string;
-  status: 'pending' | 'active' | 'ended';
+  status: "pending" | "active" | "ended";
   lastLongitude?: number;
   lastLatitude?: number;
   locationUpdatedAt?: string;

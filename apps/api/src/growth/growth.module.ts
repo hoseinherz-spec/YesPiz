@@ -16,6 +16,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -37,6 +38,12 @@ import {
   MinLength,
 } from "class-validator";
 import { HydratedDocument, Model } from "mongoose";
+import { User, UserDocument, UserSchema } from "../account/schemas/user.schema";
+import {
+  Product,
+  ProductDocument,
+  ProductSchema,
+} from "../catalog/products/product.schema";
 import {
   CurrentUser,
   type JwtPayloadUser,
@@ -128,31 +135,144 @@ export class GrowthService {
     @InjectModel(OperationsTask.name)
     private readonly tasks: Model<HydratedDocument<OperationsTask>>,
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
+    @InjectModel(User.name) private readonly users: Model<UserDocument>,
+    @InjectModel(Product.name)
+    private readonly products: Model<ProductDocument>,
   ) {}
-  async discount(code: string | undefined, subtotal: number) {
+  async discount(
+    code: string | undefined,
+    context: {
+      userId: string;
+      subtotalCents: number;
+      lines: Array<{
+        menuItemId: unknown;
+        productId?: unknown;
+        unitPriceCents: number;
+        quantity: number;
+      }>;
+    },
+  ) {
     if (!code) return 0;
     const coupon = await this.coupons.findOne({ code }).exec();
     if (!coupon) throw new BadRequestException("Discount code not found.");
-    return couponDiscount(coupon, subtotal);
+    const userScope = coupon.userScope ?? "all";
+    const eligibleUserIds = coupon.eligibleUserIds ?? [];
+    if (userScope === "specific" && !eligibleUserIds.includes(context.userId))
+      throw new BadRequestException(
+        "This discount code is not available for this account.",
+      );
+
+    const productScope = coupon.productScope ?? "all";
+    const eligibleProductIds = new Set(coupon.eligibleProductIds ?? []);
+    const eligibleLines =
+      productScope === "specific"
+        ? context.lines.filter((line) =>
+            eligibleProductIds.has(String(line.productId ?? line.menuItemId)),
+          )
+        : context.lines;
+    const eligibleQuantity = eligibleLines.reduce(
+      (total, line) => total + line.quantity,
+      0,
+    );
+    if (eligibleQuantity < (coupon.minimumEligibleQuantity ?? 1))
+      throw new BadRequestException(
+        "This discount code requires more eligible products in the cart.",
+      );
+    const discountableSubtotal = eligibleLines.reduce(
+      (total, line) => total + line.unitPriceCents * line.quantity,
+      0,
+    );
+    if (discountableSubtotal <= 0)
+      throw new BadRequestException(
+        "This discount code does not apply to the products in your cart.",
+      );
+    return couponDiscount(
+      coupon,
+      context.subtotalCents,
+      new Date(),
+      discountableSubtotal,
+    );
   }
   async listCoupons() {
     return this.coupons.find().sort({ createdAt: -1 }).limit(200).exec();
   }
   async createCoupon(dto: CreateCouponDto, actor: string) {
+    const userScope = dto.userScope ?? "all";
+    const productScope = dto.productScope ?? "all";
+    const eligibleUserIds = [...new Set(dto.eligibleUserIds ?? [])];
+    const eligibleProductIds = [...new Set(dto.eligibleProductIds ?? [])];
     if (
       (dto.kind === "percent" && dto.value > 100) ||
-      new Date(dto.endAt) <= new Date(dto.startAt)
+      new Date(dto.endAt) <= new Date(dto.startAt) ||
+      (userScope === "specific" && eligibleUserIds.length === 0) ||
+      (productScope === "specific" && eligibleProductIds.length === 0)
     )
       throw new BadRequestException(
         "Choose a valid percentage and date range.",
       );
     try {
-      return await this.coupons.create({ ...dto, createdBy: actor });
+      if (userScope === "specific") {
+        const count = await this.users.countDocuments({
+          _id: { $in: eligibleUserIds },
+          roles: UserRole.CUSTOMER,
+        });
+        if (count !== eligibleUserIds.length)
+          throw new BadRequestException(
+            "One or more selected customers do not exist.",
+          );
+      }
+      if (productScope === "specific") {
+        const count = await this.products.countDocuments({
+          _id: { $in: eligibleProductIds },
+        });
+        if (count !== eligibleProductIds.length)
+          throw new BadRequestException(
+            "One or more selected products do not exist.",
+          );
+      }
+      return await this.coupons.create({
+        ...dto,
+        userScope,
+        productScope,
+        eligibleUserIds: userScope === "specific" ? eligibleUserIds : [],
+        eligibleProductIds:
+          productScope === "specific" ? eligibleProductIds : [],
+        minimumEligibleQuantity: dto.minimumEligibleQuantity ?? 1,
+        createdBy: actor,
+      });
     } catch (error) {
       if ((error as { code?: number }).code === 11000)
         throw new ConflictException("Discount code already exists.");
       throw error;
     }
+  }
+  async couponCustomers(q = "") {
+    const query = q.trim().slice(0, 80);
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const filter = query
+      ? {
+          roles: UserRole.CUSTOMER,
+          $or: [
+            { firstName: { $regex: escaped, $options: "i" } },
+            { lastName: { $regex: escaped, $options: "i" } },
+            { email: { $regex: escaped, $options: "i" } },
+            { phone: { $regex: escaped, $options: "i" } },
+          ],
+        }
+      : { roles: UserRole.CUSTOMER };
+    const rows = await this.users
+      .find(filter)
+      .select("firstName lastName email phone")
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean()
+      .exec();
+    return rows.map((row) => ({
+      id: String(row._id),
+      name: `${row.firstName} ${row.lastName}`.trim(),
+      email: row.email ?? null,
+      phone: row.phone ?? null,
+    }));
   }
   async couponStatus(id: string, active: boolean) {
     const coupon = await this.coupons
@@ -321,6 +441,9 @@ class GrowthController {
   @Get("coupons") coupons() {
     return this.growth.listCoupons();
   }
+  @Get("coupon-targets/customers") couponCustomers(@Query("q") q?: string) {
+    return this.growth.couponCustomers(q);
+  }
   @Post("coupons") createCoupon(
     @CurrentUser() user: JwtPayloadUser,
     @Body() dto: CreateCouponDto,
@@ -373,6 +496,8 @@ class GrowthController {
       { name: GrowthCampaign.name, schema: GrowthCampaignSchema },
       { name: OperationsTask.name, schema: OperationsTaskSchema },
       { name: Order.name, schema: OrderSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Product.name, schema: ProductSchema },
     ]),
   ],
   controllers: [GrowthController],

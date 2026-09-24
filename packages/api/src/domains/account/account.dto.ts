@@ -114,8 +114,19 @@ export type ForgotPasswordRequest = {
 
 export type ForgotPasswordResponse = {
   status: string;
-  /** Present only in non-production for local/demo flows */
-  resetToken?: string;
+  challengeId: string;
+  email: string;
+  /** Present only when the local mock email provider is active. */
+  verificationCode?: string;
+};
+
+export type ConfirmPasswordResetOtpRequest = {
+  challengeId: string;
+  code: string;
+};
+
+export type ConfirmPasswordResetOtpResponse = {
+  token: string;
 };
 
 export type ResetPasswordRequest = {
@@ -124,6 +135,7 @@ export type ResetPasswordRequest = {
 };
 
 export type ProfileResponse = {
+  profileRevision?: number;
   adminPermissions?: string[];
   id: string;
   firstName: string;

@@ -159,7 +159,13 @@ describe("Private care, wallet, settlements and growth (e2e)", () => {
       name: "Legacy drink",
       priceCents: 200,
     });
-    await catalog.updateItem(legacy.id, { productType: "unclassified" });
+    // Legacy records are a migration fixture; product type is immutable through the API.
+    await expect(
+      catalog.updateItem(legacy.id, { productType: "unclassified" }),
+    ).rejects.toThrow("Product type cannot be changed");
+    await app
+      .get(getModelToken("MenuItem"))
+      .updateOne({ _id: legacy.id }, { $set: { productType: "unclassified" } });
     await catalog.publish(version.id);
     const menu = await call("get", "catalog/menu", "customer").expect(200);
     expect(menu.body.items.map((item: { id: string }) => item.id)).toEqual([

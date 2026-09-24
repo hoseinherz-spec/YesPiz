@@ -13,6 +13,18 @@ export type OrderDocument = HydratedDocument<Order>;
 
 @Schema({ _id: false })
 export class OrderLine {
+  @Prop({ type: [MongoSchema.Types.Mixed], default: [] }) ingredientChanges?: Array<{ ingredientId: string; action: 'add' | 'remove'; name: string; portionGrams: number }>;
+  @Prop({ type: MongoSchema.Types.ObjectId }) productId?: Types.ObjectId;
+  @Prop({ type: MongoSchema.Types.ObjectId }) productRevisionId?: Types.ObjectId;
+  @Prop() productType?: string;
+  @Prop({ type: MongoSchema.Types.Mixed }) productSnapshot?: {
+    comboComponents?: import("../../catalog/combo").ComboComponent[];
+    attributes: Record<string, unknown>;
+    attributesSchemaVersion: number;
+    variantName?: string;
+    preparation?: import('../../catalog/products/product.dto').PreparationProfileDto;
+    secondHalf?: { productId?: Types.ObjectId; productRevisionId?: Types.ObjectId; name: string; attributes: Record<string, unknown>; preparation?: import('../../catalog/products/product.dto').PreparationProfileDto };
+  };
   @Prop() secondHalfItemId?: string;
   @Prop() pizzaId?: string;
   @Prop() variantId?: string;
@@ -75,6 +87,9 @@ export class OrderOffer {
 
   @Prop()
   respondedAt?: Date;
+
+  @Prop()
+  viewedAt?: Date;
 
   /** Wave bid: kitchen declared ready */
   @Prop()
@@ -316,3 +331,6 @@ OrderSchema.index({ providerId: 1, status: 1 });
 
 OrderSchema.index({ deliverySlotId: 1, status: 1, slotHoldUntil: 1 });
 OrderSchema.index({ providerId: 1, createdAt: -1, preparingAt: 1, readyAt: 1 });
+
+// Used by live customer GPS invalidations and rider completion counts.
+OrderSchema.index({ courierId: 1, status: 1 });

@@ -1,42 +1,38 @@
 "use client";
-import { AppText } from "@/components/Text";
 
 import { Typography } from "@heroui/react";
-import { FileText, Home, User, ShoppingBag } from "@repo/icons";
 import Link from "next/link";
 import { AnimatedBackground } from "@repo/ui/animated-background";
 import { usePathname } from "next/navigation";
 
 import { useApp } from "@/context/AppContext";
-import { useCart } from "@/context/CartContext";
-import { formatPrice } from "@/constants/pizzas";
 
 import { tabBar } from "./TabBar.styles";
+import "./TabBar.css";
 
 const TABS = [
-  { href: "/home/", navKey: "nav.home", icon: Home },
-  { href: "/orders/", navKey: "nav.orders", icon: FileText },
-  { href: "/profile/", navKey: "nav.profile", icon: User },
+  { href: "/home/", navKey: "nav.home", icon: "home" },
+  { href: "/orders/", navKey: "nav.orders", icon: "orders" },
+  { href: "/profile/", navKey: "nav.profile", icon: "profile" },
 ] as const;
 
 export function TabBar() {
   const pathname = usePathname();
   const { t } = useApp();
-  const { count, total } = useCart();
   const styles = tabBar();
 
   return (
     <>
-      <div className={styles.fade()} />
+      <div className={styles.fade()} aria-hidden="true">
+        {[1, 2, 3, 4, 5, 6].map((layer) => (
+          <div
+            key={layer}
+            className={`bottom-nav-blur bottom-nav-blur-${layer}`}
+          />
+        ))}
+      </div>
       <nav className={styles.nav()}>
-        <div
-          className={styles.pill()}
-          style={{
-            backgroundColor: "var(--nav-background)",
-            backdropFilter: "blur(28px) saturate(1.2)",
-            WebkitBackdropFilter: "blur(28px) saturate(1.2)",
-          }}
-        >
+        <div className={styles.pill()}>
           <AnimatedBackground
             value={
               TABS.find(
@@ -50,7 +46,6 @@ export function TabBar() {
               const focused =
                 pathname === tab.href.replace(/\/$/, "") ||
                 pathname.startsWith(tab.href);
-              const Icon = tab.icon;
               const tabStyles = tabBar({ focused });
 
               return (
@@ -61,10 +56,30 @@ export function TabBar() {
                   aria-current={focused ? "page" : undefined}
                   className={tabStyles.tab()}
                 >
-                  <Icon
-                    size={20}
-                    color={focused ? "var(--selection)" : "var(--nav-muted)"}
-                  />
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    style={{
+                      color: focused ? "var(--selection)" : "var(--nav-muted)",
+                    }}
+                  >
+                    {tab.icon === "home" ? (
+                      <path
+                        fillRule="evenodd"
+                        d="M9.5 2.6a4.3 4.3 0 0 1 5 0l5.2 3.8a4 4 0 0 1 1.6 3.2V18a3.5 3.5 0 0 1-3.5 3.5H6.2A3.5 3.5 0 0 1 2.7 18V9.6a4 4 0 0 1 1.6-3.2l5.2-3.8ZM12 13a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0v-3a1 1 0 0 0-1-1Z"
+                      />
+                    ) : tab.icon === "orders" ? (
+                      <path d="M5 2a3 3 0 0 0-3 3v16a1 1 0 0 0 1.7.7L7 18.5l3.3 3.2A1 1 0 0 0 12 21V10h7a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H5Zm12 2h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2V4Z" />
+                    ) : (
+                      <>
+                        <circle cx="12" cy="7" r="5" />
+                        <ellipse cx="12" cy="18" rx="7.5" ry="5" />
+                      </>
+                    )}
+                  </svg>
                   <Typography type="body-xs" className={tabStyles.label()}>
                     {t(tab.navKey)}
                   </Typography>
@@ -73,18 +88,6 @@ export function TabBar() {
             })}
           </AnimatedBackground>
         </div>
-        <Link
-          href="/cart/"
-          className="cart-dock-action"
-          aria-label={`${t("cart.title")}, ${count} ${count === 1 ? t("common.item") : t("common.items")}, ${formatPrice(total)}`}
-        >
-          <ShoppingBag size={23} />
-          {count > 0 && (
-            <AppText as="span" className="cart-dock-count" aria-hidden="true">
-              {count > 99 ? "99+" : count}
-            </AppText>
-          )}
-        </Link>
       </nav>
     </>
   );

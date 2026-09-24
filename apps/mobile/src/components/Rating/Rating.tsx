@@ -3,7 +3,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 
 import { Typography } from '@heroui/react';
-import { Star } from '@repo/icons';
+import { Star } from '@/components/animated-icon/icons';
 
 import { rating } from './Rating.styles';
 import type { RatingProps } from './Rating.types';

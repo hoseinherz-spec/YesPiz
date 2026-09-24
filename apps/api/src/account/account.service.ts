@@ -5,7 +5,9 @@
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   UnauthorizedException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -27,6 +29,7 @@ import {
   SocialLoginDto,
   AcceptInviteDto,
   BootstrapAdminDto,
+  ConfirmPasswordResetOtpDto,
   ConfirmOtpDto,
   CreateInviteDto,
   ForgotPasswordDto,
@@ -44,6 +47,8 @@ import {
 } from "./schemas/password-reset.schema";
 import { User, UserDocument } from "./schemas/user.schema";
 
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+
 const PRIVILEGED: UserRole[] = [
   UserRole.ADMIN,
   UserRole.PROVIDER,
@@ -55,7 +60,12 @@ const OTP_COOLDOWN_MS = 60_000;
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
   private googleClient: OAuth2Client | null = null;
+  private googleJwksCache: {
+    certs: Record<string, string>;
+    expiresAt: number;
+  } | null = null;
   private twilio: ReturnType<typeof Twilio> | null = null;
   private readonly otpSendAt = new Map<string, number>();
 
@@ -77,7 +87,7 @@ export class AccountService {
     const sid = this.config.get<string>("TWILIO_ACCOUNT_SID");
     const token = this.config.get<string>("TWILIO_AUTH_TOKEN");
     if (sid && token) {
-      this.twilio = Twilio(sid, token);
+      this.twilio = Twilio(sid, token, { timeout: 15000, autoRetry: false });
     }
   }
 
@@ -128,29 +138,43 @@ export class AccountService {
     this.otpSendAt.set(cooldownKey, Date.now());
 
     const bypass = isOtpDevBypassEnabled(this.config);
+    const serviceSid = this.config.get<string>("TWILIO_VERIFY_SERVICE_SID");
+    if (!bypass && (!this.twilio || !serviceSid))
+      throw new BadRequestException("errors.twilioNotConfigured");
     const code = bypass ? "000000" : String(randomInt(100000, 999999));
     const codeHash = this.hashCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.otps.deleteMany({ phone, role }).exec();
-    await this.otps.create({ phone, role, codeHash, expiresAt, attempts: 0 });
+    const challenge = await this.otps.create({
+      phone,
+      role,
+      codeHash,
+      expiresAt,
+      attempts: 0,
+    });
 
     if (!bypass) {
-      const serviceSid = this.config.get<string>("TWILIO_VERIFY_SERVICE_SID");
-      if (!this.twilio || !serviceSid) {
-        throw new BadRequestException("errors.twilioNotConfigured");
-      }
       try {
-        await this.twilio.verify.v2.services(serviceSid).verifications.create({
-          to: phone,
-          channel: dto.channel || "sms",
-        });
-      } catch {
+        await this.twilio!.verify.v2.services(serviceSid!).verifications.create(
+          { to: phone, channel: "sms" },
+        );
+      } catch (error) {
+        // A failed send never leaves a usable local challenge or reveals provider details.
+        await this.otps.deleteMany({ _id: challenge._id }).exec();
+        const providerCode = (error as { code?: number }).code;
+        if (
+          (error as { status?: number }).status === 429 ||
+          [60203, 60212].includes(providerCode ?? 0)
+        )
+          throw new HttpException(
+            "errors.rateLimited",
+            HttpStatus.TOO_MANY_REQUESTS,
+          );
         throw new BadRequestException("errors.otpSendFailed");
       }
     }
 
-    this.audit.record("auth.otp.send", { meta: { phone, bypass } });
     return {
       status: "sent",
       phone,
@@ -195,7 +219,7 @@ export class AccountService {
           await challenge.save();
           throw new UnauthorizedException("errors.otpInvalid");
         }
-      } else if (challenge.codeHash !== this.hashCode(dto.code)) {
+      } else if (!bypass || challenge.codeHash !== this.hashCode(dto.code)) {
         challenge.attempts = (challenge.attempts ?? 0) + 1;
         await challenge.save();
         throw new UnauthorizedException("errors.otpInvalid");
@@ -242,45 +266,136 @@ export class AccountService {
   }
 
   async requestPasswordReset(dto: ForgotPasswordDto) {
-    const email = dto.email.toLowerCase();
+    const email = dto.email.trim().toLowerCase();
+    const isProd = this.config.get<string>("NODE_ENV") === "production";
+    const provider = this.config.get<string>("AUTH_EMAIL_PROVIDER") || "mock";
+    const mailKey = this.config.get<string>("RESEND_API_KEY");
+    const mailFrom = this.config.get<string>("AUTH_EMAIL_FROM");
+    const useMock = provider === "mock" && !isProd;
+    if (!useMock && (!mailKey || !mailFrom))
+      throw new ServiceUnavailableException(
+        "Password recovery is temporarily unavailable. Please try again later.",
+      );
+    const challengeId = randomBytes(32).toString("hex");
+    const code = String(randomInt(10000, 100000));
+    const opaque = {
+      status: "sent" as const,
+      challengeId,
+      email,
+      ...(useMock ? { verificationCode: code } : {}),
+    };
     const user = await this.users.findOne({ email }).exec();
-    const opaque = { status: "sent" as const };
-    if (!user?.passwordHash) {
+    if (!user?.passwordHash || !user.isActive) {
       return opaque;
     }
     await this.passwordResets.deleteMany({ userId: user._id }).exec();
-    const rawToken = randomBytes(32).toString("hex");
     await this.passwordResets.create({
       userId: user._id,
-      tokenHash: this.hashCode(rawToken),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      challengeId,
+      codeHash: this.hashCode(challengeId + code),
+      // Keep the existing unique token index populated without exposing a
+      // usable reset token until the email code has been verified.
+      tokenHash: this.hashCode(randomBytes(32).toString("hex")),
+      attempts: 0,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
     this.audit.record("auth.password_reset.request", {
       targetUserId: user.id,
       meta: { email },
     });
-    const isProd = this.config.get<string>("NODE_ENV") === "production";
-    if (!isProd) {
-      return { ...opaque, resetToken: rawToken };
+    if (!useMock) {
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${mailKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: mailFrom,
+            to: [email],
+            subject: "Reset your Yespiz password",
+            text: `Your Yespiz password reset code is ${code}. It expires in 10 minutes. If you did not request it, ignore this email.`,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) throw new Error("Email delivery failed");
+      } catch {
+        await this.passwordResets.deleteMany({ challengeId }).exec();
+        throw new ServiceUnavailableException(
+          "Could not send the reset code. Please try again later.",
+        );
+      }
     }
     return opaque;
   }
 
-  async confirmPasswordReset(dto: ResetPasswordDto) {
-    const reset = await this.passwordResets
-      .findOne({ tokenHash: this.hashCode(dto.token) })
+  async confirmPasswordResetOtp(dto: ConfirmPasswordResetOtpDto) {
+    const challenge = await this.passwordResets
+      .findOneAndUpdate(
+        {
+          challengeId: dto.challengeId,
+          verifiedAt: null,
+          usedAt: null,
+          attempts: { $lt: MAX_OTP_ATTEMPTS },
+          expiresAt: { $gt: new Date() },
+        },
+        { $inc: { attempts: 1 } },
+        { new: true },
+      )
       .exec();
-    if (!reset || reset.usedAt || reset.expiresAt.getTime() < Date.now()) {
+    if (
+      !challenge ||
+      challenge.codeHash !== this.hashCode(dto.challengeId + dto.code)
+    ) {
+      throw new UnauthorizedException("errors.otpInvalid");
+    }
+
+    const token = randomBytes(32).toString("hex");
+    const verified = await this.passwordResets
+      .findOneAndUpdate(
+        {
+          _id: challenge._id,
+          verifiedAt: null,
+          usedAt: null,
+          expiresAt: { $gt: new Date() },
+        },
+        {
+          $set: {
+            verifiedAt: new Date(),
+            tokenHash: this.hashCode(token),
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+          },
+        },
+        { new: true },
+      )
+      .exec();
+    if (!verified) throw new UnauthorizedException("errors.otpInvalid");
+    return { token };
+  }
+
+  async confirmPasswordReset(dto: ResetPasswordDto) {
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const reset = await this.passwordResets
+      .findOneAndUpdate(
+        {
+          tokenHash: this.hashCode(dto.token),
+          usedAt: null,
+          expiresAt: { $gt: new Date() },
+        },
+        { $set: { usedAt: new Date() } },
+        { new: true },
+      )
+      .exec();
+    if (!reset) {
       throw new UnauthorizedException("errors.resetInvalid");
     }
     const user = await this.users.findById(reset.userId).exec();
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException("errors.resetInvalid");
     }
-    user.passwordHash = await bcrypt.hash(dto.password, 10);
+    user.passwordHash = passwordHash;
     await user.save();
-    reset.usedAt = new Date();
-    await reset.save();
     await this.passwordResets
       .deleteMany({ userId: user._id, _id: { $ne: reset._id } })
       .exec();
@@ -410,9 +525,76 @@ export class AccountService {
     });
   }
 
+  private enabledSocialProviders() {
+    return (
+      this.config.get<string>("SOCIAL_AUTH_PROVIDERS") ??
+      "google,apple,facebook"
+    )
+      .split(",")
+      .map((provider) => provider.trim());
+  }
+
+  socialProviders() {
+    const enabled = this.enabledSocialProviders();
+    return {
+      google:
+        enabled.includes("google") &&
+        Boolean(this.config.get("GOOGLE_CLIENT_ID")),
+      apple:
+        enabled.includes("apple") &&
+        Boolean(
+          this.config.get("APPLE_CLIENT_ID") ||
+          this.config.get("APPLE_NATIVE_CLIENT_ID"),
+        ),
+      facebook:
+        enabled.includes("facebook") &&
+        Boolean(
+          this.config.get("FACEBOOK_APP_ID") &&
+          this.config.get("FACEBOOK_APP_SECRET") &&
+          /^v\d+\.\d+$/.test(
+            this.config.get<string>("FACEBOOK_API_VERSION") || "",
+          ),
+        ),
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const current = await this.users.findById(userId).exec();
+    if (!current || !current.isActive) throw new UnauthorizedException();
+    const user = await this.users
+      .findOneAndUpdate(
+        {
+          _id: userId,
+          isActive: true,
+          ...(dto.revision === 0
+            ? {
+                $or: [
+                  { profileRevision: 0 },
+                  { profileRevision: { $exists: false } },
+                ],
+              }
+            : { profileRevision: dto.revision }),
+        },
+        {
+          $set: {
+            firstName: dto.firstName.trim(),
+            lastName: dto.lastName.trim(),
+          },
+          $inc: { profileRevision: 1 },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user)
+      throw new ConflictException(
+        "Your profile changed on another device. Reload and try again.",
+      );
+    return this.toProfile(user);
+  }
+
   async getProfile(userId: string) {
     const user = await this.users.findById(userId).exec();
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException("errors.unauthorized");
     }
     return this.toProfile(user);
@@ -449,7 +631,7 @@ export class AccountService {
     const user = await this.users
       .findOne({ email: email.toLowerCase() })
       .exec();
-    if (!user?.passwordHash) {
+    if (!user?.passwordHash || !user.isActive) {
       throw new UnauthorizedException("errors.invalidCredentials");
     }
     const ok = await bcrypt.compare(password, user.passwordHash);
@@ -476,10 +658,10 @@ export class AccountService {
       throw new BadRequestException("errors.badRequest");
     }
     try {
-      const ticket = await this.googleClient.verifyIdToken({
-        idToken: dto.idToken,
-        audience: this.config.get<string>("GOOGLE_CLIENT_ID") || undefined,
-      });
+      const ticket = await this.verifyGoogleIdToken(
+        dto.idToken,
+        this.config.get<string>("GOOGLE_CLIENT_ID")!,
+      );
       const payload = ticket.getPayload();
       if (!payload?.sub || !payload.email) {
         throw new UnauthorizedException("errors.googleAuthFailed");
@@ -570,6 +752,11 @@ export class AccountService {
   }
 
   async socialLogin(dto: SocialLoginDto) {
+    if (!this.enabledSocialProviders().includes(dto.provider)) {
+      throw new BadRequestException(
+        "This sign-in provider is currently disabled.",
+      );
+    }
     let payload: {
       sub?: string;
       email?: string;
@@ -579,18 +766,62 @@ export class AccountService {
       family_name?: string;
     };
     try {
-      if (dto.provider === "google") {
+      if (dto.provider === "facebook") {
+        const appId = this.config.get<string>("FACEBOOK_APP_ID");
+        const appSecret = this.config.get<string>("FACEBOOK_APP_SECRET");
+        const version = this.config.get<string>("FACEBOOK_API_VERSION");
+        if (!appId || !appSecret || !version || !/^v\d+\.\d+$/.test(version))
+          throw new BadRequestException("Facebook sign-in is not configured.");
+        const debugUrl = new URL(
+          `https://graph.facebook.com/${version}/debug_token`,
+        );
+        debugUrl.searchParams.set("input_token", dto.idToken);
+        const inspected = await fetch(debugUrl, {
+          headers: { Authorization: `Bearer ${appId}|${appSecret}` },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!inspected.ok) throw new Error("Token verification failed");
+        const { data } = await inspected.json();
+        const now = Date.now() / 1000;
+        if (
+          !data?.is_valid ||
+          data.app_id !== appId ||
+          data.type !== "USER" ||
+          !data.user_id ||
+          !data.expires_at ||
+          data.expires_at <= now ||
+          (data.data_access_expires_at && data.data_access_expires_at <= now)
+        )
+          throw new Error("Invalid Facebook identity");
+        const profileResponse = await fetch(
+          `https://graph.facebook.com/${version}/me?fields=id,email,first_name,last_name`,
+          {
+            headers: { Authorization: `Bearer ${dto.idToken}` },
+            signal: AbortSignal.timeout(5000),
+          },
+        );
+        if (!profileResponse.ok) throw new Error("Profile unavailable");
+        const profile = await profileResponse.json();
+        if (profile.id !== data.user_id) throw new Error("Identity mismatch");
+        payload = {
+          sub: profile.id,
+          email: profile.email,
+          email_verified: Boolean(profile.email),
+          given_name: profile.first_name,
+          family_name: profile.last_name,
+        };
+      } else if (dto.provider === "google") {
         const audience = this.config.get<string>("GOOGLE_CLIENT_ID");
         if (!audience || !this.googleClient)
           throw new BadRequestException("Google sign-in is not configured.");
-        const ticket = await this.googleClient.verifyIdToken({
-          idToken: dto.idToken,
-          audience,
-        });
+        const ticket = await this.verifyGoogleIdToken(dto.idToken, audience);
         payload = ticket.getPayload()!;
       } else {
-        const audience = this.config.get<string>("APPLE_CLIENT_ID");
-        if (!audience)
+        const audience = [
+          this.config.get<string>("APPLE_CLIENT_ID"),
+          this.config.get<string>("APPLE_NATIVE_CLIENT_ID"),
+        ].filter((value): value is string => Boolean(value));
+        if (!audience.length)
           throw new BadRequestException("Apple sign-in is not configured.");
         const header = JSON.parse(
           Buffer.from(dto.idToken.split(".")[0], "base64url").toString(),
@@ -613,19 +844,35 @@ export class AccountService {
           publicKey,
           algorithms: ["RS256"],
           issuer: "https://appleid.apple.com",
-          audience,
+          audience: audience as [string, ...string[]],
         });
       }
-      if (!payload?.sub || payload.nonce !== dto.nonce)
+      if (
+        !payload?.sub ||
+        (dto.provider === "apple" && payload.nonce !== dto.nonce) ||
+        (dto.provider === "google" &&
+          payload.nonce !== undefined &&
+          payload.nonce !== dto.nonce)
+      )
         throw new Error("Invalid identity");
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-      throw new UnauthorizedException("Unable to verify your social sign-in.");
+      const reason = error instanceof Error ? error.message : "Unknown error";
+      this.logger?.warn(
+        `Social sign-in verification failed provider=${dto.provider} reason=${reason}`,
+      );
+      const message =
+        this.config.get<string>("NODE_ENV") === "production"
+          ? "Unable to verify your social sign-in."
+          : `Unable to verify your social sign-in: ${reason}`;
+      throw new UnauthorizedException(message);
     }
     const identity =
       dto.provider === "apple"
         ? { appleSub: payload.sub }
-        : { googleSub: payload.sub };
+        : dto.provider === "facebook"
+          ? { facebookSub: payload.sub }
+          : { googleSub: payload.sub };
     let user = await this.users.findOne(identity).exec();
     if (!user) {
       if (!payload.email || ![true, "true"].includes(payload.email_verified!)) {
@@ -660,9 +907,89 @@ export class AccountService {
     return this.tokenResponse(user, UserRole.CUSTOMER);
   }
 
+  private async verifyGoogleIdToken(idToken: string, audience: string) {
+    if (!this.googleClient)
+      throw new BadRequestException("Google sign-in is not configured.");
+    try {
+      return await this.googleClient.verifyIdToken({ idToken, audience });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "";
+      if (!reason.includes("Failed to retrieve verification certificates")) {
+        throw error;
+      }
+    }
+
+    const now = Date.now();
+    let certs =
+      this.googleJwksCache && this.googleJwksCache.expiresAt > now
+        ? this.googleJwksCache.certs
+        : null;
+    if (!certs) {
+      const configuredJwksUrl =
+        this.config.get<string>("GOOGLE_JWKS_URL")?.trim() ||
+        "https://www.googleapis.com/oauth2/v3/certs";
+      const jwksUrl = new URL(configuredJwksUrl);
+      if (
+        jwksUrl.protocol !== "https:" &&
+        !(
+          this.config.get<string>("NODE_ENV") !== "production" &&
+          ["localhost", "127.0.0.1"].includes(jwksUrl.hostname)
+        )
+      ) {
+        throw new Error("Google JWKS URL must use HTTPS");
+      }
+      const fetchJwks = async () => {
+        let lastError: unknown;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            return await fetch(jwksUrl, {
+              signal: AbortSignal.timeout(5000),
+            });
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError;
+      };
+      const response = await fetchJwks();
+      if (!response.ok)
+        throw new Error(`Google JWKS request failed (${response.status})`);
+      const body = (await response.json()) as {
+        keys?: Array<import("crypto").JsonWebKey & { kid?: string }>;
+      };
+      certs = {};
+      for (const key of body.keys ?? []) {
+        if (!key.kid) continue;
+        certs[key.kid] = createPublicKey({ key, format: "jwk" })
+          .export({ type: "spki", format: "pem" })
+          .toString();
+      }
+      if (!Object.keys(certs).length)
+        throw new Error("Google JWKS response contained no usable keys");
+      const maxAge = Number(
+        /max-age=(\d+)/i.exec(response.headers.get("cache-control") ?? "")?.[1] ??
+          300,
+      );
+      this.googleJwksCache = {
+        certs,
+        expiresAt: now + Math.max(60, maxAge) * 1000,
+      };
+    }
+
+    return this.googleClient.verifySignedJwtWithCertsAsync(
+      idToken,
+      certs,
+      audience,
+      ["accounts.google.com", "https://accounts.google.com"],
+    );
+  }
+
   passkeyToken(user: UserDocument) {
-    this.audit.record("auth.login", {targetUserId:user.id,meta:{role:UserRole.CUSTOMER,method:"passkey"}});
-    return this.tokenResponse(user,UserRole.CUSTOMER);
+    this.audit.record("auth.login", {
+      targetUserId: user.id,
+      meta: { role: UserRole.CUSTOMER, method: "passkey" },
+    });
+    return this.tokenResponse(user, UserRole.CUSTOMER);
   }
 
   private tokenResponse(user: UserDocument, activeRole: UserRole) {
@@ -689,6 +1016,7 @@ export class AccountService {
       expiresIn,
       user: {
         id: user.id,
+        profileRevision: user.profileRevision ?? 0,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -701,6 +1029,7 @@ export class AccountService {
 
   private toProfile(user: UserDocument) {
     return {
+      profileRevision: user.profileRevision ?? 0,
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,

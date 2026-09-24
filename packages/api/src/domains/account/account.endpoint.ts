@@ -8,6 +8,7 @@ export const accountEndpoints = {
   acceptInvite: '/api/v1/account/auth/invites/accept',
   createInvite: '/api/v1/account/admin/invites',
   forgotPassword: '/api/v1/account/auth/password/forgot',
+  confirmPasswordResetOtp: '/api/v1/account/auth/password/forgot/confirm',
   resetPassword: '/api/v1/account/auth/password/reset',
   me: '/api/v1/account/profile/me',
   cashRestore: (id: string) => `/api/v1/account/admin/users/${id}/cash-restore`,

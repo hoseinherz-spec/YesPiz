@@ -12,7 +12,10 @@ const events: Record<string, FunnelEvent> = {
 export function ProductTelemetry() {
   const path = usePathname();
   useEffect(() => {
-    const event = events[path.replace(/\/$/, "")];
+    const normalized = path.replace(/\/$/, "");
+    const event = /^\/menu\/[^/]+$/.test(normalized)
+      ? "product_view"
+      : events[normalized];
     if (event) trackProductEvent(event);
   }, [path]);
   return null;
