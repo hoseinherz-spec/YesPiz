@@ -879,21 +879,26 @@ export class AccountService {
         throw new UnauthorizedException("A verified email is required.");
       }
       const email = payload.email.toLowerCase();
-      // Never silently link an existing account based on an email claim.
-      if (await this.users.exists({ email })) {
-        throw new ConflictException(
-          "An account with this email already exists. Use your existing sign-in method.",
-        );
+      // A provider-verified email proves control of the address. Attach the
+      // new provider identity to an existing account instead of making social
+      // sign-in fail with a conflict (or creating a duplicate account).
+      user = await this.users.findOne({ email }).exec();
+      if (user) {
+        Object.assign(user, identity);
+        user.activeRole = UserRole.CUSTOMER;
+        user.emailVerifiedAt = user.emailVerifiedAt || new Date();
+        await user.save();
+      } else {
+        user = await this.users.create({
+          ...identity,
+          email,
+          firstName: payload.given_name || "User",
+          lastName: payload.family_name || dto.provider,
+          roles: [UserRole.CUSTOMER],
+          activeRole: UserRole.CUSTOMER,
+          emailVerifiedAt: new Date(),
+        });
       }
-      user = await this.users.create({
-        ...identity,
-        email,
-        firstName: payload.given_name || "User",
-        lastName: payload.family_name || dto.provider,
-        roles: [UserRole.CUSTOMER],
-        activeRole: UserRole.CUSTOMER,
-        emailVerifiedAt: new Date(),
-      });
     }
     if (!user.isActive || !user.roles.includes(UserRole.CUSTOMER)) {
       throw new ForbiddenException(

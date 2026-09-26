@@ -5,10 +5,17 @@
 @source "../../../../packages/api/src/components";
 @source "../../../../packages/ui/src";
 
-.button.button--icon-only { border-radius: 999px; padding: 0; aspect-ratio: 1; flex-shrink: 0; }
+.button.button--icon-only {
+  border-radius: 999px;
+  padding: 0;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
 
 .pizza-night-banner {
-  background: linear-gradient(90deg, #061326d9, #06132645), url("/images/pizza-night-bg.webp") center / cover;
+  background:
+    linear-gradient(90deg, #061326d9, #06132645),
+    url("/images/pizza-night-bg.webp") center / cover;
 }
 .home-shortcut {
   position: relative;
@@ -19,17 +26,47 @@
   min-height: 126px;
   border-radius: 24px;
   padding: 18px 12px;
-  background: linear-gradient(145deg, color-mix(in oklab, var(--accent) 16%, var(--surface)), var(--surface));
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--accent) 16%, var(--surface)),
+    var(--surface)
+  );
   color: var(--foreground);
   font-size: 12px;
   font-weight: 650;
   line-height: 1.4;
 }
-.home-shortcut:nth-child(2) { background: linear-gradient(145deg, color-mix(in oklab, var(--warning) 22%, var(--surface)), var(--surface)); }
-.home-shortcut:nth-child(3) { background: linear-gradient(145deg, color-mix(in oklab, var(--danger) 18%, var(--surface)), var(--surface)); }
-.home-shortcut > svg:first-child { width: 28px; height: 28px; color: var(--accent); }
-.home-shortcut-arrow { position: absolute; right: 12px; top: 16px; width: 14px; height: 14px; color: var(--muted); }
-.home-shortcut:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.home-shortcut:nth-child(2) {
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--warning) 22%, var(--surface)),
+    var(--surface)
+  );
+}
+.home-shortcut:nth-child(3) {
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--danger) 18%, var(--surface)),
+    var(--surface)
+  );
+}
+.home-shortcut > svg:first-child {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+.home-shortcut-arrow {
+  position: absolute;
+  right: 12px;
+  top: 16px;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+.home-shortcut:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
 .home-combo-rail {
   display: flex;
   gap: 14px;
@@ -39,10 +76,24 @@
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
-.home-combo-rail::-webkit-scrollbar { display: none; }
-.home-combo-rail > * { flex: 0 0 88%; scroll-snap-align: start; }
-.home-combo-skeleton { min-height: 330px; border-radius: 28px; background: var(--surface-secondary); animation: combo-home-pulse 1.4s ease-in-out infinite alternate; }
-@keyframes combo-home-pulse { to { opacity: .55; } }
+.home-combo-rail::-webkit-scrollbar {
+  display: none;
+}
+.home-combo-rail > * {
+  flex: 0 0 88%;
+  scroll-snap-align: start;
+}
+.home-combo-skeleton {
+  min-height: 330px;
+  border-radius: 28px;
+  background: var(--surface-secondary);
+  animation: combo-home-pulse 1.4s ease-in-out infinite alternate;
+}
+@keyframes combo-home-pulse {
+  to {
+    opacity: 0.55;
+  }
+}
 
 .account-shortcut {
   display: flex;
@@ -539,7 +590,9 @@ nav:has(.cart-dock-action) .app-selection-background {
   margin-top: 25px;
   padding-block: 3px;
 }
-.home-category-pills::-webkit-scrollbar { display: none; }
+.home-category-pills::-webkit-scrollbar {
+  display: none;
+}
 .home-category-pills button {
   flex-shrink: 0;
   min-height: 48px;
