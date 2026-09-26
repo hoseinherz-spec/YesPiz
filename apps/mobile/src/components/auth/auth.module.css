@@ -37,6 +37,9 @@
   font-size: 16px;
   font-weight: 500;
 }
+.brandLogo {
+  width: 112px;
+}
 .back {
   position: absolute;
   left: 0;

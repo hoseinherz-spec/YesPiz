@@ -1,5 +1,11 @@
 "use client";
-import { FormAction, FormScope, TextArea, Input, Select } from "@repo/ui/forms";
+import {
+  FormAction,
+  FormScope,
+  TextArea,
+  Input,
+  Select,
+} from "@/components/AdminForms";
 
 import {
   ApiError,
@@ -128,7 +134,7 @@ export default function QualityDetailPage() {
       return;
     }
     if (!testForm.customerId.trim() || !testForm.addressId.trim()) {
-      setError("Customer ID and address ID are required for test orders.");
+      setError("Choose a customer and their address for the test order.");
       return;
     }
     if (!testForm.menuItemId) {
@@ -200,7 +206,7 @@ export default function QualityDetailPage() {
               <p className="text-muted text-sm">ID {providerId}</p>
             </div>
 
-            {error ? <p className="text-sm text-danger">{error}</p> : null}
+            {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
             {message ? <p className="text-sm text-success">{message}</p> : null}
 
             <Card className="p-4">
@@ -313,13 +319,13 @@ export default function QualityDetailPage() {
                     Test order
                   </Typography>
                   <p className="text-muted text-sm">
-                    Skips payment and assigns directly to this kitchen. Use demo
-                    customer and address IDs from the seed output (see
-                    docs/DEMO.md).
+                    Skips payment and assigns directly to this kitchen. Choose a
+                    customer and one of their saved addresses.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Input
-                      label={<>Customer ID</>}
+                      label={<>Customer</>}
+                      entity="customer"
                       wrapperClassName="flex flex-col gap-1 text-sm"
                       required
                       value={testForm.customerId}
@@ -327,12 +333,15 @@ export default function QualityDetailPage() {
                         setTestForm((f) => ({
                           ...f,
                           customerId: e.target.value,
+                          addressId: "",
                         }))
                       }
                       className="border-border bg-background rounded-md border px-3 py-2"
                     />
                     <Input
-                      label={<>Address ID</>}
+                      label={<>Address</>}
+                      entity="address"
+                      customerId={testForm.customerId}
                       wrapperClassName="flex flex-col gap-1 text-sm"
                       required
                       value={testForm.addressId}

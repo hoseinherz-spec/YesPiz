@@ -1,8 +1,9 @@
 "use client";
+import Image from "next/image";
 
 import { apiRequest, withAuth } from "@repo/api";
 import { requireAdminToken } from "@/lib/auth";
-import { Button, Typography } from "@heroui/react";
+import { Button } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -112,9 +113,15 @@ export function OpsShell({ children }: { children: ReactNode }) {
       </a>
       <aside className="panel-sidebar border-border bg-card flex w-full shrink-0 flex-col gap-5 border-b p-5 md:w-64 md:border-b-0 md:border-r">
         <div>
-          <Typography type="h3" className="text-lg font-semibold">
-            YesPiz Admin
-          </Typography>
+          <div className="mb-2 w-fit rounded-lg bg-[#02020e] px-3 py-2">
+            <Image
+              src="/yespizz-wordmark.svg"
+              alt="Yespizz"
+              width={132}
+              height={44}
+              priority
+            />
+          </div>
           <p className="text-muted text-sm">Operations</p>
         </div>
         <nav

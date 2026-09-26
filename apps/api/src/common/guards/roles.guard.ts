@@ -1,4 +1,7 @@
-import { requiredAdminPermission } from "../security/admin-permissions";
+import {
+  requiredAdminPermission,
+  adminToolPermissions,
+} from "../security/admin-permissions";
 import {
   CanActivate,
   ExecutionContext,
@@ -43,6 +46,21 @@ export class RolesGuard implements CanActivate {
       userRoles.includes(UserRole.ADMIN) &&
       user.adminPermissions !== undefined
     ) {
+      const toolPermissions = adminToolPermissions(
+        request.originalUrl,
+        request.method,
+      );
+      if (toolPermissions) {
+        if (
+          !toolPermissions.some((permission) =>
+            user.adminPermissions!.includes(permission),
+          )
+        )
+          throw new ForbiddenException(
+            "Your team access does not allow this action.",
+          );
+        return true;
+      }
       const permission = requiredAdminPermission(
         request.originalUrl,
         request.method,

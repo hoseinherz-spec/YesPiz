@@ -1,4 +1,6 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
+import { Form, Input } from "@/components/AdminForms";
 import { useCallback, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -107,27 +109,27 @@ export default function OrderToolsPage() {
           {error}
         </p>
       )}
-      <form
+      <Form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           void inspect();
         }}
       >
-        <label className="text-sm">
-          Order ID
-          <input
+        <div className="text-sm">
+          <Input
             required
-            pattern="[a-fA-F0-9]{24}"
+            entity="order"
+            label="Order"
             className="mt-2 block min-h-12 rounded-xl border border-border bg-surface px-3"
             value={id}
             onChange={(e) => setId(e.target.value)}
           />
-        </label>
+        </div>
         <Button type="submit" isDisabled={busy}>
           Inspect order
         </Button>
-      </form>
+      </Form>
       {order && (
         <section className="rounded-3xl border border-border bg-card p-5">
           <h2 className="text-xl font-semibold">
@@ -174,28 +176,32 @@ export default function OrderToolsPage() {
             the mock preview.
           </p>
         )}
-        {notifications.map((n) => (
-          <article
-            key={n._id}
-            className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"
-          >
-            <div>
-              <strong className="text-sm">
-                {n.deliveryStatus} · {n.attempts} attempts
-              </strong>
-              <p className="text-xs text-muted">
-                Next attempt: {new Date(n.nextAttemptAt).toLocaleString()}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              isDisabled={busy || n.deliveryStatus !== "failed"}
-              onPress={() => void retry(n)}
+        <DataList
+          data={notifications}
+          label="order-tools"
+          renderItem={(n) => (
+            <article
+              key={n._id}
+              className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"
             >
-              Retry failed delivery
-            </Button>
-          </article>
-        ))}
+              <div>
+                <strong className="text-sm">
+                  {n.deliveryStatus} · {n.attempts} attempts
+                </strong>
+                <p className="text-xs text-muted">
+                  Next attempt: {new Date(n.nextAttemptAt).toLocaleString()}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                isDisabled={busy || n.deliveryStatus !== "failed"}
+                onPress={() => void retry(n)}
+              >
+                Retry failed delivery
+              </Button>
+            </article>
+          )}
+        />
       </section>
     </div>
   );

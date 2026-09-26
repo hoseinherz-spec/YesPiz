@@ -1,7 +1,8 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
 import { useState } from "react";
 import { Button, Card } from "@heroui/react";
-import { Form, Input } from "@repo/ui/forms";
+import { Form, Input } from "@/components/AdminForms";
 import {
   catalogClient,
   type Ingredient,
@@ -174,83 +175,91 @@ export function IngredientLibrary({
             No ingredients yet. Add your first ingredient above.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center gap-3 py-3"
-              >
-                <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface-secondary">
-                  {item.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={item.image}
-                      src={item.image}
-                      alt=""
-                      className="size-full object-contain p-2"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <span className="text-muted">{item.name.slice(0, 1)}</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{item.name}</p>
-                  <p className="break-words text-xs text-muted">{item.slug}</p>
-                  <p className="text-sm text-muted">{item.description}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={busy}
-                  onPress={() => {
-                    setEditing(item.id);
-                    setForm({
-                      name: item.name,
-                      slug: item.slug,
-                      description: item.description,
-                      image: item.image,
-                    });
-                    setError("");
-                    setNotice("");
-                  }}
+          <div className="divide-y divide-border">
+            <DataList
+              data={items}
+              label="ingredients"
+              renderItem={(item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center gap-3 py-3"
                 >
-                  Edit {item.name}
-                </Button>
-                {deleting === item.id ? (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      isDisabled={busy}
-                      onPress={() => void remove(item.id)}
-                    >
-                      Confirm delete {item.name}
-                    </Button>
+                  <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface-secondary">
+                    {item.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={item.image}
+                        src={item.image}
+                        alt=""
+                        className="size-full object-contain p-2"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span className="text-muted">
+                        {item.name.slice(0, 1)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{item.name}</p>
+                    <p className="break-words text-xs text-muted">
+                      {item.slug}
+                    </p>
+                    <p className="text-sm text-muted">{item.description}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    isDisabled={busy}
+                    onPress={() => {
+                      setEditing(item.id);
+                      setForm({
+                        name: item.name,
+                        slug: item.slug,
+                        description: item.description,
+                        image: item.image,
+                      });
+                      setError("");
+                      setNotice("");
+                    }}
+                  >
+                    Edit {item.name}
+                  </Button>
+                  {deleting === item.id ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        isDisabled={busy}
+                        onPress={() => void remove(item.id)}
+                      >
+                        Confirm delete {item.name}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onPress={() => setDeleting(null)}
+                        isDisabled={busy}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onPress={() => setDeleting(null)}
                       isDisabled={busy}
+                      onPress={() => setDeleting(item.id)}
                     >
-                      Cancel
+                      Delete {item.name}
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    isDisabled={busy}
-                    onPress={() => setDeleting(item.id)}
-                  >
-                    Delete {item.name}
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
+                  )}
+                </li>
+              )}
+            />
+          </div>
         )}
       </Card.Content>
     </Card>

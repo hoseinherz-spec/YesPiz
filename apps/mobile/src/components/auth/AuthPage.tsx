@@ -1,7 +1,14 @@
 "use client";
 import Link from "next/link";
 import { ChevronLeft } from "@/components/animated-icon/icons";
-import { KeyRound, LogIn, MailCheck, ShieldCheck, UserPlus } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
+import {
+  KeyRound,
+  LogIn,
+  MailCheck,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./auth.module.css";
 
@@ -31,6 +38,7 @@ export function AuthPage({
           <Link href={backHref} aria-label={backLabel} className={styles.back}>
             <ChevronLeft size={24} />
           </Link>
+          <BrandLogo className={styles.brandLogo} />
         </header>
         <div className={styles.content}>
           <span className={styles.titleIcon} aria-hidden="true">
@@ -42,11 +50,7 @@ export function AuthPage({
           {footer && <div className={styles.action}>{footer}</div>}
           {afterAction}
         </div>
-        {social && (
-          <footer className={styles.footer}>
-            {social}
-          </footer>
-        )}
+        {social && <footer className={styles.footer}>{social}</footer>}
       </section>
     </main>
   );

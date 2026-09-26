@@ -1,5 +1,6 @@
 "use client";
-import { Form, Input, Select } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { Form, Input, Select } from "@/components/AdminForms";
 
 import { DiscountCodes } from "@/components/DiscountCodes";
 import { ReferralProgram } from "@/components/ReferralProgram";
@@ -200,14 +201,22 @@ export default function GrowthPage() {
             Create a campaign to start tracking its pizza orders.
           </p>
         )}
-        {data?.campaigns.map((campaign) => (
-          <CampaignRow
-            key={campaign._id}
-            campaign={campaign}
-            stats={data.attribution.find((row) => row._id === campaign.code)}
-            onSaved={load}
+        {
+          <DataList
+            data={data?.campaigns}
+            label="growth"
+            renderItem={(campaign) => (
+              <CampaignRow
+                key={campaign._id}
+                campaign={campaign}
+                stats={data?.attribution.find(
+                  (row) => row._id === campaign.code,
+                )}
+                onSaved={load}
+              />
+            )}
           />
-        ))}
+        }
       </section>
       <DiscountCodes />
       <ReferralProgram />

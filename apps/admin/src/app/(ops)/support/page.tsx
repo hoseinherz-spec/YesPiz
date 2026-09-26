@@ -1,5 +1,11 @@
 "use client";
-import { FormAction, FormScope, Input, TextArea } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import {
+  FormAction,
+  FormScope,
+  Input,
+  TextArea,
+} from "@/components/AdminForms";
 
 import { careClient, type AdminSupportRequest } from "@repo/api";
 import { Button } from "@heroui/react";
@@ -183,47 +189,51 @@ export default function SupportPage() {
               No requests match this view.
             </p>
           )}
-          {visible.map((row) => (
-            <article key={row._id} className="rounded-2xl bg-card p-5">
-              <div className="flex flex-wrap justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">
-                    #{row.orderId.slice(-6)} · {row.category}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted">
-                    {row.status} · {row.ownerId ? "Assigned" : "Unassigned"} ·
-                    Due {new Date(row.dueAt).toLocaleString()}
-                  </p>
+          <DataList
+            data={visible}
+            label="support"
+            renderItem={(row) => (
+              <article key={row._id} className="rounded-2xl bg-card p-5">
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div>
+                    <h2 className="font-semibold">
+                      #{row.orderId.slice(-6)} · {row.category}
+                    </h2>
+                    <p className="mt-1 text-xs text-muted">
+                      {row.status} · {row.ownerId ? "Assigned" : "Unassigned"} ·
+                      Due {new Date(row.dueAt).toLocaleString()}
+                    </p>
+                  </div>
+                  {row.status !== "resolved" && (
+                    <Button
+                      isDisabled={busy}
+                      variant="secondary"
+                      onPress={() => void claim(row)}
+                    >
+                      Claim & review
+                    </Button>
+                  )}
                 </div>
-                {row.status !== "resolved" && (
-                  <Button
-                    isDisabled={busy}
-                    variant="secondary"
-                    onPress={() => void claim(row)}
-                  >
-                    Claim & review
-                  </Button>
-                )}
-              </div>
-              <p className="mt-3 whitespace-pre-wrap break-words text-sm">
-                {row.message}
-              </p>
-              <details className="mt-4 text-sm">
-                <summary className="cursor-pointer text-muted">
-                  Internal history ({row.events.length})
-                </summary>
-                {row.events.map((event, i) => (
-                  <p
-                    key={i}
-                    className="mt-2 whitespace-pre-wrap border-l border-border pl-3"
-                  >
-                    {new Date(event.at).toLocaleString()} · {event.action}
-                    {event.internalNote ? ` — ${event.internalNote}` : ""}
-                  </p>
-                ))}
-              </details>
-            </article>
-          ))}
+                <p className="mt-3 whitespace-pre-wrap break-words text-sm">
+                  {row.message}
+                </p>
+                <details className="mt-4 text-sm">
+                  <summary className="cursor-pointer text-muted">
+                    Internal history ({row.events.length})
+                  </summary>
+                  {row.events.map((event, i) => (
+                    <p
+                      key={i}
+                      className="mt-2 whitespace-pre-wrap border-l border-border pl-3"
+                    >
+                      {new Date(event.at).toLocaleString()} · {event.action}
+                      {event.internalNote ? ` — ${event.internalNote}` : ""}
+                    </p>
+                  ))}
+                </details>
+              </article>
+            )}
+          />
         </div>
       }
     </FormScope>

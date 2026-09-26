@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type YespizzWordmarkProps = {
@@ -6,10 +7,7 @@ type YespizzWordmarkProps = {
   width?: number;
 };
 
-/**
- * Brand wordmark from /yespizz-wordmark.png (black art, transparent counters),
- * tinted brand lime via alpha mask so letter holes stay open.
- */
+/** Shared vector Yespizz wordmark. */
 export function YespizzWordmark({
   className,
   width = 120,
@@ -17,23 +15,13 @@ export function YespizzWordmark({
   const height = Math.round((width * 100) / 300);
 
   return (
-    <span
-      role="img"
-      aria-label="Yespizz"
-      className={cn("inline-block shrink-0 bg-brand-lime", className)}
-      style={{
-        width,
-        height,
-        WebkitMaskImage: "url(/yespizz-wordmark.png)",
-        maskImage: "url(/yespizz-wordmark.png)",
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-        maskMode: "alpha",
-      }}
+    <Image
+      src="/yespizz-wordmark.svg"
+      alt="Yespizz"
+      width={300}
+      height={100}
+      className={cn("inline-block h-auto shrink-0", className)}
+      style={{ width, height }}
     />
   );
 }

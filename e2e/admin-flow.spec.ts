@@ -35,14 +35,14 @@ test("admin issues a QR shift code, courier resumes on reload and ends with a ne
     await login(courier, 8153, "courier@yespizz.local", "Courier123!");
     await courier.getByLabel("Start QR / OTP").fill(code);
     await courier
-      .getByRole("button", { name: "Start session", exact: true })
+      .getByRole("button", { name: "Start shift", exact: true })
       .click();
     await expect(courier.getByText(/^On duty/)).toBeVisible();
     await courier.reload();
     await expect(courier.getByText(/^On duty/)).toBeVisible();
     await courier.getByLabel("End OTP").fill("000000");
     await courier
-      .getByRole("button", { name: "End session", exact: true })
+      .getByRole("button", { name: "End shift", exact: true })
       .click();
     await expect(
       courier.getByRole("alert").filter({ hasText: "Invalid or expired" }),
@@ -52,7 +52,7 @@ test("admin issues a QR shift code, courier resumes on reload and ends with a ne
     const end = await admin.locator("code").innerText();
     await courier.getByLabel("End OTP").fill(end);
     await courier
-      .getByRole("button", { name: "End session", exact: true })
+      .getByRole("button", { name: "End shift", exact: true })
       .click();
     await expect(courier.getByText(/^Off duty/)).toBeVisible();
     await admin.goto("http://localhost:8152/refunds");

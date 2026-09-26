@@ -1,6 +1,6 @@
 "use client";
 import { IngredientRulesEditor } from "./IngredientRulesEditor";
-import { FormAction, FormScope, Input } from "@repo/ui/forms";
+import { FormAction, FormScope, Input } from "@/components/AdminForms";
 
 import { useState } from "react";
 import {

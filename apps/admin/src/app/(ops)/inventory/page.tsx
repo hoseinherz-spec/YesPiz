@@ -1,8 +1,9 @@
 "use client";
+import { Form, Input } from "@/components/AdminForms";
 import { RecipeCoverageEditor } from "@/components/RecipeCoverageEditor";
 import { useState } from "react";
 import { Button } from "@heroui/react";
-import { IngredientStockEditor } from "@repo/api/components/ingredient-stock";
+import { IngredientStockEditor } from "@/components/IngredientStockEditor";
 import { requireAdminToken } from "@/lib/auth";
 export default function InventoryPage() {
   const [draft, setDraft] = useState(""),
@@ -12,28 +13,27 @@ export default function InventoryPage() {
       <h1 className="text-3xl font-bold">Kitchen stock</h1>
       <RecipeCoverageEditor />
       <p className="text-sm text-muted">
-        Choose a kitchen ID from Providers to review or update its ingredient
-        inventory.
+        Choose a kitchen to review or update its ingredient inventory.
       </p>
-      <form
+      <Form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           setId(draft.trim());
         }}
       >
-        <label className="text-sm">
-          Kitchen ID
-          <input
+        <div className="text-sm">
+          <Input
             required
-            pattern="[a-fA-F0-9]{24}"
+            entity="provider"
+            label="Kitchen"
             className="mt-2 block min-h-12 rounded-xl border border-border bg-surface px-4"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
-        </label>
+        </div>
         <Button type="submit">Load kitchen</Button>
-      </form>
+      </Form>
       {id && (
         <IngredientStockEditor
           key={id}

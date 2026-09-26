@@ -1,4 +1,5 @@
 "use client";
+import { Form, Input } from "@/components/AdminForms";
 import { useCallback, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -45,7 +46,7 @@ export function RewardPolicyEditor() {
       )}
       {notice && <p role="status">{notice}</p>}
       {policy && (
-        <form
+        <Form
           key={policy.version}
           className="mt-4 grid gap-4 sm:grid-cols-3"
           onSubmit={(e) => {
@@ -102,9 +103,9 @@ export function RewardPolicyEditor() {
               step: 0.01,
             },
           ].map((f) => (
-            <label key={f.name} className="text-sm">
-              {f.label}
-              <input
+            <div key={f.name} className="text-sm">
+              <Input
+                label={<>{f.label}</>}
                 name={f.name}
                 min={f.min}
                 max={f.max}
@@ -115,12 +116,12 @@ export function RewardPolicyEditor() {
                 defaultValue={f.value}
                 className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               />
-            </label>
+            </div>
           ))}
           <Button type="submit" isDisabled={busy}>
             Save rules
           </Button>
-        </form>
+        </Form>
       )}
       <Button variant="ghost" onPress={() => void load()}>
         Refresh rules

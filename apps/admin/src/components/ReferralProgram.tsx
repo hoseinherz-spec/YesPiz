@@ -1,5 +1,6 @@
 "use client";
-import { Form, Input } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { Form, Input } from "@/components/AdminForms";
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
@@ -98,33 +99,38 @@ export function ReferralProgram() {
             {!rows.length && (
               <p className="text-sm text-muted">No referrals yet.</p>
             )}
-            {rows.map((row) => (
-              <article
-                key={row._id}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border p-4"
-              >
-                <div>
-                  <p className="text-sm">
-                    Invitee {row.inviteeId} · Referrer {row.inviterId}
-                  </p>
-                  <p className="mt-2 text-xs text-muted">
-                    €{(row.rewardCents / 100).toFixed(2)} each · {row.status} ·{" "}
-                    {row.eligible
-                      ? "Qualifying paid delivery found"
-                      : "Awaiting qualifying delivery"}
-                  </p>
-                </div>
-                {row.status !== "rewarded" && (
-                  <Button
-                    variant="secondary"
-                    isDisabled={busy || !row.eligible}
-                    onPress={() => void approve(row._id)}
-                  >
-                    Approve both credits
-                  </Button>
-                )}
-              </article>
-            ))}
+            <DataList
+              data={rows}
+              label="referrals"
+              renderItem={(row) => (
+                <article
+                  key={row._id}
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border p-4"
+                >
+                  <div>
+                    <p className="text-sm">
+                      Invitee {row.inviteeId} · Referrer {row.inviterId}
+                    </p>
+                    <p className="mt-2 text-xs text-muted">
+                      €{(row.rewardCents / 100).toFixed(2)} each · {row.status}{" "}
+                      ·{" "}
+                      {row.eligible
+                        ? "Qualifying paid delivery found"
+                        : "Awaiting qualifying delivery"}
+                    </p>
+                  </div>
+                  {row.status !== "rewarded" && (
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy || !row.eligible}
+                      onPress={() => void approve(row._id)}
+                    >
+                      Approve both credits
+                    </Button>
+                  )}
+                </article>
+              )}
+            />
           </div>
         </>
       )}

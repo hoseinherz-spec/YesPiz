@@ -4,21 +4,10 @@
   flex-shrink: 0;
   vertical-align: middle;
 }
-.brand-logo img {
+.brand-logo .brand-logo-wordmark {
   width: 100%;
   height: auto;
   object-fit: contain;
-}
-.brand-logo .brand-logo-dark {
-  display: none;
-}
-.dark .brand-logo .brand-logo-light,
-[data-theme="dark"] .brand-logo .brand-logo-light {
-  display: none;
-}
-.dark .brand-logo .brand-logo-dark,
-[data-theme="dark"] .brand-logo .brand-logo-dark {
-  display: block;
 }
 
 .brand-logo.brand-logo-splash {

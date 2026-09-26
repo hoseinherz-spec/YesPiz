@@ -96,7 +96,13 @@ function FormBody({
       }}
       onSubmit={(event) => {
         event.preventDefault();
-        void form.handleSubmit(() => onSubmit?.(event))(event);
+        // RHF resolves asynchronously; React clears currentTarget after dispatch.
+        // Preserve the form element for handlers that read native FormData.
+        const submitEvent = Object.assign(Object.create(event), {
+          currentTarget: event.currentTarget,
+          preventDefault: () => event.preventDefault(),
+        });
+        void form.handleSubmit(() => onSubmit?.(submitEvent))(event);
       }}
     />
   );
@@ -419,6 +425,7 @@ type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "onChange"> &
   Decorated & {
     onChange?: (event: { target: { value: string } }) => void;
     searchable?: boolean;
+    onSearchChange?: (value: string) => void;
   };
 export function Select(props: SelectProps) {
   return (
@@ -432,6 +439,7 @@ function SelectField({
   wrapperClassName,
   schema,
   searchable,
+  onSearchChange,
   children,
   ...props
 }: SelectProps) {
@@ -497,6 +505,9 @@ function SelectField({
       <ComboBox
         {...common}
         menuTrigger="input"
+        onInputChange={onSearchChange}
+        allowsEmptyCollection={!!onSearchChange}
+        defaultFilter={onSearchChange ? () => true : undefined}
         selectedKey={String((props.value ?? field.value) || "__empty_option__")}
         onSelectionChange={(v) => change(v === "__empty_option__" ? "" : v)}
         validationBehavior="aria"

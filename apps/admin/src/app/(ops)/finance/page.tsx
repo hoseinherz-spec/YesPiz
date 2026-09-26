@@ -1,7 +1,8 @@
 "use client";
-import { Form, Select, Input } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { Form, Select, Input } from "@/components/AdminForms";
 
-import { Withdrawals } from "@repo/api/components/withdrawals";
+import { Withdrawals } from "@/components/Withdrawals";
 import { financeClient, type FinanceOverview } from "@repo/api";
 import { Button } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
@@ -266,59 +267,65 @@ export default function FinancePage() {
               {!data.entries.length && (
                 <p className="text-muted">No approved settlements yet.</p>
               )}
-              {data.entries.map((row) => (
-                <article
-                  key={row._id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5"
-                >
-                  <div>
-                    <p className="font-medium">
-                      #{row.orderId.slice(-6)} · {row.party}
-                    </p>
-                    <p className="mt-1 text-xs text-muted">
-                      {row.payeeId} · Due{" "}
-                      {new Date(row.dueAt).toLocaleDateString()}
-                    </p>
-                    <p className="mt-2 text-sm">{row.note}</p>
-                    {row.transferError && (
-                      <p className="mt-2 text-sm text-danger">
-                        {row.transferError}
+              <DataList
+                data={data.entries}
+                label="finance"
+                renderItem={(row) => (
+                  <article
+                    key={row._id}
+                    className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card p-5"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        #{row.orderId.slice(-6)} · {row.party}
                       </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <strong>{money(row.amountCents)}</strong>
-                    {row.status === "paid" ? (
-                      <span className="text-sm">
-                        Paid · {row.paymentReference}
-                      </span>
-                    ) : row.autoTransfer ? (
-                      <div className="text-sm">
-                        <p>
-                          {row.status === "transferred"
-                            ? "Transferred to Stripe balance"
-                            : row.status}
+                      <p className="mt-1 text-xs text-muted">
+                        {row.payeeId} · Due{" "}
+                        {new Date(row.dueAt).toLocaleDateString()}
+                      </p>
+                      <p className="mt-2 text-sm">{row.note}</p>
+                      {row.transferError && (
+                        <p className="mt-2 text-sm text-danger">
+                          {row.transferError}
                         </p>
-                        {row.paymentReference && <p>{row.paymentReference}</p>}
-                        <p>
-                          Historical transfer entry. Reconcile the external
-                          record manually.
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        onPress={() => {
-                          setPayId(row._id);
-                          setReference("");
-                        }}
-                      >
-                        Record payment
-                      </Button>
-                    )}
-                  </div>
-                </article>
-              ))}
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <strong>{money(row.amountCents)}</strong>
+                      {row.status === "paid" ? (
+                        <span className="text-sm">
+                          Paid · {row.paymentReference}
+                        </span>
+                      ) : row.autoTransfer ? (
+                        <div className="text-sm">
+                          <p>
+                            {row.status === "transferred"
+                              ? "Transferred to Stripe balance"
+                              : row.status}
+                          </p>
+                          {row.paymentReference && (
+                            <p>{row.paymentReference}</p>
+                          )}
+                          <p>
+                            Historical transfer entry. Reconcile the external
+                            record manually.
+                          </p>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          onPress={() => {
+                            setPayId(row._id);
+                            setReference("");
+                          }}
+                        >
+                          Record payment
+                        </Button>
+                      )}
+                    </div>
+                  </article>
+                )}
+              />
             </div>
           </section>
           <section>
@@ -328,12 +335,21 @@ export default function FinancePage() {
             <p className="mt-2 text-sm text-muted">
               Verified collection receipts, not proof of cash remittance.
             </p>
-            {data.cash.map((row) => (
-              <p key={row._id} className="mt-3 rounded-xl bg-card p-4 text-sm">
-                Courier {row._id} · {row.receipts} receipts ·{" "}
-                {money(row.collectedCents)} collected
-              </p>
-            ))}
+            {
+              <DataList
+                data={data.cash}
+                label="finance"
+                renderItem={(row) => (
+                  <p
+                    key={row._id}
+                    className="mt-3 rounded-xl bg-card p-4 text-sm"
+                  >
+                    Courier {row._id} · {row.receipts} receipts ·{" "}
+                    {money(row.collectedCents)} collected
+                  </p>
+                )}
+              />
+            }
           </section>
         </>
       )}

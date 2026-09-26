@@ -1,4 +1,5 @@
-'use client';
+"use client";
+import { DataList } from "@/components/AdminTable";
 
 import {
   ApiError,
@@ -6,13 +7,13 @@ import {
   qualityClient,
   type Provider,
   type ProviderQualityView,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import Link from 'next/link';
-import { useCallback, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { entityId } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import Link from "next/link";
+import { useCallback, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { entityId } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 type ProviderRow = Provider & { quality: ProviderQualityView };
 
@@ -41,7 +42,9 @@ export default function QualityListPage() {
       );
       setRows(withQuality);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load quality');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to load quality",
+      );
     } finally {
       setLoading(false);
     }
@@ -67,7 +70,7 @@ export default function QualityListPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {!loading && !rows.length ? (
@@ -79,42 +82,47 @@ export default function QualityListPage() {
       ) : null}
 
       <div className="flex flex-col gap-3">
-        {rows.map((row) => {
-          const id = entityId(row);
-          const q = row.quality;
-          return (
-            <Card key={id} className="p-4">
-              <Card.Content className="flex flex-col gap-2 p-0">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <Typography type="h3" className="font-medium">
-                      {row.name}
-                      {q.autoSuspended ? (
-                        <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-danger">
-                          Suspended
-                        </span>
+        <DataList
+          data={rows}
+          label="quality"
+          renderItem={(row) => {
+            const id = entityId(row);
+            const q = row.quality;
+            return (
+              <Card key={id} className="p-4">
+                <Card.Content className="flex flex-col gap-2 p-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <Typography type="h3" className="font-medium">
+                        {row.name}
+                        {q.autoSuspended ? (
+                          <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-danger">
+                            Suspended
+                          </span>
+                        ) : null}
+                      </Typography>
+                      <p className="text-muted text-sm">{row.address}</p>
+                      <p className="text-muted text-xs">
+                        Score {q.qualityScore}/100 · complaints{" "}
+                        {q.complaintCount} · delays {q.delayCount} · errors{" "}
+                        {q.errorCount}
+                      </p>
+                      {q.suspendReason ? (
+                        <p className="text-xs text-danger">{q.suspendReason}</p>
                       ) : null}
-                    </Typography>
-                    <p className="text-muted text-sm">{row.address}</p>
-                    <p className="text-muted text-xs">
-                      Score {q.qualityScore}/100 · complaints {q.complaintCount}{' '}
-                      · delays {q.delayCount} · errors {q.errorCount}
-                    </p>
-                    {q.suspendReason ? (
-                      <p className="text-xs text-danger">{q.suspendReason}</p>
-                    ) : null}
+                    </div>
+                    <Link
+                      href={`/quality/${id}`}
+                      className="border-border rounded-md border px-3 py-2 text-sm font-medium hover:opacity-80"
+                    >
+                      View detail
+                    </Link>
                   </div>
-                  <Link
-                    href={`/quality/${id}`}
-                    className="border-border rounded-md border px-3 py-2 text-sm font-medium hover:opacity-80"
-                  >
-                    View detail
-                  </Link>
-                </div>
-              </Card.Content>
-            </Card>
-          );
-        })}
+                </Card.Content>
+              </Card>
+            );
+          }}
+        />
       </div>
     </div>
   );

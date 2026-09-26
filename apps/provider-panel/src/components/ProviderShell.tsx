@@ -1,9 +1,10 @@
 "use client";
+import Image from "next/image";
 import { providersClient } from "@repo/api";
 import { Notifications } from "@repo/api/components/notifications";
 import { getProviderToken } from "@/lib/auth";
 
-import { Button, Typography } from "@heroui/react";
+import { Button } from "@heroui/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -63,9 +64,9 @@ export function ProviderShell({ children }: { children: ReactNode }) {
       </a>
       <header className="panel-header border-border bg-card flex flex-wrap items-center justify-between gap-4 border-b px-5 py-5">
         <div>
-          <Typography type="h3" className="text-lg font-semibold">
-            YesPiz Kitchen
-          </Typography>
+          <div className="mb-2 w-fit rounded-lg bg-[#02020e] px-3 py-2">
+            <Image src="/yespizz-wordmark.svg" alt="Yespizz" width={132} height={44} priority />
+          </div>
           <p className="text-muted text-xs">{kitchenName}</p>
         </div>
         <nav

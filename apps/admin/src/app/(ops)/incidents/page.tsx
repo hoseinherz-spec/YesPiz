@@ -1,5 +1,6 @@
 "use client";
-import { FormScope, Input } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { FormScope, Input } from "@/components/AdminForms";
 
 import {
   ApiError,
@@ -211,7 +212,11 @@ export default function IncidentsPage() {
           {!loading && incidents.length > 0 && !visible.length ? (
             <p>No incidents match these filters.</p>
           ) : null}
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
           {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
           {!loading && !error && !incidents.length ? (
@@ -227,7 +232,11 @@ export default function IncidentsPage() {
               <Typography type="h3" className="font-medium text-danger">
                 Critical ({critical.length})
               </Typography>
-              {critical.map(renderCard)}
+              <DataList
+                data={critical}
+                label="critical incidents"
+                renderItem={renderCard}
+              />
             </section>
           ) : null}
 
@@ -236,7 +245,11 @@ export default function IncidentsPage() {
               <Typography type="h3" className="font-medium">
                 Queue ({routine.length})
               </Typography>
-              {routine.map(renderCard)}
+              <DataList
+                data={routine}
+                label="incident queue"
+                renderItem={renderCard}
+              />
             </section>
           ) : null}
         </div>

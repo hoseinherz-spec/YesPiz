@@ -1,5 +1,10 @@
 "use client";
-import { FormAction, FormScope, TextArea, Input } from "@repo/ui/forms";
+import {
+  FormAction,
+  FormScope,
+  TextArea,
+  Input,
+} from "@/components/AdminForms";
 
 import { MediaPreview } from "@repo/api/components/media-preview";
 
@@ -128,7 +133,7 @@ export default function IncidentDetailPage() {
             </p>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           {message ? <p className="text-sm text-success">{message}</p> : null}
 
           <Card className="p-4">
@@ -269,12 +274,12 @@ export default function IncidentDetailPage() {
                     placeholder="Customer contacted, courier reassigned…"
                   />
                   <Input
-                    label={<>Replacement courier ID (optional)</>}
+                    entity="courier"
+                    label={<>Replacement courier (optional)</>}
                     wrapperClassName="flex flex-col gap-1 text-sm"
                     value={replacementCourierId}
                     onChange={(e) => setReplacementCourierId(e.target.value)}
                     className="border-border bg-background rounded-md border px-3 py-2 font-mono text-xs"
-                    placeholder="MongoDB ObjectId of backup courier user"
                   />
                   <div className="flex flex-wrap gap-2">
                     <FormAction

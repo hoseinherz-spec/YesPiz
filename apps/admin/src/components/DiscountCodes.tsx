@@ -1,7 +1,8 @@
 "use client";
-import { FormValue } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { FormValue } from "@/components/AdminForms";
 import { couponSchema } from "@repo/ui/form-schemas";
-import { Form, Input, Select } from "@repo/ui/forms";
+import { Form, Input, Select } from "@/components/AdminForms";
 import { Button as FormButton } from "@heroui/react";
 
 import { apiRequest, catalogClient, type PublishedMenuItem } from "@repo/api";
@@ -272,30 +273,42 @@ export function DiscountCodes() {
               </FormButton>
             </div>
             <div className="mt-2 grid max-h-56 gap-2 overflow-y-auto md:grid-cols-2">
-              {customers.map((customer) => (
-                <label key={customer.id} className="flex gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.eligibleUserIds.includes(customer.id)}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        eligibleUserIds: event.target.checked
-                          ? [...current.eligibleUserIds, customer.id]
-                          : current.eligibleUserIds.filter(
-                              (id) => id !== customer.id,
-                            ),
-                      }))
-                    }
-                  />
-                  <span>
-                    <strong>{customer.name}</strong>
-                    <small className="block text-muted">
-                      {customer.email || customer.phone || customer.id}
-                    </small>
-                  </span>
-                </label>
-              ))}
+              {
+                <DataList
+                  data={customers}
+                  label="menu"
+                  renderItem={(customer) => (
+                    <div key={customer.id} className="flex gap-2 text-sm">
+                      <Input
+                        label={
+                          <>
+                            <span>
+                              <strong>{customer.name}</strong>
+                              <small className="block text-muted">
+                                {customer.email ||
+                                  customer.phone ||
+                                  customer.id}
+                              </small>
+                            </span>
+                          </>
+                        }
+                        type="checkbox"
+                        checked={form.eligibleUserIds.includes(customer.id)}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            eligibleUserIds: event.target.checked
+                              ? [...current.eligibleUserIds, customer.id]
+                              : current.eligibleUserIds.filter(
+                                  (id) => id !== customer.id,
+                                ),
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+                />
+              }
             </div>
           </fieldset>
         )}
@@ -305,32 +318,45 @@ export function DiscountCodes() {
               Eligible products
             </legend>
             <div className="mt-2 grid max-h-56 gap-2 overflow-y-auto md:grid-cols-2">
-              {products.map((product) => (
-                <label key={product.id} className="flex gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.eligibleProductIds.includes(
-                      product.productId!,
-                    )}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        eligibleProductIds: event.target.checked
-                          ? [...current.eligibleProductIds, product.productId!]
-                          : current.eligibleProductIds.filter(
-                              (id) => id !== product.productId,
-                            ),
-                      }))
-                    }
-                  />
-                  <span>
-                    <strong>{product.name}</strong>
-                    <small className="block text-muted">
-                      €{(product.priceCents / 100).toFixed(2)}
-                    </small>
-                  </span>
-                </label>
-              ))}
+              {
+                <DataList
+                  data={products}
+                  label="menu"
+                  renderItem={(product) => (
+                    <div key={product.id} className="flex gap-2 text-sm">
+                      <Input
+                        label={
+                          <>
+                            <span>
+                              <strong>{product.name}</strong>
+                              <small className="block text-muted">
+                                €{(product.priceCents / 100).toFixed(2)}
+                              </small>
+                            </span>
+                          </>
+                        }
+                        type="checkbox"
+                        checked={form.eligibleProductIds.includes(
+                          product.productId!,
+                        )}
+                        onChange={(event) =>
+                          setForm((current) => ({
+                            ...current,
+                            eligibleProductIds: event.target.checked
+                              ? [
+                                  ...current.eligibleProductIds,
+                                  product.productId!,
+                                ]
+                              : current.eligibleProductIds.filter(
+                                  (id) => id !== product.productId,
+                                ),
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+                />
+              }
             </div>
           </fieldset>
         )}
@@ -364,58 +390,62 @@ export function DiscountCodes() {
           {error}
         </p>
       )}
-      {rows.map((row) => (
-        <div
-          key={row._id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-3"
-        >
-          <div>
-            <strong>{row.code}</strong>
-            <p className="text-sm">
-              {row.name} ·{" "}
-              {row.kind === "percent"
-                ? `${row.value}%`
-                : `€${(row.value / 100).toFixed(2)}`}{" "}
-              · {row.active ? "Active" : "Paused"}
-            </p>
-            <p className="text-xs text-muted">
-              {row.userScope === "specific"
-                ? `${row.eligibleUserIds?.length ?? 0} selected customer(s)`
-                : "All customers"}
-              {" · "}
-              {row.productScope === "specific"
-                ? `${row.eligibleProductIds?.length ?? 0} selected product(s)`
-                : "All products"}
-              {" · minimum quantity "}
-              {row.minimumEligibleQuantity ?? 1}
-            </p>
-          </div>
-          <FormButton
-            variant="ghost"
-            type="button"
-            isDisabled={busy}
-            className="underline"
-            onPress={async () => {
-              setBusy(true);
-              setError("");
-              try {
-                await apiRequest(`/api/v1/growth/coupons/${row._id}`, {
-                  method: "PATCH",
-                  headers: { Authorization: `Bearer ${requireAdminToken()}` },
-                  body: { active: !row.active },
-                });
-                await load();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Update failed.");
-              } finally {
-                setBusy(false);
-              }
-            }}
+      <DataList
+        data={rows}
+        label="discount codes"
+        renderItem={(row) => (
+          <div
+            key={row._id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-3"
           >
-            {row.active ? "Pause" : "Activate"}
-          </FormButton>
-        </div>
-      ))}
+            <div>
+              <strong>{row.code}</strong>
+              <p className="text-sm">
+                {row.name} ·{" "}
+                {row.kind === "percent"
+                  ? `${row.value}%`
+                  : `€${(row.value / 100).toFixed(2)}`}{" "}
+                · {row.active ? "Active" : "Paused"}
+              </p>
+              <p className="text-xs text-muted">
+                {row.userScope === "specific"
+                  ? `${row.eligibleUserIds?.length ?? 0} selected customer(s)`
+                  : "All customers"}
+                {" · "}
+                {row.productScope === "specific"
+                  ? `${row.eligibleProductIds?.length ?? 0} selected product(s)`
+                  : "All products"}
+                {" · minimum quantity "}
+                {row.minimumEligibleQuantity ?? 1}
+              </p>
+            </div>
+            <FormButton
+              variant="ghost"
+              type="button"
+              isDisabled={busy}
+              className="underline"
+              onPress={async () => {
+                setBusy(true);
+                setError("");
+                try {
+                  await apiRequest(`/api/v1/growth/coupons/${row._id}`, {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${requireAdminToken()}` },
+                    body: { active: !row.active },
+                  });
+                  await load();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Update failed.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {row.active ? "Pause" : "Activate"}
+            </FormButton>
+          </div>
+        )}
+      />
     </section>
   );
 }

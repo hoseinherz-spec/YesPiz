@@ -1,5 +1,7 @@
 "use client";
-import { FormScope, Select } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { AdminTable } from "@/components/AdminTable";
+import { FormScope, Select } from "@/components/AdminForms";
 
 import { CommentPublication } from "@/components/CommentPublication";
 import { careClient, type FeedbackMetrics } from "@repo/api";
@@ -86,7 +88,10 @@ export default function FeedbackPage() {
                 </section>
               ) : (
                 <section className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <AdminTable
+                    aria-label="Kitchen feedback"
+                    className="w-full text-left text-sm"
+                  >
                     <caption className="sr-only">
                       Internal kitchen quality by verified surveys
                     </caption>
@@ -152,7 +157,7 @@ export default function FeedbackPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </AdminTable>
                 </section>
               )}
               <section>
@@ -175,39 +180,46 @@ export default function FeedbackPage() {
                   </Select>
                 </div>
                 <div className="mt-5 space-y-3">
-                  {data.recent
-                    .filter((row) => !provider || row.providerId === provider)
-                    .map((row) => (
-                      <article
-                        key={row._id}
-                        className="rounded-2xl bg-card p-5"
-                      >
-                        <div className="flex flex-wrap justify-between gap-3 text-sm text-muted">
-                          <span>
-                            Order #{row.orderId.slice(-6)} ·{" "}
-                            {data.providers.find(
-                              (p) => p.providerId === row.providerId,
-                            )?.name || row.providerId.slice(-6)}
-                          </span>
-                          <time>
-                            {new Date(row.createdAt).toLocaleString()}
-                          </time>
-                        </div>
-                        <p className="mt-3 whitespace-pre-wrap break-words">
-                          {row.comment || "Survey submitted without a comment."}
-                        </p>
-                        <p className="mt-3 text-sm text-muted">
-                          Taste {row.taste} · Temperature {row.temperature} ·
-                          Packaging {row.packaging} · Delivery {row.delivery} ·
-                          Order again: {row.wouldOrderAgain ? "Yes" : "No"}
-                        </p>
-                        <CommentPublication
-                          key={`${row._id}:${row.moderationRevision ?? 0}`}
-                          row={row}
-                          onChange={load}
-                        />
-                      </article>
-                    ))}
+                  {
+                    <DataList
+                      data={data.recent.filter(
+                        (row) => !provider || row.providerId === provider,
+                      )}
+                      label="feedback"
+                      renderItem={(row) => (
+                        <article
+                          key={row._id}
+                          className="rounded-2xl bg-card p-5"
+                        >
+                          <div className="flex flex-wrap justify-between gap-3 text-sm text-muted">
+                            <span>
+                              Order #{row.orderId.slice(-6)} ·{" "}
+                              {data.providers.find(
+                                (p) => p.providerId === row.providerId,
+                              )?.name || row.providerId.slice(-6)}
+                            </span>
+                            <time>
+                              {new Date(row.createdAt).toLocaleString()}
+                            </time>
+                          </div>
+                          <p className="mt-3 whitespace-pre-wrap break-words">
+                            {row.comment ||
+                              "Survey submitted without a comment."}
+                          </p>
+                          <p className="mt-3 text-sm text-muted">
+                            Taste {row.taste} · Temperature {row.temperature} ·
+                            Packaging {row.packaging} · Delivery {row.delivery}{" "}
+                            · Order again: {row.wouldOrderAgain ? "Yes" : "No"}
+                          </p>
+                          <CommentPublication
+                            key={`${row._id}:${row.moderationRevision ?? 0}`}
+                            row={row}
+                            onChange={load}
+                          />
+                        </article>
+                      )}
+                    />
+                  }
                 </div>
               </section>
             </>

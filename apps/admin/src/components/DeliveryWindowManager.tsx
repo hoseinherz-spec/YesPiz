@@ -1,4 +1,6 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
+import { Form, Input } from "@/components/AdminForms";
 import { useCallback, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -95,126 +97,130 @@ export function DeliveryWindowManager() {
         </p>
       )}
       <div className="mt-4 space-y-4">
-        {rows.map((row) => (
-          <article
-            key={row.id}
-            className="rounded-2xl bg-surface-secondary p-4"
-          >
-            <p className="font-semibold">
-              {new Date(row.startsAt).toLocaleString()} –{" "}
-              {new Date(row.endsAt).toLocaleTimeString()}
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              {row.usedUnits}/{row.capacityUnits} pizzas · {row.usedOrders}/
-              {row.maxOrders} deliveries reserved
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Button
-                variant="secondary"
-                isDisabled={busy}
-                onPress={() => {
-                  setEditing(row);
-                  setRemoving(null);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="secondary"
-                isDisabled={busy || row.usedOrders > 0}
-                onPress={() => setRemoving(row.id)}
-              >
-                Remove
-              </Button>
-            </div>
-            {removing === row.id && (
-              <div className="mt-3">
-                <p>Remove this unreserved window?</p>
-                <Button isDisabled={busy} onPress={() => void save(row)}>
-                  Confirm removal
-                </Button>
-                <Button variant="ghost" onPress={() => setRemoving(null)}>
-                  Keep window
-                </Button>
-              </div>
-            )}
-            {editing?.id === row.id && (
-              <form
-                className="mt-4 grid gap-3 sm:grid-cols-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void save(row, e.currentTarget);
-                }}
-              >
-                {[
-                  {
-                    name: "start",
-                    label: "Arrival from",
-                    type: "datetime-local",
-                    value: localTime(row.startsAt),
-                  },
-                  {
-                    name: "end",
-                    label: "Arrival until",
-                    type: "datetime-local",
-                    value: localTime(row.endsAt),
-                  },
-                  {
-                    name: "capacity",
-                    label: "Pizza capacity",
-                    type: "number",
-                    value: row.capacityUnits,
-                    min: Math.max(1, row.usedUnits),
-                    max: 500,
-                  },
-                  {
-                    name: "orders",
-                    label: "Delivery capacity",
-                    type: "number",
-                    value: row.maxOrders,
-                    min: Math.max(1, row.usedOrders),
-                    max: 100,
-                  },
-                  {
-                    name: "lead",
-                    label: "Preparation lead (minutes)",
-                    type: "number",
-                    value: row.leadMinutes,
-                    min: 20,
-                    max: 120,
-                  },
-                ].map((f) => (
-                  <label key={f.name} className="text-sm">
-                    {f.label}
-                    <input
-                      required
-                      name={f.name}
-                      type={f.type}
-                      defaultValue={f.value}
-                      min={f.min}
-                      max={f.max}
-                      readOnly={
-                        row.usedOrders > 0 &&
-                        ["start", "end", "lead"].includes(f.name)
-                      }
-                      className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3"
-                    />
-                  </label>
-                ))}
-                <Button type="submit" isDisabled={busy}>
-                  {busy ? "Saving…" : "Save changes"}
+        <DataList
+          data={rows}
+          label="delivery windows"
+          renderItem={(row) => (
+            <article
+              key={row.id}
+              className="rounded-2xl bg-surface-secondary p-4"
+            >
+              <p className="font-semibold">
+                {new Date(row.startsAt).toLocaleString()} –{" "}
+                {new Date(row.endsAt).toLocaleTimeString()}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {row.usedUnits}/{row.capacityUnits} pizzas · {row.usedOrders}/
+                {row.maxOrders} deliveries reserved
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  variant="secondary"
+                  isDisabled={busy}
+                  onPress={() => {
+                    setEditing(row);
+                    setRemoving(null);
+                  }}
+                >
+                  Edit
                 </Button>
                 <Button
                   variant="secondary"
-                  onPress={() => setEditing(null)}
-                  isDisabled={busy}
+                  isDisabled={busy || row.usedOrders > 0}
+                  onPress={() => setRemoving(row.id)}
                 >
-                  Cancel
+                  Remove
                 </Button>
-              </form>
-            )}
-          </article>
-        ))}
+              </div>
+              {removing === row.id && (
+                <div className="mt-3">
+                  <p>Remove this unreserved window?</p>
+                  <Button isDisabled={busy} onPress={() => void save(row)}>
+                    Confirm removal
+                  </Button>
+                  <Button variant="ghost" onPress={() => setRemoving(null)}>
+                    Keep window
+                  </Button>
+                </div>
+              )}
+              {editing?.id === row.id && (
+                <Form
+                  className="mt-4 grid gap-3 sm:grid-cols-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void save(row, e.currentTarget);
+                  }}
+                >
+                  {[
+                    {
+                      name: "start",
+                      label: "Arrival from",
+                      type: "datetime-local",
+                      value: localTime(row.startsAt),
+                    },
+                    {
+                      name: "end",
+                      label: "Arrival until",
+                      type: "datetime-local",
+                      value: localTime(row.endsAt),
+                    },
+                    {
+                      name: "capacity",
+                      label: "Pizza capacity",
+                      type: "number",
+                      value: row.capacityUnits,
+                      min: Math.max(1, row.usedUnits),
+                      max: 500,
+                    },
+                    {
+                      name: "orders",
+                      label: "Delivery capacity",
+                      type: "number",
+                      value: row.maxOrders,
+                      min: Math.max(1, row.usedOrders),
+                      max: 100,
+                    },
+                    {
+                      name: "lead",
+                      label: "Preparation lead (minutes)",
+                      type: "number",
+                      value: row.leadMinutes,
+                      min: 20,
+                      max: 120,
+                    },
+                  ].map((f) => (
+                    <div key={f.name} className="text-sm">
+                      <Input
+                        label={<>{f.label}</>}
+                        required
+                        name={f.name}
+                        type={f.type}
+                        defaultValue={f.value}
+                        min={f.min}
+                        max={f.max}
+                        readOnly={
+                          row.usedOrders > 0 &&
+                          ["start", "end", "lead"].includes(f.name)
+                        }
+                        className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3"
+                      />
+                    </div>
+                  ))}
+                  <Button type="submit" isDisabled={busy}>
+                    {busy ? "Saving…" : "Save changes"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onPress={() => setEditing(null)}
+                    isDisabled={busy}
+                  >
+                    Cancel
+                  </Button>
+                </Form>
+              )}
+            </article>
+          )}
+        />
       </div>
       {!rows.length && !error && (
         <p className="mt-4 text-sm text-muted">No upcoming windows.</p>

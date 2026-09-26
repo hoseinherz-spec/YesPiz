@@ -1,4 +1,7 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
+import { AdminTable } from "@/components/AdminTable";
+import { Form, Input } from "@/components/AdminForms";
 import { RewardPolicyEditor } from "@/components/RewardPolicyEditor";
 import { DeliveryWindowManager } from "@/components/DeliveryWindowManager";
 import { useCallback, useState } from "react";
@@ -154,22 +157,31 @@ export default function InsightsPage() {
                 No active orders beyond their original promise.
               </p>
             ) : (
-              data.atRisk.map((o) => (
-                <div
-                  key={o._id}
-                  className="mt-3 flex flex-wrap justify-between gap-2 border-b border-border py-3"
-                >
-                  <span>
-                    #{o._id.slice(-6)} · {o.status}
-                  </span>
-                  <time>{new Date(o.promisedDeliveryAt).toLocaleString()}</time>
-                </div>
-              ))
+              <DataList
+                data={data.atRisk}
+                label="insights"
+                renderItem={(o) => (
+                  <div
+                    key={o._id}
+                    className="mt-3 flex flex-wrap justify-between gap-2 border-b border-border py-3"
+                  >
+                    <span>
+                      #{o._id.slice(-6)} · {o.status}
+                    </span>
+                    <time>
+                      {new Date(o.promisedDeliveryAt).toLocaleString()}
+                    </time>
+                  </div>
+                )}
+              />
             )}
           </section>
           <section className="overflow-x-auto rounded-3xl border border-border bg-card p-6">
             <h2 className="text-lg font-semibold">Preparation performance</h2>
-            <table className="mt-4 w-full text-left text-sm">
+            <AdminTable
+              aria-label="Kitchen preparation"
+              className="mt-4 w-full text-left text-sm"
+            >
               <thead>
                 <tr>
                   <th>Kitchen</th>
@@ -188,7 +200,7 @@ export default function InsightsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </AdminTable>
           </section>
         </>
       )}
@@ -200,7 +212,7 @@ export default function InsightsPage() {
           Only publish capacity confirmed with kitchens and couriers. Order and
           pizza limits are enforced together.
         </p>
-        <form
+        <Form
           className="mt-5 grid gap-4 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
@@ -229,9 +241,9 @@ export default function InsightsPage() {
               value: 45,
             },
           ].map((f) => (
-            <label key={f.name} className="text-sm">
-              {f.label}
-              <input
+            <div key={f.name} className="text-sm">
+              <Input
+                label={<>{f.label}</>}
                 name={f.name}
                 type={f.type}
                 required
@@ -239,23 +251,29 @@ export default function InsightsPage() {
                 min={1}
                 className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3"
               />
-            </label>
+            </div>
           ))}
           <Button type="submit" isDisabled={busy}>
             Publish window
           </Button>
-        </form>
+        </Form>
         <div className="mt-5 space-y-2">
-          {slots.map((s) => (
-            <p
-              key={s.id}
-              className="rounded-xl bg-surface-secondary p-3 text-sm"
-            >
-              {new Date(s.startsAt).toLocaleString()} –{" "}
-              {new Date(s.endsAt).toLocaleTimeString()} · {s.remainingUnits}{" "}
-              pizzas / {s.remainingOrders} deliveries left
-            </p>
-          ))}
+          {
+            <DataList
+              data={slots}
+              label="insights"
+              renderItem={(s) => (
+                <p
+                  key={s.id}
+                  className="rounded-xl bg-surface-secondary p-3 text-sm"
+                >
+                  {new Date(s.startsAt).toLocaleString()} –{" "}
+                  {new Date(s.endsAt).toLocaleTimeString()} · {s.remainingUnits}{" "}
+                  pizzas / {s.remainingOrders} deliveries left
+                </p>
+              )}
+            />
+          }
         </div>
       </section>
     </div>

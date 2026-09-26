@@ -1,5 +1,6 @@
 "use client";
-import { FormScope, Form, Input, Select } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { FormScope, Form, Input, Select } from "@/components/AdminForms";
 
 import { growthClient, type OperationsTask } from "@repo/api";
 import { Button } from "@heroui/react";
@@ -168,58 +169,64 @@ export default function TasksPage() {
                   </span>
                 </h2>
                 <div className="space-y-3">
-                  {rows
-                    .filter(
-                      (row) =>
-                        row.status === status &&
-                        (filter === "all" || row.area === filter),
-                    )
-                    .map((row) => (
-                      <article
-                        key={row._id}
-                        className="rounded-2xl border border-border p-5"
-                      >
-                        <p className="text-xs text-muted">
-                          {row.area} · {row.ownerId ? "Owned" : "Unassigned"}
-                        </p>
-                        <h3 className="mt-3 break-words font-semibold">
-                          {row.title}
-                        </h3>
-                        <time className="mt-3 block text-xs text-muted">
-                          Due {new Date(row.dueAt).toLocaleString()}
-                        </time>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {status !== "doing" && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              isDisabled={busy}
-                              onPress={() => void update(row, "doing")}
-                            >
-                              {status === "done" ? "Reopen" : "Claim & start"}
-                            </Button>
-                          )}
-                          {status === "doing" && (
-                            <Button
-                              size="sm"
-                              isDisabled={busy}
-                              onPress={() => void update(row, "done")}
-                            >
-                              Complete
-                            </Button>
-                          )}
-                        </div>
-                        <details className="mt-4 text-xs text-muted">
-                          <summary className="cursor-pointer">History</summary>
-                          {row.history.map((event, i) => (
-                            <p key={i} className="mt-2">
-                              {event.status} ·{" "}
-                              {new Date(event.at).toLocaleString()}
-                            </p>
-                          ))}
-                        </details>
-                      </article>
-                    ))}
+                  {
+                    <DataList
+                      data={rows.filter(
+                        (row) =>
+                          row.status === status &&
+                          (filter === "all" || row.area === filter),
+                      )}
+                      label={`${status} tasks`}
+                      renderItem={(row) => (
+                        <article
+                          key={row._id}
+                          className="rounded-2xl border border-border p-5"
+                        >
+                          <p className="text-xs text-muted">
+                            {row.area} · {row.ownerId ? "Owned" : "Unassigned"}
+                          </p>
+                          <h3 className="mt-3 break-words font-semibold">
+                            {row.title}
+                          </h3>
+                          <time className="mt-3 block text-xs text-muted">
+                            Due {new Date(row.dueAt).toLocaleString()}
+                          </time>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {status !== "doing" && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                isDisabled={busy}
+                                onPress={() => void update(row, "doing")}
+                              >
+                                {status === "done" ? "Reopen" : "Claim & start"}
+                              </Button>
+                            )}
+                            {status === "doing" && (
+                              <Button
+                                size="sm"
+                                isDisabled={busy}
+                                onPress={() => void update(row, "done")}
+                              >
+                                Complete
+                              </Button>
+                            )}
+                          </div>
+                          <details className="mt-4 text-xs text-muted">
+                            <summary className="cursor-pointer">
+                              History
+                            </summary>
+                            {row.history.map((event, i) => (
+                              <p key={i} className="mt-2">
+                                {event.status} ·{" "}
+                                {new Date(event.at).toLocaleString()}
+                              </p>
+                            ))}
+                          </details>
+                        </article>
+                      )}
+                    />
+                  }
                 </div>
               </section>
             ))}

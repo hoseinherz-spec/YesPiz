@@ -5,13 +5,12 @@ const sharp = require('sharp');
 const mobileRoot = path.resolve(__dirname, '..');
 const androidRes = path.join(mobileRoot, 'android/app/src/main/res');
 const iosAssets = path.join(mobileRoot, 'ios/App/App/Assets.xcassets');
-const logoSvg = fs.readFileSync(path.join(mobileRoot, 'public/images/yespiz-logo.svg'));
-const markSvg = Buffer.from(logoSvg.toString().replace('width="164" height="52" viewBox="0 0 164 52"', 'width="40" height="52" viewBox="0 0 40 52"'));
-const background = '#F5F7FC';
+const logoSvg = fs.readFileSync(path.join(mobileRoot, 'public/images/yespizz-wordmark.svg'));
+const background = '#02020E';
 
 async function brandedIcon(size, foreground = false) {
-  const mark = await sharp(markSvg, { density: 600 })
-    .resize({ height: Math.round(size * (foreground ? 0.52 : 0.65)) })
+  const mark = await sharp(logoSvg, { density: 600 })
+    .resize({ width: Math.round(size * (foreground ? 0.62 : 0.82)) })
     .png()
     .toBuffer();
   const { width, height } = await sharp(mark).metadata();
@@ -34,6 +33,11 @@ async function brandedSplash(width, height) {
 }
 
 async function main() {
+  const publicImages = path.join(mobileRoot, 'public/images');
+  fs.writeFileSync(path.join(publicImages, 'icon.png'), await brandedIcon(512));
+  fs.writeFileSync(path.join(publicImages, 'splash-icon.png'), await brandedIcon(512));
+  fs.writeFileSync(path.join(publicImages, 'favicon.png'), await brandedIcon(128));
+
   for (const [density, size] of Object.entries({ mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 })) {
     const directory = path.join(androidRes, `mipmap-${density}`);
     const icon = await brandedIcon(size);

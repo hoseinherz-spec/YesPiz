@@ -1,4 +1,5 @@
 "use client";
+import { Form, Input, Select, FormValue, z } from "@/components/AdminForms";
 import { useCallback, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -50,9 +51,9 @@ export function RecipeCoverageEditor() {
         their ingredient weights. Recipes are frozen into new orders; existing
         orders keep their snapshot.
       </p>
-      <label className="mt-4 block text-sm">
-        Pizza
-        <select
+      <div className="mt-4 block text-sm">
+        <Select
+          label={<>Pizza</>}
           className={field}
           value={item?.id ?? ""}
           disabled={busy}
@@ -70,10 +71,10 @@ export function RecipeCoverageEditor() {
               {p.name}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </div>
       {item && (
-        <form
+        <Form
           className="mt-4 space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
@@ -97,15 +98,41 @@ export function RecipeCoverageEditor() {
               .finally(() => setBusy(false));
           }}
         >
+          <FormValue
+            name="recipeCoverage"
+            value={rules}
+            schema={z
+              .array(
+                z.object({
+                  kind: z.enum(["size", "extra", "variant", "option"]),
+                  key: z.string().trim().min(1, "Choose a recipe choice."),
+                  ingredients: z.array(
+                    z.object({
+                      name: z
+                        .string()
+                        .trim()
+                        .min(1, "Enter an ingredient name."),
+                      weightGrams: z.number().min(0.01).max(100000),
+                    }),
+                  ),
+                }),
+              )
+              .refine(
+                (rows) =>
+                  new Set(rows.map((row) => `${row.kind}:${row.key}`)).size ===
+                  rows.length,
+                "Each recipe choice must be unique.",
+              )}
+          />
           {rules.map((rule, index) => (
             <fieldset
               key={index}
               className="space-y-3 rounded-2xl border border-border p-4"
             >
               <legend>Recipe {index + 1}</legend>
-              <label className="block text-sm">
-                Choice type
-                <select
+              <div className="block text-sm">
+                <Select
+                  label={<>Choice type</>}
                   className={field}
                   value={rule.kind}
                   onChange={(e) =>
@@ -115,12 +142,12 @@ export function RecipeCoverageEditor() {
                   {["size", "extra", "variant", "option"].map((k) => (
                     <option key={k}>{k}</option>
                   ))}
-                </select>
-              </label>
-              <label className="block text-sm">
-                Choice
+                </Select>
+              </div>
+              <div className="block text-sm">
                 {rule.kind === "extra" ? (
-                  <input
+                  <Input
+                    label="Choice"
                     required
                     placeholder="Exact extra name used by checkout"
                     value={rule.key}
@@ -130,7 +157,8 @@ export function RecipeCoverageEditor() {
                     }
                   />
                 ) : (
-                  <select
+                  <Select
+                    label="Choice"
                     required
                     value={rule.key}
                     className={field}
@@ -152,12 +180,12 @@ export function RecipeCoverageEditor() {
                         {v.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
-              </label>
+              </div>
               {rule.ingredients.map((ing, j) => (
                 <div key={j} className="grid grid-cols-[1fr_100px_auto] gap-2">
-                  <input
+                  <Input
                     required
                     aria-label="Ingredient name"
                     placeholder="Ingredient"
@@ -172,7 +200,7 @@ export function RecipeCoverageEditor() {
                       })
                     }
                   />
-                  <input
+                  <Input
                     required
                     aria-label="Grams"
                     type="number"
@@ -250,7 +278,7 @@ export function RecipeCoverageEditor() {
               Save recipes
             </Button>
           </div>
-        </form>
+        </Form>
       )}
       {error && (
         <p role="alert" className="mt-3 text-danger">

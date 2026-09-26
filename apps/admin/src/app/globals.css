@@ -10,3 +10,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
 }
+
+/* Keep visual required markers out of accessible names; fields already expose aria-required. */
+.panel-main [data-required="true"] > .label::after,
+.panel-main .label--required::after {
+  content: "*" / "";
+}

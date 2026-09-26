@@ -15,12 +15,13 @@
     "@repo/api": "*",
     "@repo/i18n": "*",
     "@repo/theme": "*",
+    "@repo/ui": "*",
+    "@tanstack/react-table": "^8.21.3",
     "next": "16.3.0",
     "next-intl": "^4.3.4",
     "next-themes": "^0.4.6",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "@repo/ui": "*"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

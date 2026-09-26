@@ -1,5 +1,11 @@
 "use client";
-import { FormAction, FormScope, Select, TextArea, Input } from "@repo/ui/forms";
+import {
+  FormAction,
+  FormScope,
+  Select,
+  TextArea,
+  Input,
+} from "@/components/AdminForms";
 
 import { useState } from "react";
 

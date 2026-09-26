@@ -1,5 +1,5 @@
 "use client";
-import { FormAction, FormScope, Input } from "@repo/ui/forms";
+import { FormAction, FormScope, Input } from "@/components/AdminForms";
 
 import {
   ApiError,
@@ -123,7 +123,7 @@ export default function ConfigPage() {
             </p>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
 
           <Card className="p-4">
             <FormScope>

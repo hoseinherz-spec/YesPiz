@@ -1,5 +1,6 @@
 "use client";
-import { FormAction, FormScope, Input } from "@repo/ui/forms";
+import { DataList } from "@/components/AdminTable";
+import { FormAction, FormScope, Input } from "@/components/AdminForms";
 
 import { ApiError, providersClient, type Provider } from "@repo/api";
 import { Button, Card, Typography } from "@heroui/react";
@@ -24,6 +25,7 @@ export default function ProvidersPage() {
   const [editForm, setEditForm] = useState({
     name: "",
     address: "",
+    logoUrl: "",
     acceptingOrders: true,
     isActive: true,
   });
@@ -80,6 +82,7 @@ export default function ProvidersPage() {
         {
           name: editForm.name.trim(),
           address: editForm.address.trim(),
+          logoUrl: editForm.logoUrl.trim(),
           acceptingOrders: editForm.acceptingOrders,
           isActive: editForm.isActive,
         },
@@ -107,7 +110,11 @@ export default function ProvidersPage() {
             </p>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
 
           <Card className="p-4">
             <FormScope>
@@ -127,6 +134,7 @@ export default function ProvidersPage() {
                     ] as const
                   ).map(([key, label]) => (
                     <Input
+                      entity={key === "userId" ? "user" : undefined}
                       label={<>{label}</>}
                       wrapperClassName="flex flex-col gap-1 text-sm"
                       key={key}
@@ -173,121 +181,139 @@ export default function ProvidersPage() {
           </Card>
 
           <div className="flex flex-col gap-3">
-            {providers.map((p) => {
-              const id = entityId(p);
-              const editing = editId === id;
-              return (
-                <Card key={id} className="p-4">
-                  <FormScope>
-                    <Card.Content className="flex flex-col gap-2 p-0">
-                      {!editing ? (
-                        <>
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div>
-                              <Typography type="h3" className="font-medium">
-                                {p.name}
-                              </Typography>
-                              <p className="text-muted text-sm">{p.address}</p>
-                              <p className="text-muted text-xs">
-                                id {id} · user {entityId({ id: p.userId })} ·
-                                rating {p.rating} ·{" "}
-                                {p.acceptingOrders ? "accepting" : "paused"} ·{" "}
-                                {p.isActive ? "active" : "inactive"}
-                              </p>
+            <DataList
+              data={providers}
+              label="providers"
+              renderItem={(p) => {
+                const id = entityId(p);
+                const editing = editId === id;
+                return (
+                  <Card key={id} className="p-4">
+                    <FormScope>
+                      <Card.Content className="flex flex-col gap-2 p-0">
+                        {!editing ? (
+                          <>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div>
+                                <Typography type="h3" className="font-medium">
+                                  {p.name}
+                                </Typography>
+                                <p className="text-muted text-sm">
+                                  {p.address}
+                                </p>
+                                <p className="text-muted text-xs">
+                                  id {id} · user {entityId({ id: p.userId })} ·
+                                  rating {p.rating} ·{" "}
+                                  {p.acceptingOrders ? "accepting" : "paused"} ·{" "}
+                                  {p.isActive ? "active" : "inactive"}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onPress={() => {
+                                  setEditId(id);
+                                  setEditForm({
+                                    name: p.name,
+                                    address: p.address,
+                                    logoUrl: p.logoUrl || "",
+                                    acceptingOrders: p.acceptingOrders,
+                                    isActive: p.isActive,
+                                  });
+                                }}
+                              >
+                                Edit
+                              </Button>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onPress={() => {
-                                setEditId(id);
-                                setEditForm({
-                                  name: p.name,
-                                  address: p.address,
-                                  acceptingOrders: p.acceptingOrders,
-                                  isActive: p.isActive,
-                                });
-                              }}
-                            >
-                              Edit
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Input
-                            label={<>Name</>}
-                            wrapperClassName="flex flex-col gap-1 text-sm"
-                            required
-                            value={editForm.name}
-                            onChange={(e) =>
-                              setEditForm((f) => ({
-                                ...f,
-                                name: e.target.value,
-                              }))
-                            }
-                            className="border-border bg-background rounded-md border px-3 py-2"
-                          />
-                          <Input
-                            label={<>Address</>}
-                            wrapperClassName="flex flex-col gap-1 text-sm"
-                            required
-                            value={editForm.address}
-                            onChange={(e) =>
-                              setEditForm((f) => ({
-                                ...f,
-                                address: e.target.value,
-                              }))
-                            }
-                            className="border-border bg-background rounded-md border px-3 py-2"
-                          />
-                          <Input
-                            label={<>Accepting orders</>}
-                            wrapperClassName="flex items-center gap-2 text-sm"
-                            type="checkbox"
-                            checked={editForm.acceptingOrders}
-                            onChange={(e) =>
-                              setEditForm((f) => ({
-                                ...f,
-                                acceptingOrders: e.target.checked,
-                              }))
-                            }
-                          />
-                          <Input
-                            label={<>Active</>}
-                            wrapperClassName="flex items-center gap-2 text-sm"
-                            type="checkbox"
-                            checked={editForm.isActive}
-                            onChange={(e) =>
-                              setEditForm((f) => ({
-                                ...f,
-                                isActive: e.target.checked,
-                              }))
-                            }
-                          />
-                          <div className="flex gap-2">
-                            <FormAction
-                              variant="primary"
-                              size="sm"
-                              isDisabled={busy}
-                              onPress={saveEdit}
-                            >
-                              Save
-                            </FormAction>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onPress={() => setEditId(null)}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </Card.Content>
-                  </FormScope>
-                </Card>
-              );
-            })}
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              label={<>Name</>}
+                              wrapperClassName="flex flex-col gap-1 text-sm"
+                              required
+                              value={editForm.name}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  name: e.target.value,
+                                }))
+                              }
+                              className="border-border bg-background rounded-md border px-3 py-2"
+                            />
+                            <Input
+                              label={<>Address</>}
+                              wrapperClassName="flex flex-col gap-1 text-sm"
+                              required
+                              value={editForm.address}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  address: e.target.value,
+                                }))
+                              }
+                              className="border-border bg-background rounded-md border px-3 py-2"
+                            />
+                            <Input
+                              type="url"
+                              label="Logo"
+                              value={editForm.logoUrl}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  logoUrl: e.target.value,
+                                }))
+                              }
+                            />
+                            <Input
+                              label={<>Accepting orders</>}
+                              wrapperClassName="flex items-center gap-2 text-sm"
+                              type="checkbox"
+                              checked={editForm.acceptingOrders}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  acceptingOrders: e.target.checked,
+                                }))
+                              }
+                            />
+                            <Input
+                              label={<>Active</>}
+                              wrapperClassName="flex items-center gap-2 text-sm"
+                              type="checkbox"
+                              checked={editForm.isActive}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  isActive: e.target.checked,
+                                }))
+                              }
+                            />
+                            <div className="flex gap-2">
+                              <FormAction
+                                variant="primary"
+                                size="sm"
+                                isDisabled={busy}
+                                onPress={saveEdit}
+                              >
+                                Save
+                              </FormAction>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onPress={() => setEditId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </Card.Content>
+                    </FormScope>
+                  </Card>
+                );
+              }}
+            />
             {!providers.length ? (
               <p className="text-muted text-sm">No providers yet</p>
             ) : null}

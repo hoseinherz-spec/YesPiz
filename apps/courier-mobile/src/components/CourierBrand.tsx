@@ -1,14 +1,17 @@
-import { Bike } from "lucide-react";
+import Image from "next/image";
 
 import { cn } from "@/lib/cn";
 
 export function CourierBrand({ className }: { className?: string }) {
   return (
-    <div className={cn("courier-brand", className)} aria-label="YesPiz Courier">
-      <span className="courier-brand__mark" aria-hidden="true">
-        <Bike size={21} strokeWidth={2.4} />
-      </span>
-      <span>YESPIZ</span>
+    <div className={cn("courier-brand", className)}>
+      <Image
+        src="/yespizz-wordmark.svg"
+        alt="Yespizz"
+        width={150}
+        height={50}
+        priority
+      />
       <span className="courier-role">Courier</span>
     </div>
   );

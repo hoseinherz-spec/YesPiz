@@ -1,4 +1,6 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
+import { Input } from "@/components/AdminForms";
 import { useCallback, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -101,68 +103,80 @@ export default function TeamAccessPage() {
       <Button variant="secondary" onPress={() => void load()}>
         Reload team
       </Button>
-      {data?.users.map((user) => (
-        <section
-          key={user._id}
-          className="space-y-4 rounded-3xl border border-border bg-card p-5"
-        >
-          <h2 className="text-lg font-semibold">
-            {user.firstName} {user.lastName}
-          </h2>
-          <p className="break-all text-xs text-muted">{user._id}</p>
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="size-5"
-              checked={user.adminPermissions === undefined}
-              onChange={(e) => update(user, e.target.checked ? undefined : [])}
-            />
-            Full administrator access
-          </label>
-          {user.adminPermissions !== undefined && (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {data.permissions.map((permission) => (
-                <label
-                  key={permission}
-                  className="flex min-h-11 items-center gap-3 rounded-xl bg-surface-secondary px-3 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    className="size-5"
-                    checked={user.adminPermissions!.includes(permission)}
-                    onChange={(e) =>
-                      update(
-                        user,
-                        e.target.checked
-                          ? [...user.adminPermissions!, permission]
-                          : user.adminPermissions!.filter(
-                              (p) => p !== permission,
-                            ),
-                      )
-                    }
-                  />
-                  {permission.replace(":", " · ")}
-                </label>
-              ))}
+      <DataList
+        data={data?.users}
+        label="team members"
+        renderItem={(user) => (
+          <section
+            key={user._id}
+            className="space-y-4 rounded-3xl border border-border bg-card p-5"
+          >
+            <h2 className="text-lg font-semibold">
+              {user.firstName} {user.lastName}
+            </h2>
+            <p className="break-all text-xs text-muted">{user._id}</p>
+            <div className="flex min-h-11 items-center gap-3 text-sm">
+              <Input
+                label={<>Full administrator access</>}
+                type="checkbox"
+                className="size-5"
+                checked={user.adminPermissions === undefined}
+                onChange={(e) =>
+                  update(user, e.target.checked ? undefined : [])
+                }
+              />
             </div>
-          )}
-          <Button isDisabled={busy} onPress={() => void save(user)}>
-            Save access
-          </Button>
-        </section>
-      ))}
+            {user.adminPermissions !== undefined && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {data?.permissions.map((permission) => (
+                  <div
+                    key={permission}
+                    className="flex min-h-11 items-center gap-3 rounded-xl bg-surface-secondary px-3 text-sm"
+                  >
+                    <Input
+                      label={<>{permission.replace(":", " · ")}</>}
+                      type="checkbox"
+                      className="size-5"
+                      checked={user.adminPermissions!.includes(permission)}
+                      onChange={(e) =>
+                        update(
+                          user,
+                          e.target.checked
+                            ? [...user.adminPermissions!, permission]
+                            : user.adminPermissions!.filter(
+                                (p) => p !== permission,
+                              ),
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button isDisabled={busy} onPress={() => void save(user)}>
+              Save access
+            </Button>
+          </section>
+        )}
+      />
       <section className="rounded-3xl border border-border bg-card p-5">
         <h2 className="text-lg font-semibold">Recent changes</h2>
-        {data?.events.map((event) => (
-          <p
-            key={event._id}
-            className="mt-3 break-words border-t border-border pt-3 text-xs"
-          >
-            {new Date(event.createdAt).toLocaleString()} · {event.actorId} →{" "}
-            {event.targetId} ·{" "}
-            {event.fullAccess ? "Full access" : "Limited access"}
-          </p>
-        ))}
+        {
+          <DataList
+            data={data?.events}
+            label="access history"
+            renderItem={(event) => (
+              <p
+                key={event._id}
+                className="mt-3 break-words border-t border-border pt-3 text-xs"
+              >
+                {new Date(event.createdAt).toLocaleString()} · {event.actorId} →{" "}
+                {event.targetId} ·{" "}
+                {event.fullAccess ? "Full access" : "Limited access"}
+              </p>
+            )}
+          />
+        }
       </section>
     </div>
   );

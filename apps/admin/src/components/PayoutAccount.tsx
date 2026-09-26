@@ -1,5 +1,5 @@
 "use client";
-import { Form, Select, Input } from "@repo/ui/forms";
+import { Form, Select, Input } from "@/components/AdminForms";
 
 import { useState } from "react";
 import { Button } from "@heroui/react";
@@ -65,6 +65,7 @@ export function PayoutAccount({ configured }: { configured: boolean }) {
               <option value="courier">Courier</option>
             </Select>
             <Input
+              entity={party === "provider" ? "provider" : "courier"}
               label={
                 <>{party === "provider" ? "Provider ID" : "Courier user ID"}</>
               }

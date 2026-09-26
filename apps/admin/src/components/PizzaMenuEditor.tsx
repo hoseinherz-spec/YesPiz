@@ -1,10 +1,16 @@
 "use client";
-import { FormValue, FormScope } from "@repo/ui/forms";
+import { FormValue, FormScope } from "@/components/AdminForms";
 import {
   pizzaCustomizationSchema,
   pizzaPresentationSchema,
 } from "@repo/ui/form-schemas";
-import { Form, Fieldset, TextArea, Input, Select } from "@repo/ui/forms";
+import {
+  Form,
+  Fieldset,
+  TextArea,
+  Input,
+  Select,
+} from "@/components/AdminForms";
 import { Button as FormButton } from "@heroui/react";
 
 import { PizzaChoices } from "@repo/api/components/pizza-choices";
@@ -696,10 +702,10 @@ export function PizzaMenuEditor({
                       <option value="number">Number</option>
                       <option value="boolean">Yes / No</option>
                     </Select>
-                    <label>
-                      Value
+                    <div>
                       {f.type === "boolean" ? (
                         <Select
+                          label="Value"
                           className={field}
                           value={f.value}
                           onChange={(e) => change({ value: e.target.value })}
@@ -709,6 +715,7 @@ export function PizzaMenuEditor({
                         </Select>
                       ) : (
                         <Input
+                          label="Value"
                           required
                           className={field}
                           type={f.type === "number" ? "number" : "text"}
@@ -717,7 +724,7 @@ export function PizzaMenuEditor({
                           onChange={(e) => change({ value: e.target.value })}
                         />
                       )}
-                    </label>
+                    </div>
                     <Select
                       label={<>Visibility</>}
                       className={field}

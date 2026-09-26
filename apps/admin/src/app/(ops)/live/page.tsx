@@ -1,4 +1,6 @@
 "use client";
+import { AdminTable, DataList } from "@/components/AdminTable";
+import { Select } from "@/components/AdminForms";
 
 import {
   ApiError,
@@ -77,7 +79,11 @@ export default function LiveOpsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      ) : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {live && (
@@ -123,9 +129,9 @@ export default function LiveOpsPage() {
               ),
             ]}
           />
-          <label className="text-sm">
-            Order status{" "}
-            <select
+          <div className="text-sm">
+            <Select
+              label={<>Order status </>}
               className="ml-3 rounded-lg border p-2"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -134,13 +140,16 @@ export default function LiveOpsPage() {
               {[...new Set(live.orders.map((o) => o.status))].map((status) => (
                 <option key={status}>{status}</option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </div>
           {live.truncated && (
             <p role="status">Showing the oldest 500 active orders.</p>
           )}
           <div className="max-h-80 overflow-auto">
-            <table className="w-full text-left text-sm">
+            <AdminTable
+              aria-label="Live orders"
+              className="w-full text-left text-sm"
+            >
               <thead>
                 <tr>
                   <th>Order</th>
@@ -168,7 +177,7 @@ export default function LiveOpsPage() {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </AdminTable>
           </div>
           <p className="text-xs text-muted">
             {live.couriers.filter((c) => !c.location).length} couriers have no
@@ -213,16 +222,20 @@ export default function LiveOpsPage() {
           <Typography type="h2" className="text-lg font-medium">
             Exception orders
           </Typography>
-          {data.exceptionOrders.map((row) => (
-            <Card key={row.orderId} className="p-3">
-              <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
-                <span>
-                  {row.orderId} · {row.status}
-                </span>
-                <span>{formatCents(row.totalCents)}</span>
-              </Card.Content>
-            </Card>
-          ))}
+          <DataList
+            data={data.exceptionOrders}
+            label="exception orders"
+            renderItem={(row) => (
+              <Card key={row.orderId} className="p-3">
+                <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
+                  <span>
+                    {row.orderId} · {row.status}
+                  </span>
+                  <span>{formatCents(row.totalCents)}</span>
+                </Card.Content>
+              </Card>
+            )}
+          />
         </section>
       ) : null}
 
@@ -231,17 +244,21 @@ export default function LiveOpsPage() {
           <Typography type="h2" className="text-lg font-medium">
             Open incidents
           </Typography>
-          {data.openIncidents.map((row) => (
-            <Card key={row.incidentId} className="p-3">
-              <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
-                <span>
-                  {row.kind} · order {row.orderId}
-                  {row.sos ? " · SOS" : ""}
-                </span>
-                <span>{row.status}</span>
-              </Card.Content>
-            </Card>
-          ))}
+          <DataList
+            data={data.openIncidents}
+            label="open incidents"
+            renderItem={(row) => (
+              <Card key={row.incidentId} className="p-3">
+                <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
+                  <span>
+                    {row.kind} · order {row.orderId}
+                    {row.sos ? " · SOS" : ""}
+                  </span>
+                  <span>{row.status}</span>
+                </Card.Content>
+              </Card>
+            )}
+          />
         </section>
       ) : null}
 
@@ -250,16 +267,20 @@ export default function LiveOpsPage() {
           <Typography type="h2" className="text-lg font-medium">
             Delayed ETA
           </Typography>
-          {data.delayedOrders.map((row) => (
-            <Card key={row.orderId} className="p-3">
-              <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
-                <span>
-                  {row.orderId} · {row.status}
-                </span>
-                <span>{formatCents(row.totalCents)}</span>
-              </Card.Content>
-            </Card>
-          ))}
+          <DataList
+            data={data.delayedOrders}
+            label="delayed orders"
+            renderItem={(row) => (
+              <Card key={row.orderId} className="p-3">
+                <Card.Content className="flex flex-wrap justify-between gap-2 p-0 text-sm">
+                  <span>
+                    {row.orderId} · {row.status}
+                  </span>
+                  <span>{formatCents(row.totalCents)}</span>
+                </Card.Content>
+              </Card>
+            )}
+          />
         </section>
       ) : null}
 

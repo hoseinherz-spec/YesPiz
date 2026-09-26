@@ -1,4 +1,6 @@
 "use client";
+import { AdminTable, DataList } from "@/components/AdminTable";
+import { Form, Input } from "@/components/AdminForms";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@heroui/react";
 import { apiRequest, withAuth } from "@repo/api";
@@ -152,7 +154,10 @@ export default function CashPage() {
         </Button>
       </div>
       <section className="overflow-x-auto rounded-3xl border border-border bg-card p-5">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <AdminTable
+          aria-label="Cash collections"
+          className="w-full min-w-[560px] text-left text-sm"
+        >
           <thead>
             <tr>
               <th>Courier</th>
@@ -178,7 +183,7 @@ export default function CashPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </AdminTable>
         {data && !data.rows.length && (
           <p className="mt-4 text-sm text-muted">
             No cash collections or handovers yet.
@@ -187,25 +192,25 @@ export default function CashPage() {
       </section>
       <section className="rounded-3xl border border-border bg-card p-5">
         <h2 className="text-lg font-semibold">Record verified handover</h2>
-        <form
+        <Form
           className="mt-4 grid gap-4 sm:grid-cols-3"
           onSubmit={(e) => {
             e.preventDefault();
             void record(e.currentTarget);
           }}
         >
-          <label className="text-sm">
-            Courier ID
-            <input
+          <div className="text-sm">
+            <Input
               name="courier"
               required
-              pattern="[a-fA-F0-9]{24}"
+              entity="courier"
+              label="Courier"
               className="mt-2 min-h-12 w-full rounded-xl border border-border bg-surface px-3"
             />
-          </label>
-          <label className="text-sm">
-            Amount (€)
-            <input
+          </div>
+          <div className="text-sm">
+            <Input
+              label={<>Amount (€)</>}
               name="amount"
               type="number"
               min="0.01"
@@ -214,61 +219,65 @@ export default function CashPage() {
               required
               className="mt-2 min-h-12 w-full rounded-xl border border-border bg-surface px-3"
             />
-          </label>
-          <label className="text-sm">
-            Evidence reference
-            <input
+          </div>
+          <div className="text-sm">
+            <Input
+              label={<>Evidence reference</>}
               name="reference"
               maxLength={120}
               required
               className="mt-2 min-h-12 w-full rounded-xl border border-border bg-surface px-3"
             />
-          </label>
+          </div>
           <Button type="submit" isDisabled={busy}>
             Record handover
           </Button>
-        </form>
+        </Form>
       </section>
       <section className="rounded-3xl border border-border bg-card p-5">
         <h2 className="text-lg font-semibold">Receipt history</h2>
-        {data?.receipts.map((receipt) => (
-          <article
-            key={receipt._id}
-            className="mt-4 border-t border-border pt-4"
-          >
-            <p className="break-words text-sm">
-              {money(receipt.amountCents)} · {receipt.reference} ·{" "}
-              {new Date(receipt.createdAt).toLocaleString()}
-              {receipt.voidedAt ? " · Voided" : ""}
-            </p>
-            {!receipt.voidedAt && (
-              <details className="mt-2 text-sm">
-                <summary className="cursor-pointer text-muted">
-                  Correct this record
-                </summary>
-                <form
-                  className="mt-3 flex flex-wrap gap-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void voidReceipt(e.currentTarget, receipt._id);
-                  }}
-                >
-                  <input
-                    name="reason"
-                    aria-label="Reason for voiding"
-                    placeholder="Reason for voiding"
-                    required
-                    maxLength={200}
-                    className="min-h-11 rounded-xl border border-border bg-surface px-3"
-                  />
-                  <Button type="submit" variant="secondary" isDisabled={busy}>
-                    Void receipt
-                  </Button>
-                </form>
-              </details>
-            )}
-          </article>
-        ))}
+        <DataList
+          data={data?.receipts}
+          label="cash"
+          renderItem={(receipt) => (
+            <article
+              key={receipt._id}
+              className="mt-4 border-t border-border pt-4"
+            >
+              <p className="break-words text-sm">
+                {money(receipt.amountCents)} · {receipt.reference} ·{" "}
+                {new Date(receipt.createdAt).toLocaleString()}
+                {receipt.voidedAt ? " · Voided" : ""}
+              </p>
+              {!receipt.voidedAt && (
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer text-muted">
+                    Correct this record
+                  </summary>
+                  <Form
+                    className="mt-3 flex flex-wrap gap-3"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void voidReceipt(e.currentTarget, receipt._id);
+                    }}
+                  >
+                    <Input
+                      name="reason"
+                      aria-label="Reason for voiding"
+                      placeholder="Reason for voiding"
+                      required
+                      maxLength={200}
+                      className="min-h-11 rounded-xl border border-border bg-surface px-3"
+                    />
+                    <Button type="submit" variant="secondary" isDisabled={busy}>
+                      Void receipt
+                    </Button>
+                  </Form>
+                </details>
+              )}
+            </article>
+          )}
+        />
       </section>
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
+import { DataList } from "@/components/AdminTable";
 import { useState } from "react";
 import { Button, Card } from "@heroui/react";
-import { Form, Input, Select } from "@repo/ui/forms";
+import { Form, Input, Select, FormValue, z } from "@/components/AdminForms";
 import {
   catalogClient,
   type MenuItem,
@@ -115,40 +116,46 @@ export function ComboEditor({
           </p>
         </div>
         {combos.length > 0 && (
-          <ul className="space-y-2">
-            {combos.map((combo) => (
-              <li
-                key={entityId(combo)}
-                className="flex items-center justify-between gap-3 rounded-xl bg-surface-secondary p-3"
-              >
-                <div>
-                  <strong>{combo.name}</strong>
-                  <p className="text-sm text-muted">
-                    €{(combo.priceCents / 100).toFixed(2)} ·{" "}
-                    {combo.comboComponents
-                      ?.map((c) => `${c.quantity} × ${c.name} (${c.sizeName})`)
-                      .join(" + ")}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={busy}
-                  onPress={() => {
-                    setEditing(entityId(combo));
-                    setName(combo.name);
-                    setDescription(combo.description);
-                    setPrice((combo.priceCents / 100).toFixed(2));
-                    setCategory(combo.categoryId);
-                    setRows(combo.comboComponents ?? []);
-                    setError("");
-                  }}
+          <div className="space-y-2">
+            <DataList
+              data={combos}
+              label="combos"
+              renderItem={(combo) => (
+                <li
+                  key={entityId(combo)}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-secondary p-3"
                 >
-                  Edit
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <div>
+                    <strong>{combo.name}</strong>
+                    <p className="text-sm text-muted">
+                      €{(combo.priceCents / 100).toFixed(2)} ·{" "}
+                      {combo.comboComponents
+                        ?.map(
+                          (c) => `${c.quantity} × ${c.name} (${c.sizeName})`,
+                        )
+                        .join(" + ")}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    isDisabled={busy}
+                    onPress={() => {
+                      setEditing(entityId(combo));
+                      setName(combo.name);
+                      setDescription(combo.description);
+                      setPrice((combo.priceCents / 100).toFixed(2));
+                      setCategory(combo.categoryId);
+                      setRows(combo.comboComponents ?? []);
+                      setError("");
+                    }}
+                  >
+                    Edit
+                  </Button>
+                </li>
+              )}
+            />
+          </div>
         )}
         <Form
           onSubmit={(e) => {
@@ -157,6 +164,24 @@ export function ComboEditor({
           }}
           className="space-y-4"
         >
+          <FormValue
+            name="comboComponents"
+            value={rows}
+            schema={z
+              .array(
+                z.object({
+                  menuItemId: z.string().min(1, "Choose a product."),
+                  quantity: z.number().int().min(1).max(20),
+                }),
+              )
+              .min(1, "Choose products for the combo.")
+              .max(12, "Use at most 12 selections.")
+              .refine(
+                (components) =>
+                  components.reduce((sum, row) => sum + row.quantity, 0) >= 2,
+                "A combo needs at least two products.",
+              )}
+          />
           <div className="grid gap-3 md:grid-cols-2">
             <Input
               label="Combo name"

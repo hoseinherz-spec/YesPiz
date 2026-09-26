@@ -1,4 +1,6 @@
 "use client";
+import { Button } from "@heroui/react";
+import { DataList } from "@/components/AdminTable";
 import { QrCode } from "@repo/api/components/qr-code";
 import { useCallback, useEffect, useState } from "react";
 import { couriersClient } from "@repo/api";
@@ -59,33 +61,41 @@ export default function CourierShiftsPage() {
           <code className="break-all select-all">{issued.code}</code>
         </div>
       )}
-      <button
+      <Button
         className="rounded-lg border px-4 py-2"
-        onClick={() => void load().catch(() => setError("Refresh failed."))}
+        onPress={() => void load().catch(() => setError("Refresh failed."))}
       >
         Refresh
-      </button>
+      </Button>
       <div className="space-y-3">
-        {rows.map((row) => (
-          <div
-            key={row.userId}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
-          >
-            <div>
-              <strong>{row.name}</strong>
-              <p>{row.session ? "On duty" : "Off duty"}</p>
-            </div>
-            <button
-              disabled={busy}
-              className="rounded-lg border px-4 py-2 disabled:opacity-50"
-              onClick={() =>
-                void issue(row.userId, row.name, row.session ? "end" : "start")
-              }
+        <DataList
+          data={rows}
+          label="couriers"
+          renderItem={(row) => (
+            <div
+              key={row.userId}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4"
             >
-              Issue {row.session ? "end" : "start"} code
-            </button>
-          </div>
-        ))}
+              <div>
+                <strong>{row.name}</strong>
+                <p>{row.session ? "On duty" : "Off duty"}</p>
+              </div>
+              <Button
+                isDisabled={busy}
+                className="rounded-lg border px-4 py-2 disabled:opacity-50"
+                onPress={() =>
+                  void issue(
+                    row.userId,
+                    row.name,
+                    row.session ? "end" : "start",
+                  )
+                }
+              >
+                Issue {row.session ? "end" : "start"} code
+              </Button>
+            </div>
+          )}
+        />
       </div>
     </section>
   );

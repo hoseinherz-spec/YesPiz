@@ -35,3 +35,27 @@ export function requiredAdminPermission(
     ? `${area}:${["GET", "HEAD", "OPTIONS"].includes(method) ? "read" : "write"}`
     : null;
 }
+
+/** Minimal lookup data is shared by the areas that actually select these entities. */
+export function adminToolPermissions(
+  url: string,
+  method: string,
+): string[] | null {
+  const path = url.split("?")[0].replace(/^\/api\/v1\//, "");
+  if (path === "catalog/media" && method === "POST")
+    return ["catalog:write", "operations:write"];
+  if (method !== "GET") return null;
+  const kind = /^operations\/lookups\/([a-z]+)$/.exec(path)?.[1];
+  const areas: Record<string, string[]> = {
+    user: ["operations"],
+    customer: ["operations", "support", "growth"],
+    courier: ["operations", "finance"],
+    provider: ["operations", "finance", "catalog"],
+    order: ["operations", "finance", "support"],
+    address: ["operations", "support"],
+    ingredient: ["catalog", "operations"],
+  };
+  return kind && Object.prototype.hasOwnProperty.call(areas, kind)
+    ? areas[kind].map((area) => `${area}:read`)
+    : null;
+}

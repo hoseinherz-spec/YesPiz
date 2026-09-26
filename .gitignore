@@ -73,3 +73,5 @@ deploy/.env.staging
 .env.twilio-sandbox
 
 screens/
+# Packaged Android exports
+/artifacts/apk/*.apk.zip

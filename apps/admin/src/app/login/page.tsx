@@ -1,8 +1,9 @@
 "use client";
-import { Form, Input } from "@repo/ui/forms";
+import { Form, Input } from "@/components/AdminForms";
 
 import { accountClient, ApiError } from "@repo/api";
 import { Button, Card, Typography } from "@heroui/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { getAdminToken, setAdminToken } from "@/lib/auth";
@@ -44,6 +45,15 @@ export default function AdminLoginPage() {
       <Card className="w-full max-w-md p-6">
         <Card.Content className="flex flex-col gap-4 p-0">
           <div>
+            <div className="mb-4 w-fit rounded-lg bg-[#02020e] px-3 py-2">
+              <Image
+                src="/yespizz-wordmark.svg"
+                alt="Yespizz"
+                width={150}
+                height={50}
+                priority
+              />
+            </div>
             <Typography type="h1" className="text-2xl font-semibold">
               Admin login
             </Typography>
@@ -70,7 +80,11 @@ export default function AdminLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="border-border bg-background rounded-md border px-3 py-2"
             />
-            {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
+            {error ? (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            ) : null}
             <Button type="submit" variant="primary" isDisabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
             </Button>

@@ -1,25 +1,26 @@
-'use client';
+"use client";
+import { DataList } from "@/components/AdminTable";
 
 import {
   ApiError,
   ordersClient,
   type AdminResolveStatus,
   type Order,
-} from '@repo/api';
-import { Button, Card, Typography } from '@heroui/react';
-import { useCallback, useState } from 'react';
-import { requireAdminToken } from '@/lib/auth';
-import { entityId, formatCents } from '@/lib/ids';
-import { useLoadOnMount } from '@/lib/load-on-mount';
+} from "@repo/api";
+import { Button, Card, Typography } from "@heroui/react";
+import { useCallback, useState } from "react";
+import { requireAdminToken } from "@/lib/auth";
+import { entityId, formatCents } from "@/lib/ids";
+import { useLoadOnMount } from "@/lib/load-on-mount";
 
 const RESOLVE_ACTIONS: Array<{
   status: AdminResolveStatus;
   label: string;
-  variant: 'primary' | 'secondary';
+  variant: "primary" | "secondary";
 }> = [
-  { status: 'ADMIN_REVIEW', label: 'Escalate to review', variant: 'secondary' },
-  { status: 'PREPARING', label: 'Return to kitchen', variant: 'primary' },
-  { status: 'CANCELLED', label: 'Cancel order', variant: 'secondary' },
+  { status: "ADMIN_REVIEW", label: "Escalate to review", variant: "secondary" },
+  { status: "PREPARING", label: "Return to kitchen", variant: "primary" },
+  { status: "CANCELLED", label: "Cancel order", variant: "secondary" },
 ];
 
 export default function ExceptionsPage() {
@@ -36,7 +37,7 @@ export default function ExceptionsPage() {
       const list = await ordersClient.listAdminReview({ accessToken: token });
       setOrders(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load queue');
+      setError(err instanceof ApiError ? err.message : "Failed to load queue");
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ export default function ExceptionsPage() {
       );
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Resolve failed');
+      setError(err instanceof ApiError ? err.message : "Resolve failed");
     } finally {
       setBusyId(null);
     }
@@ -80,7 +81,7 @@ export default function ExceptionsPage() {
         </Button>
       </div>
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-muted text-sm">Loading…</p> : null}
 
       {!loading && !orders.length ? (
@@ -92,28 +93,34 @@ export default function ExceptionsPage() {
       ) : null}
 
       <div className="flex flex-col gap-3">
-        {orders.map((order) => {
-          const id = entityId(order);
-          return (
-            <Card key={id} className="p-4">
-              <Card.Content className="flex flex-col gap-2 p-0">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <Typography type="h3" className="font-medium">
-                    {order.status}
-                  </Typography>
-                  <span className="text-sm">{formatCents(order.totalCents)}</span>
-                </div>
-                <p className="text-muted text-xs">Order {id}</p>
-                <ul className="mt-1 text-sm">
-                  {(order.lines ?? []).map((line, idx) => (
-                    <li key={`${id}-${idx}`}>
-                      {line.quantity}× {line.name}
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {RESOLVE_ACTIONS.filter((a) => a.status !== order.status).map(
-                    (action) => (
+        <DataList
+          data={orders}
+          label="exceptions"
+          renderItem={(order) => {
+            const id = entityId(order);
+            return (
+              <Card key={id} className="p-4">
+                <Card.Content className="flex flex-col gap-2 p-0">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <Typography type="h3" className="font-medium">
+                      {order.status}
+                    </Typography>
+                    <span className="text-sm">
+                      {formatCents(order.totalCents)}
+                    </span>
+                  </div>
+                  <p className="text-muted text-xs">Order {id}</p>
+                  <ul className="mt-1 text-sm">
+                    {(order.lines ?? []).map((line, idx) => (
+                      <li key={`${id}-${idx}`}>
+                        {line.quantity}× {line.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {RESOLVE_ACTIONS.filter(
+                      (a) => a.status !== order.status,
+                    ).map((action) => (
                       <Button
                         key={action.status}
                         size="sm"
@@ -123,13 +130,13 @@ export default function ExceptionsPage() {
                       >
                         {action.label}
                       </Button>
-                    ),
-                  )}
-                </div>
-              </Card.Content>
-            </Card>
-          );
-        })}
+                    ))}
+                  </div>
+                </Card.Content>
+              </Card>
+            );
+          }}
+        />
       </div>
     </div>
   );

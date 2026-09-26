@@ -1,3 +1,4 @@
+import { AdminToolsModule } from "./admin-tools.module";
 import { OperationsModule } from "./operations/operations.module";
 import { InsightsModule } from "./insights/insights.module";
 import { GroupsModule } from "./groups/groups.module";
@@ -36,6 +37,7 @@ import { SlaModule } from "./sla/sla.module";
 
 @Module({
   imports: [
+    AdminToolsModule,
     ReferralsModule,
     RewardsModule,
     GroupsModule,

@@ -1,4 +1,6 @@
 "use client";
+import { Button } from "@heroui/react";
+import { DataList } from "@/components/AdminTable";
 import { useCallback, useEffect, useState } from "react";
 import { paymentsClient, groupsClient } from "@repo/api";
 import { requireAdminToken } from "@/lib/auth";
@@ -49,49 +51,57 @@ export default function RefundsPage() {
         create a second refund.
       </p>
       {error && <p role="alert">{error}</p>}
-      {groups.map((group) => (
-        <div key={group.token} className="rounded-xl border p-4 space-y-2">
-          <strong>Unplaced group: {group.title}</strong>
-          <p>{group.refundError || "Refund processing"}</p>
-          <button
-            className="rounded-lg border px-4 py-2"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError("");
-              try {
-                await groupsClient.retryRefund(group.token, {
-                  accessToken: requireAdminToken(),
-                });
-                await load();
-              } catch {
-                setError("Group refund needs review.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Refresh group refund status
-          </button>
-        </div>
-      ))}
+      <DataList
+        data={groups}
+        label="refunds"
+        renderItem={(group) => (
+          <div key={group.token} className="rounded-xl border p-4 space-y-2">
+            <strong>Unplaced group: {group.title}</strong>
+            <p>{group.refundError || "Refund processing"}</p>
+            <Button
+              className="rounded-lg border px-4 py-2"
+              isDisabled={busy}
+              onPress={async () => {
+                setBusy(true);
+                setError("");
+                try {
+                  await groupsClient.retryRefund(group.token, {
+                    accessToken: requireAdminToken(),
+                  });
+                  await load();
+                } catch {
+                  setError("Group refund needs review.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Refresh group refund status
+            </Button>
+          </div>
+        )}
+      />
       {!rows.length && <p>No refunds recorded.</p>}
-      {rows.map((row) => (
-        <div className="rounded-xl border p-4 space-y-2" key={row._id}>
-          <p className="font-mono">{row.orderId}</p>
-          <p>
-            €{(row.amountCents / 100).toFixed(2)} · {row.refundStatus}
-          </p>
-          {row.refundError && <p>{row.refundError}</p>}
-          <button
-            disabled={busy}
-            className="rounded-lg border px-4 py-2"
-            onClick={() => void reconcile(row.orderId)}
-          >
-            Refresh gateway status
-          </button>
-        </div>
-      ))}
+      <DataList
+        data={rows}
+        label="refunds"
+        renderItem={(row) => (
+          <div className="rounded-xl border p-4 space-y-2" key={row._id}>
+            <p className="font-mono">{row.orderId}</p>
+            <p>
+              €{(row.amountCents / 100).toFixed(2)} · {row.refundStatus}
+            </p>
+            {row.refundError && <p>{row.refundError}</p>}
+            <Button
+              isDisabled={busy}
+              className="rounded-lg border px-4 py-2"
+              onPress={() => void reconcile(row.orderId)}
+            >
+              Refresh gateway status
+            </Button>
+          </div>
+        )}
+      />
     </section>
   );
 }
