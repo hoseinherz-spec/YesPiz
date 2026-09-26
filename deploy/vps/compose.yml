@@ -32,6 +32,7 @@ services:
     volumes: [storage:/data]
   api:
     <<: *app
+    image: yespizz-api:latest
     env_file: .env
     environment:
       NODE_ENV: production

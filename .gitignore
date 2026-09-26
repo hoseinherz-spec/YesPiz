@@ -71,3 +71,5 @@ deploy/.env.staging
 
 # Private SMS Trial credentials
 .env.twilio-sandbox
+
+screens/

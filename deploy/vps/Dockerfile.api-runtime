@@ -1,0 +1,5 @@
+FROM yespizz-runtime:latest
+USER root
+COPY --chown=node:node api-runtime-dist /app/apps/api/dist
+USER node
+CMD ["node", "apps/api/dist/main.js"]

@@ -56,3 +56,7 @@ npm run lint --workspace=mobile
 npm run check-types --workspace=mobile
 npm run build --workspace=mobile
 ```
+
+## Android test APK
+
+Run `npm run android:apk --workspace=mobile` from the monorepo root. This syncs the web app, builds the release APK, then aligns and signs it with the local Android debug keystore. Install `artifacts/apk/yespizz-customer-installable.apk`, not the unsigned APK under `android/app/build/outputs/`. The export uses a test certificate, not a production release key. To regenerate the native icons and splash screens from the existing Yespiz logo, run `node apps/mobile/scripts/generate-brand-assets.cjs` before building.

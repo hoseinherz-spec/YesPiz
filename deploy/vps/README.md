@@ -27,6 +27,12 @@ docker compose up -d
 docker compose ps
 ```
 
+For an API-only update, rebuild `apps/api`, stage its `dist` directory as
+`api-runtime-dist`, then build with `Dockerfile.api-runtime` as `yespizz-api`.
+The API service uses that separate image so `docker compose up -d --no-deps
+--force-recreate api` replaces only the backend container. Other services keep
+using `yespizz-runtime`.
+
 Secrets are generated on the server and stored in `deploy/vps/.env` (mode 600).
 Do not overwrite that file on updates. Admin account creation is pending explicit approval.
 No demo accounts with default passwords are seeded.

@@ -19,6 +19,17 @@ apply from: "variables.gradle"
 
 allprojects {
     repositories {
+        if (rootProject.file('local-maven').exists()) {
+            exclusiveContent {
+                forRepository {
+                    maven { url uri(rootProject.file('local-maven')) }
+                }
+                filter {
+                    includeVersion('androidx.lifecycle', 'lifecycle-livedata-core', '2.6.2')
+                    includeVersion('androidx.tracing', 'tracing', '1.0.0')
+                }
+            }
+        }
         google()
         mavenCentral()
     }

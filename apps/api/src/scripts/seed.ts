@@ -39,7 +39,14 @@ export async function seedApplication(app: INestApplicationContext) {
   const orders = app.get(OrdersService);
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@yespizz.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "Admin123!";
+  const password = (name: string, localDefault: string) => {
+    const value = process.env[name];
+    if (process.env.NODE_ENV === "production" && !value) {
+      throw new Error(`${name} must be set before seeding production demo accounts.`);
+    }
+    return value || localDefault;
+  };
+  const adminPassword = password("SEED_ADMIN_PASSWORD", "Admin123!");
   const account = app.get(AccountService);
 
   let admin = await users.findOne({ email: adminEmail }).exec();
@@ -64,7 +71,7 @@ export async function seedApplication(app: INestApplicationContext) {
       firstName: "Demo",
       lastName: "Kitchen",
       email: "provider.munich@yespizz.local",
-      password: "Provider123!",
+      password: password("SEED_PROVIDER_PASSWORD", "Provider123!"),
       role: UserRole.PROVIDER,
     });
   }
@@ -93,7 +100,7 @@ export async function seedApplication(app: INestApplicationContext) {
       firstName: "Demo",
       lastName: "Courier",
       email: courierEmail,
-      password: "Courier123!",
+      password: password("SEED_COURIER_PASSWORD", "Courier123!"),
       role: UserRole.COURIER,
     });
     console.log(`Created courier ${courierEmail}`);
@@ -108,18 +115,21 @@ export async function seedApplication(app: INestApplicationContext) {
       firstName: "Demo",
       lastName: "Customer",
       email: customerEmail,
-      passwordHash: await bcrypt.hash("Customer123!", 10),
+      passwordHash: await bcrypt.hash(
+        password("SEED_CUSTOMER_PASSWORD", "Customer123!"),
+        10,
+      ),
       roles: [UserRole.CUSTOMER],
       activeRole: UserRole.CUSTOMER,
     });
-    console.log(`Created customer ${customerEmail} / Customer123!`);
+    console.log(`Created customer ${customerEmail}`);
   }
 
   console.log("Demo logins:");
-  console.log(`  admin     ${adminEmail} / ${adminPassword}`);
-  console.log("  provider  provider.munich@yespizz.local / Provider123!");
-  console.log("  courier   courier@yespizz.local / Courier123!");
-  console.log("  customer  customer@yespizz.local / Customer123!");
+  console.log(`  admin     ${adminEmail}`);
+  console.log("  provider  provider.munich@yespizz.local");
+  console.log("  courier   courier@yespizz.local");
+  console.log(`  customer  ${customerEmail}`);
 
   const courierProfile = await couriers.getOrCreateProfile(courierUser.id);
   // Link courier to demo kitchen via vehicleType tag for ops demos
