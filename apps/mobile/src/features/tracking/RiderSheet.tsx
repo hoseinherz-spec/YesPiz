@@ -37,6 +37,18 @@ export function RiderSheet({
   const close = useRef<HTMLButtonElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [joinedAtNow] = useState(Date.now);
+  const vehicleLabels: Record<string, string> = {
+    car: de ? "Auto" : "Car",
+    motorcycle: de ? "Motorrad" : "Motorcycle",
+    motorbike: de ? "Motorrad" : "Motorcycle",
+    scooter: de ? "Roller" : "Scooter",
+    bicycle: de ? "Fahrrad" : "Bicycle",
+    bike: de ? "Fahrrad" : "Bicycle",
+    "e-bike": "E-bike",
+    ebike: "E-bike",
+  };
+  const vehicle = [vehicleLabels[rider?.vehicleType ?? ""], rider?.vehicleModel]
+    .filter(Boolean).join(" · ");
   const restoreTriggerFocus = useCallback(() => trigger.current?.focus(), []);
   useEffect(() => {
     if (!expanded) return;
@@ -158,7 +170,7 @@ export function RiderSheet({
                   </div>
                   <div>
                     <dt>{de ? "Fahrzeug" : "Vehicle Model"}</dt>
-                    <dd>{rider.vehicleModel || "—"}</dd>
+                    <dd>{vehicle || "—"}</dd>
                   </div>
                   <div>
                     <dt>{de ? "Kennzeichen" : "Plate Number"}</dt>
@@ -191,7 +203,7 @@ export function RiderSheet({
                 <span>
                   <strong>{rider.name}</strong>
                   <small>
-                    {rider.vehicleModel ||
+                    {vehicle ||
                       (de ? "Dein Fahrer" : "Your delivery rider")}
                   </small>
                 </span>

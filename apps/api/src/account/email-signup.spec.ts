@@ -43,6 +43,15 @@ describe("Email signup", () => {
     expect(result.verificationCode).toMatch(/^\d{5}$/);
     expect(global.fetch).not.toHaveBeenCalled();
   });
+  it("limits explicitly enabled production mocks to demo domains and keeps real delivery", async () => {
+    service = new EmailSignupService(signups, users, { get: (key: string) => ({ NODE_ENV: "production", AUTH_EMAIL_PROVIDER: "mock", AUTH_EMAIL_MOCK_ENABLED: "true", AUTH_EMAIL_MOCK_DOMAINS: "yespizz.local", RESEND_API_KEY: "configured", AUTH_EMAIL_FROM: "configured" })[key] } as any);
+    const demo = await service.start({ firstName: "Demo", lastName: "User", email: "demo@yespizz.local" });
+    expect(demo.verificationCode).toMatch(/^\d{5}$/);
+    expect(global.fetch).not.toHaveBeenCalled();
+    const real = await service.start({ firstName: "Real", lastName: "User", email: "real@example.com" });
+    expect(real.verificationCode).toBeUndefined();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
   afterEach(() => {
     global.fetch = originalFetch;
   });

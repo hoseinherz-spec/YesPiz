@@ -57,6 +57,7 @@ export class OrderTrackingService {
     let rider: {
       name: string;
       avatarUrl: string | null;
+      vehicleType: string | null;
       vehicleModel: string | null;
       plateNumber: string | null;
       memberSince: string | null;
@@ -84,6 +85,7 @@ export class OrderTrackingService {
           avatarUrl: profile.avatarUrl?.startsWith("https://")
             ? profile.avatarUrl
             : null,
+          vehicleType: profile.vehicleType || null,
           vehicleModel: profile.vehicleModel || profile.vehicleType || null,
           plateNumber: profile.plateNumber || null,
           memberSince: profile.createdAt?.toISOString() ?? null,

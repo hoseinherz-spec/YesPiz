@@ -1,4 +1,5 @@
 "use client";
+import { OffersRail } from "@/components/OffersRail";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useState, type ReactNode } from "react";
 import { Avatar, Button, Drawer } from "@heroui/react";
@@ -93,6 +94,7 @@ export default function ProfilePage() {
             : "Everything for your next pizza night."}
         </p>
       </div>
+      <OffersRail compact />
       {!hydrated ? (
         <IdentitySkeleton />
       ) : (

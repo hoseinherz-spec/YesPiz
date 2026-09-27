@@ -1,6 +1,7 @@
 "use client";
+import { OffersRail } from "@/components/OffersRail";
 import { PageIntro } from "@/components/PageIntro";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { openHostedCheckout } from "@/lib/hosted-checkout";
 import Link from "next/link";
 import {
@@ -19,13 +20,17 @@ import { formatPrice } from "@/constants/pizzas";
 import { pizzaCraftAsset } from "@/constants/media";
 
 export default function RewardsPage() {
+  const { accessToken } = useApp();
+  // Account changes must never reuse another customer's balance or rewards.
+  return <RewardsScreen key={accessToken ?? "guest"} />;
+}
+
+function RewardsScreen() {
   const { accessToken, language } = useApp();
   const de = language === "de";
   const [data, setData] = useState<RewardsSummary | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [consent, setConsent] = useState(false);
-  const requestId = useRef<string | null>(null);
   const load = useCallback(async () => {
     if (!accessToken) return;
     try {
@@ -38,17 +43,13 @@ export default function RewardsPage() {
   useEffect(() => {
     void Promise.resolve().then(load);
   }, [load]);
-  async function act(action: "claim" | "enroll" | "cancel" | "portal") {
+  async function act(action: "claim" | "cancel" | "portal") {
     if (!accessToken || busy) return;
     setBusy(true);
     setError("");
     try {
-      if (!requestId.current) requestId.current = crypto.randomUUID();
-      if (action === "enroll" || action === "portal") {
-        const result =
-          action === "portal"
-            ? await rewardsClient.portal({ accessToken })
-            : await rewardsClient.enroll(requestId.current, { accessToken });
+      if (action === "portal") {
+        const result = await rewardsClient.portal({ accessToken });
         await openHostedCheckout(result.checkoutUrl, load);
       } else {
         setData(
@@ -75,6 +76,7 @@ export default function RewardsPage() {
             : "Good pizza deserves another round."
         }
       />
+      <OffersRail title={de ? "Deine Angebote" : "Available offers"} showRewardsLink={false} />
       {!accessToken ? (
         <EmptyState
           icon={<Gift size={28} />}
@@ -108,6 +110,7 @@ export default function RewardsPage() {
           )}
           {data && (
             <>
+              {data.mock && <p className="mt-4 rounded-2xl bg-surface-secondary p-4 text-sm text-muted">{de ? "Demo-Prämien · Beispieldaten für dieses Testkonto" : "Demo rewards · sample progress for this test account"}</p>}
               <section className="data-surface mt-6 overflow-hidden rounded-[28px] p-6">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-widest text-muted">
@@ -126,8 +129,8 @@ export default function RewardsPage() {
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
                   {de
-                    ? "Sammle fünf abgeschlossene Bestellungen und erhalte "
-                    : "Complete five qualifying orders and enjoy "}
+                    ? `Sammle ${data.rules.ordersPerReward} abgeschlossene Bestellungen und erhalte `
+                    : `Complete ${data.rules.ordersPerReward} qualifying orders and enjoy `}
                   {formatPrice(data.rules.rewardCents / 100)}{" "}
                   {de ? "Guthaben." : "in pizza credit."}
                 </p>
@@ -205,22 +208,19 @@ export default function RewardsPage() {
                 </span>
                 <ArrowRight size={20} />
               </Link>
-              <section className="data-surface mt-6 rounded-[28px] p-6">
+              {(data.membership.active || data.membership.canManage) && <section className="data-surface mt-6 rounded-[28px] p-6">
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted">
                   Yespiz Plus
                 </span>
                 <h2 className="mt-3 text-2xl font-bold">
                   {de
-                    ? "Mehr Pizza. Weniger Lieferkosten."
-                    : "More pizza. Less delivery fees."}
+                    ? "Deine Mitgliedschaft verwalten"
+                    : "Manage your membership"}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
                   {formatPrice(data.membership.priceCents / 100)} /{" "}
                   {data.membership.days}{" "}
-                  {de
-                    ? "Tage. Lieferung inklusive ab "
-                    : "days. Delivery included from "}
-                  {formatPrice(data.membership.minimumSubtotalCents / 100)}.
+                  {de ? "Tage" : "days"}.
                 </p>
                 {data.membership.active ? (
                   <>
@@ -244,29 +244,7 @@ export default function RewardsPage() {
                           : "Cancel membership"}
                     </Button>
                   </>
-                ) : (
-                  <>
-                    <label className="my-4 flex gap-3 text-sm leading-6">
-                      <input
-                        type="checkbox"
-                        className="mt-1 size-5 shrink-0"
-                        checked={consent}
-                        onChange={(e) => setConsent(e.target.checked)}
-                      />
-                      {de
-                        ? "4,99 € alle 30 Tage. Automatische Verlängerung bis zur Kündigung; der bezahlte Zeitraum bleibt erhalten."
-                        : "€4.99 every 30 days. Renews automatically until cancelled; your paid period remains available."}
-                    </label>
-                    <Button
-                      isDisabled={
-                        !consent || busy || !data.membership.canEnroll
-                      }
-                      onPress={() => void act("enroll")}
-                    >
-                      {de ? "Weiter zur Zahlung" : "Continue to payment"}
-                    </Button>
-                  </>
-                )}
+                ) : null}
                 {data.membership.canManage && (
                   <Button
                     className="mt-4"
@@ -286,14 +264,7 @@ export default function RewardsPage() {
                       : "Renewal payment failed. Please update your payment method."}
                   </p>
                 )}
-                {!data.membership.canEnroll && (
-                  <p className="mt-3 text-sm text-muted">
-                    {de
-                      ? "Mitgliedschaften sind derzeit nicht verfügbar."
-                      : "Membership checkout is currently unavailable."}
-                  </p>
-                )}
-              </section>
+              </section>}
               <Link
                 href="/referrals/"
                 className="mt-6 flex min-h-14 items-center justify-between text-sm font-semibold"

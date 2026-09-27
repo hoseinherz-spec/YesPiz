@@ -62,7 +62,7 @@ export class AppConfigService implements OnModuleInit {
     const doc = await this.model
       .findOneAndUpdate(
         { key: "default" },
-        { $set: partial },
+        { $set: { ...partial, deliveryFeeCents: 0 } },
         { new: true, upsert: true },
       )
       .exec();

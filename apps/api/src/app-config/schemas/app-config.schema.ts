@@ -6,7 +6,7 @@ export type AppConfigDocument = HydratedDocument<AppConfig>;
 @Schema({ timestamps: true, collection: "app_config" })
 export class AppConfig {
   @Prop({ default: 0 }) referralRewardCents!: number;
-  @Prop({ default: 299 }) deliveryFeeCents!: number;
+  @Prop({ default: 0 }) deliveryFeeCents!: number;
   @Prop({ default: -200 }) smallSizeDeltaCents!: number;
   @Prop({ default: 0 }) mediumSizeDeltaCents!: number;
   @Prop({ default: 300 }) largeSizeDeltaCents!: number;

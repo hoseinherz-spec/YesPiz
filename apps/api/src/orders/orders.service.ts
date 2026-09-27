@@ -218,6 +218,7 @@ export class OrdersService implements OnModuleInit {
       cardCents: order.totalCents - order.walletCents,
       deliveryWindowStart: order.deliveryWindowStart,
       deliveryWindowEnd: order.deliveryWindowEnd,
+      outsideDeliveryArea: order.outsideDeliveryArea,
     };
   }
 
@@ -250,6 +251,7 @@ export class OrdersService implements OnModuleInit {
     const radius = Number(
       this.environment.get("SERVICE_AREA_RADIUS_METERS") || 0,
     );
+    let outsideDeliveryArea = false;
     if (radius > 0) {
       const centerLat = Number(this.environment.get("SERVICE_AREA_LATITUDE"));
       const centerLng = Number(this.environment.get("SERVICE_AREA_LONGITUDE"));
@@ -260,10 +262,7 @@ export class OrdersService implements OnModuleInit {
           Math.cos(address.latitude * rad) *
           Math.sin(((address.longitude - centerLng) * rad) / 2) ** 2;
       const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (!Number.isFinite(distance) || distance > radius)
-        throw new BadRequestException(
-          "This address is outside our delivery area.",
-        );
+      outsideDeliveryArea = !Number.isFinite(distance) || distance > radius;
     }
 
     const itemIds = dto.lines.flatMap((l) => [
@@ -443,6 +442,7 @@ export class OrdersService implements OnModuleInit {
 
     return {
       customerId: new Types.ObjectId(userId),
+      outsideDeliveryArea,
       walletCents,
       deliverySlotId: slot?.id,
       deliveryWindowStart: slot?.startsAt,

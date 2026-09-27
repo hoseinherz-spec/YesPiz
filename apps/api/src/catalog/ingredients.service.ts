@@ -39,6 +39,8 @@ export class IngredientsService {
       slug: row.slug,
       description: row.description,
       image: row.image,
+      toppingImageUrl: row.toppingImageUrl,
+      isTopping: row.isTopping,
     };
   }
   async list() {
@@ -143,13 +145,14 @@ export class IngredientsService {
         throw new BadRequestException(
           "Invalid ingredient price or portion weight.",
         );
-      validateToppingImage(option.toppingImageUrl);
+      validateToppingImage(option.toppingImageUrl ?? undefined);
       const ingredient = details.get(option.ingredientId)!;
+      if (ingredient.isTopping === false) throw new BadRequestException("Base ingredients cannot be configured as toppings.");
       return {
         ingredientId: option.ingredientId,
         name: ingredient.name,
         image: ingredient.image,
-        toppingImageUrl: option.toppingImageUrl,
+        ...((option.toppingImageUrl || ingredient.toppingImageUrl) ? { toppingImageUrl: option.toppingImageUrl || ingredient.toppingImageUrl } : {}),
         includedByDefault: baseIds.includes(option.ingredientId),
         priceCents: option.priceCents,
         portionGrams: option.portionGrams,

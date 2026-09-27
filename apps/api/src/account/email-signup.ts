@@ -75,7 +75,9 @@ export class EmailSignupService {
     const provider = this.config.get<string>("AUTH_EMAIL_PROVIDER") || "mock";
     const key = this.config.get<string>("RESEND_API_KEY");
     const from = this.config.get<string>("AUTH_EMAIL_FROM");
-    const useMock = provider === "mock" && !isProduction;
+    const mockDomains = (this.config.get<string>("AUTH_EMAIL_MOCK_DOMAINS") || "").split(",").map(domain => domain.trim().toLowerCase()).filter(Boolean);
+    const demoEmail = mockDomains.includes(email.split("@")[1]);
+    const useMock = provider === "mock" && (!isProduction || (this.config.get<string>("AUTH_EMAIL_MOCK_ENABLED") === "true" && demoEmail));
     if (!useMock && (!key || !from))
       throw new ServiceUnavailableException(
         "Email verification is temporarily unavailable.",

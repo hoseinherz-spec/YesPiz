@@ -16,6 +16,9 @@ import { requireProviderToken } from "@/lib/auth";
 import { useLoadOnMount } from "@/lib/load-on-mount";
 
 export default function OperationsPage() {
+  const [menuSearch, setMenuSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState("all");
+  const [notice, setNotice] = useState("");
   const [profile, setProfile] = useState<Provider | null>(null);
   const [menuItems, setMenuItems] = useState<PublishedMenuItem[]>([]);
   const [acceptCap, setAcceptCap] = useState("");
@@ -67,6 +70,7 @@ export default function OperationsPage() {
         accessToken: token,
       });
       setProfile(updated);
+      setNotice("Changes saved. Your kitchen availability is up to date.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Update failed");
     } finally {
@@ -95,6 +99,7 @@ export default function OperationsPage() {
         { accessToken: token },
       );
       setProfile(updated);
+      setNotice("Changes saved. Your kitchen availability is up to date.");
       setPauseReason("");
       setPauseUntil("");
     } catch (err) {
@@ -111,6 +116,7 @@ export default function OperationsPage() {
       const token = requireProviderToken();
       const updated = await providersClient.resume({ accessToken: token });
       setProfile(updated);
+      setNotice("Changes saved. Your kitchen availability is up to date.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Resume failed");
     } finally {
@@ -133,6 +139,7 @@ export default function OperationsPage() {
             { accessToken: token },
           );
       setProfile(updated);
+      setNotice("Changes saved. Your kitchen availability is up to date.");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Inventory update failed",
@@ -144,6 +151,12 @@ export default function OperationsPage() {
 
   const unavailable = new Set(profile?.eightySixedItemIds ?? []);
   const paused = profile?.acceptingOrders === false;
+  const visibleMenuItems = menuItems.filter(
+    (item) =>
+      item.name.toLowerCase().includes(menuSearch.trim().toLowerCase()) &&
+      (stockFilter === "all" ||
+        unavailable.has(item.id) === (stockFilter === "unavailable")),
+  );
 
   return (
     <FormScope>
@@ -168,7 +181,19 @@ export default function OperationsPage() {
             </Button>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+          {notice && (
+            <p
+              role="status"
+              className="rounded-2xl border border-border bg-card p-4 text-sm"
+            >
+              {notice}
+            </p>
+          )}
 
           {profile ? (
             <Card className="p-4">
@@ -283,7 +308,7 @@ export default function OperationsPage() {
                   <FormAction
                     size="sm"
                     variant="primary"
-                    isDisabled={busy}
+                    isDisabled={busy || !profile || paused}
                     onPress={pauseOrders}
                   >
                     Pause new offers
@@ -291,7 +316,7 @@ export default function OperationsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    isDisabled={busy}
+                    isDisabled={busy || !profile || !paused}
                     onPress={resumeOrders}
                   >
                     Resume
@@ -304,16 +329,35 @@ export default function OperationsPage() {
           <Card className="p-4">
             <Card.Content className="flex flex-col gap-3 p-0">
               <Typography type="h3" className="font-medium">
-                Item availability (86)
+                Menu availability
               </Typography>
               <p className="text-muted text-sm">
                 Unavailable items cannot be assigned to your kitchen.
               </p>
+              <div className="panel-filter-bar">
+                <input
+                  type="search"
+                  aria-label="Search menu availability"
+                  placeholder="Find a menu item…"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                />
+                {["all", "available", "unavailable"].map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    aria-pressed={stockFilter === value}
+                    onClick={() => setStockFilter(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
               {!menuItems.length ? (
                 <p className="text-muted text-sm">No published menu items</p>
               ) : (
                 <ul className="space-y-2 text-sm">
-                  {menuItems.map((item) => {
+                  {visibleMenuItems.map((item) => {
                     const out = unavailable.has(item.id);
                     return (
                       <li
@@ -329,12 +373,18 @@ export default function OperationsPage() {
                           isDisabled={busy}
                           onPress={() => toggleItem(item.id, !out)}
                         >
-                          {out ? "Restore" : "86 item"}
+                          {out ? "Restore availability" : "Mark unavailable"}
                         </Button>
                       </li>
                     );
                   })}
                 </ul>
+              )}
+              {menuItems.length > 0 && !visibleMenuItems.length && (
+                <p role="status" className="text-muted text-sm">
+                  No menu items match. Clear your search or choose another
+                  availability filter.
+                </p>
               )}
             </Card.Content>
           </Card>

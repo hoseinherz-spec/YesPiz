@@ -76,6 +76,7 @@ export type OrderLineRequest = {
 };
 
 export type OrderQuote = {
+  outsideDeliveryArea?: boolean;
   lines: CustomerOrderLine[];
   discountCents?: number;
   subtotalCents: number;
@@ -337,6 +338,7 @@ export type OrderTrackingView = {
   rider: {
     name: string;
     avatarUrl: string | null;
+    vehicleType?: string | null;
     vehicleModel: string | null;
     plateNumber: string | null;
     memberSince: string | null;

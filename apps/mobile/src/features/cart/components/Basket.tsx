@@ -19,6 +19,7 @@ import { ScrollHeader } from "@/components/ScrollHeader";
 import { IconBadgeButton } from "@/components/IconBadgeButton";
 import { SlideToConfirm } from "@/components/SlideToConfirm";
 import { pizzaCraftAsset } from "@/constants/media";
+import { ToppingImage } from "@/features/catalog/components/PizzaDetail/ToppingStudio";
 import styles from "./Basket.module.css";
 
 function SlideToCheckout({ disabled }: { disabled: boolean }) {
@@ -126,7 +127,13 @@ export function BasketContents({ onClose }: { onClose?: () => void }) {
       ) : (
         <>
           <ul className={styles.items} aria-label={t("cart.title")}>
-            {items.map((item, index) => (
+            {items.map((item, index) => {
+              const menuItem = menu.data?.items.find((pizza) => pizza.id === item.menuItemId);
+              const toppingOptions = (item.ingredientChanges ?? []).flatMap((change) => {
+                const option = menuItem?.ingredientOptions?.find((candidate) => candidate.ingredientId === change.ingredientId);
+                return option ? [option] : [];
+              });
+              return (
               <li
                 key={item.lineId}
                 className="t-panel-slide"
@@ -151,6 +158,16 @@ export function BasketContents({ onClose }: { onClose?: () => void }) {
                         ? ` · ${item.extras.map((extra) => t(`extra.${extra}`)).join(", ")}`
                         : ""}
                     </p>
+                    {toppingOptions.length > 0 && (
+                      <div className={styles.toppingAvatars} aria-label={`${toppingOptions.length} topping changes`}>
+                        {toppingOptions.slice(0, 5).map((option) => (
+                          <span key={option.ingredientId} title={option.name}>
+                            <ToppingImage option={option} />
+                          </span>
+                        ))}
+                        {toppingOptions.length > 5 && <small>+{toppingOptions.length - 5}</small>}
+                      </div>
+                    )}
                     {unavailable.includes(item) && (
                       <p className={styles.unavailable}>
                         {t("cart.unavailable")}
@@ -191,7 +208,8 @@ export function BasketContents({ onClose }: { onClose?: () => void }) {
                   </strong>
                 </article>
               </li>
-            ))}
+              );
+            })}
           </ul>
           <div
             className="t-panel-slide"
@@ -228,12 +246,12 @@ export function BasketContents({ onClose }: { onClose?: () => void }) {
                     <AnimatedNumber currency value={subtotal} />
                   </dd>
                 </div>
-                <div>
+                {deliveryFee > 0 && (<div>
                   <dt>{t("common.delivery")}</dt>
                   <dd>
                     <AnimatedNumber currency value={deliveryFee} />
                   </dd>
-                </div>
+                </div>)}
                 {discount > 0 && (
                   <div>
                     <dt>{t("common.discount")}</dt>

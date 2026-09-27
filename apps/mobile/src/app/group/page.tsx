@@ -252,8 +252,8 @@ function GroupPageInner() {
                       : "Split proportionally"}
                     <small className="mt-1 block leading-5 text-muted">
                       {de
-                        ? "Anteil nach Warenwert, inklusive Lieferkosten. Keine echte Abbuchung."
-                        : "Shares follow item value, including delivery fees. No real charge."}
+                        ? "Anteil nach Warenwert. Keine echte Abbuchung."
+                        : "Shares follow item value. No real charge."}
                     </small>
                   </span>
                 </label>

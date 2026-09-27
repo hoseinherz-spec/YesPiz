@@ -60,6 +60,8 @@ export class RewardsService {
       ]),
     ]);
     if (!user) throw new NotFoundException("Account not found.");
+    // Rewards are derived exclusively from fulfilled, paid orders.
+    const mock = false;
     const campaigns = groups
       .map(
         (group: { _id: typeof DEFAULT_REWARD_POLICY; completed: number }) => {
@@ -84,6 +86,7 @@ export class RewardsService {
       claimed = current?.claimed ?? 0;
     const ready = campaigns.find((c) => c.available > 0);
     return {
+      mock,
       rules: policy,
       campaigns,
       nextRewardCents: ready?.rewardCents ?? policy.rewardCents,

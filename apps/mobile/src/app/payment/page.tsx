@@ -715,6 +715,17 @@ export default function PaymentPage() {
             Sign in to order
           </Button>
         ) : null}
+        {quote?.outsideDeliveryArea ? (
+          <div
+            role="status"
+            className="mt-4 rounded-[20px] bg-surface-secondary px-4 py-3"
+          >
+            <Typography type="body-sm" className="text-muted">
+              This address is outside our usual delivery range. You can still
+              place your order, but delivery may take a little longer.
+            </Typography>
+          </div>
+        ) : null}
         {error ? (
           <div
             role="alert"
@@ -794,12 +805,12 @@ export default function PaymentPage() {
                   </AppText>
                 </div>
               ) : null}
-              <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
+{deliveryFee > 0 && (              <div className="mt-3 flex items-center justify-between text-[14px] text-muted">
                 <AppText as="span">{t("common.delivery")}</AppText>
                 <AppText as="span">
                   <AnimatedNumber currency value={deliveryFee} />
                 </AppText>
-              </div>
+              </div>)}
               {(pendingOrder?.walletCents ?? walletCents) > 0 && (
                 <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
                   <div className="flex justify-between">

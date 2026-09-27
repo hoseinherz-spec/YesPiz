@@ -1,5 +1,5 @@
 "use client";
-import { FormAction, FormScope, Input, Select } from "@repo/ui/forms";
+import { FormAction, FormScope, Input, RadioField } from "@repo/ui/forms";
 
 import {
   ApiError,
@@ -11,11 +11,18 @@ import {
 } from "@repo/api";
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
-import { requireProviderToken } from "@/lib/auth";
+import { getProviderToken, requireProviderToken } from "@/lib/auth";
+import { useLiveRefresh } from "@/lib/use-live-refresh";
+import Link from "next/link";
 import { entityId } from "@/lib/ids";
 import { useLoadOnMount } from "@/lib/load-on-mount";
 
 export default function BatchesPage() {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("active");
+  const [loaded, setLoaded] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState("");
+  const [notice, setNotice] = useState("");
   const [couriers, setCouriers] = useState<
     Array<{ userId: string; name: string; vehicleType?: string }>
   >([]);
@@ -42,13 +49,23 @@ export default function BatchesPage() {
       ]);
       setProviderId(entityId(profile));
       setBatches(list);
-      setCouriers(available);
-      const nextKeep: Record<string, string[]> = {};
-      for (const batch of list) {
-        const id = entityId(batch);
-        nextKeep[id] = (batch.orderIds ?? []).map((oid) => String(oid));
-      }
-      setKeepByBatch(nextKeep);
+      setCouriers((previous) => JSON.stringify(previous) === JSON.stringify(available) ? previous : available);
+      setKeepByBatch((previous) =>
+        Object.fromEntries(
+          list.map((batch) => {
+            const id = entityId(batch);
+            const ids = (batch.orderIds ?? []).map(String);
+            return [
+              id,
+              previous[id]
+                ? previous[id].filter((orderId) => ids.includes(orderId))
+                : ids,
+            ];
+          }),
+        ),
+      );
+      setLoaded(true);
+      setUpdatedAt(new Date().toLocaleTimeString());
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Failed to load batches",
@@ -56,13 +73,19 @@ export default function BatchesPage() {
     }
   }, []);
 
+  useLiveRefresh(
+    getProviderToken(),
+    providerId ? `provider:${providerId}` : undefined,
+    load,
+  );
+
   useLoadOnMount(() => {
     void load();
   });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void load();
+      if (!document.hidden) void load();
     }, 10000);
     return () => window.clearInterval(timer);
   }, [load]);
@@ -99,6 +122,7 @@ export default function BatchesPage() {
         { accessToken: token },
       );
       setSuggestion(null);
+      setNotice("Pickup group created. Choose an on-duty courier to continue.");
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Create failed");
@@ -118,6 +142,9 @@ export default function BatchesPage() {
         batchId,
         { keepOrderIds },
         { accessToken: token },
+      );
+      setNotice(
+        "Pickup group updated. Removed orders are available for another group.",
       );
       await load();
     } catch (err) {
@@ -153,6 +180,9 @@ export default function BatchesPage() {
         { accessToken: token },
       );
       setCourierByBatch((prev) => ({ ...prev, [batchId]: "" }));
+      setNotice(
+        "Courier assigned. Return to the kitchen board to coordinate pickup and verify the seal.",
+      );
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Assign courier failed");
@@ -161,28 +191,80 @@ export default function BatchesPage() {
     }
   }
 
+  const visibleBatches = batches.filter(
+    (batch) =>
+      (filter === "all" ||
+        (filter === "active"
+          ? !["completed", "cancelled"].includes(batch.status)
+          : batch.status === filter)) &&
+      [entityId(batch), ...batch.orderIds].some((id) =>
+        id.toLowerCase().includes(search.trim().toLowerCase()),
+      ),
+  );
+
   return (
     <FormScope>
       {
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
           <div>
             <Typography type="h1" className="text-2xl font-semibold">
-              Batches
+              Courier handoff
             </Typography>
             <p className="text-muted text-sm">
-              Suggest, create, and reduce batches
+              Group ready orders, assign the right vehicle, and verify pickup.
+              {updatedAt ? ` Updated ${updatedAt}.` : ""}
             </p>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+          {notice && (
+            <p role="status" className="panel-notice">
+              {notice}
+            </p>
+          )}
+          <div className="panel-stat-grid">
+            <div className="panel-stat">
+              <strong>
+                {batches.filter((b) => b.status === "open").length}
+              </strong>
+              <span>Awaiting courier</span>
+            </div>
+            <div className="panel-stat">
+              <strong>
+                {batches.filter((b) => b.status === "assigned").length}
+              </strong>
+              <span>Assigned for pickup</span>
+            </div>
+            <div className="panel-stat">
+              <strong>
+                {batches.filter((b) => b.status === "in_progress").length}
+              </strong>
+              <span>On the way</span>
+            </div>
+            <div className="panel-stat">
+              <strong>{couriers.length}</strong>
+              <span>Couriers on duty</span>
+            </div>
+          </div>
+          <div className="panel-process-strip">
+            <span>01 · Quality & seal</span>
+            <span>02 · Group ready orders</span>
+            <span>03 · Assign courier</span>
+            <Link href="/kitchen/">04 · Verify pickup →</Link>
+          </div>
 
           <Card className="p-4">
             <Card.Content className="flex flex-col gap-3 p-0">
               <Typography type="h3" className="font-medium">
-                Suggest batch
+                Prepare a pickup group
               </Typography>
               <p className="text-muted text-sm">
-                Pulls ready-for-pickup orders up to max batch size.
+                Find ready orders that can travel together. Car, motorcycle and
+                scooter couriers are shown with their vehicle when available.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -190,14 +272,14 @@ export default function BatchesPage() {
                   isDisabled={busy || !providerId}
                   onPress={suggest}
                 >
-                  Suggest
+                  Find ready orders
                 </Button>
                 <Button
                   variant="primary"
                   isDisabled={busy || !suggestion?.suggestedOrderIds.length}
                   onPress={createFromSuggestion}
                 >
-                  Create from suggestion
+                  Create pickup group
                 </Button>
               </div>
               {suggestion ? (
@@ -208,7 +290,7 @@ export default function BatchesPage() {
                   </p>
                   <ul className="mt-1 list-disc pl-5">
                     {suggestion.suggestedOrderIds.map((id) => (
-                      <li key={id}>{id}</li>
+                      <li key={id}>Order #{id.slice(-8)}</li>
                     ))}
                   </ul>
                 </div>
@@ -216,8 +298,31 @@ export default function BatchesPage() {
             </Card.Content>
           </Card>
 
+          <div className="panel-filter-bar">
+            <input
+              type="search"
+              aria-label="Search pickup groups"
+              placeholder="Find a group or order…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {["active", "open", "assigned", "in_progress", "all"].map(
+              (value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={filter === value}
+                  onClick={() => setFilter(value)}
+                >
+                  {value === "in_progress"
+                    ? "On the way"
+                    : value.replace(/^./, (c) => c.toUpperCase())}
+                </button>
+              ),
+            )}
+          </div>
           <div className="flex flex-col gap-3">
-            {batches.map((batch) => {
+            {visibleBatches.map((batch) => {
               const id = entityId(batch);
               const orderIds = (batch.orderIds ?? []).map((oid) => String(oid));
               return (
@@ -225,25 +330,34 @@ export default function BatchesPage() {
                   <Card.Content className="flex flex-col gap-2 p-0">
                     <div className="flex flex-wrap justify-between gap-2">
                       <Typography type="h3" className="font-medium">
-                        {batch.status}
+                        <span className="panel-status">
+                          {batch.status.replaceAll("_", " ")}
+                        </span>
                       </Typography>
                       <span className="text-muted text-xs">
-                        weight {batch.totalPrepWeight}
+                        {orderIds.length} orders · preparation weight{" "}
+                        {batch.totalPrepWeight}
                       </span>
                     </div>
-                    <p className="text-muted text-xs">Batch {id}</p>
+                    <p className="text-muted text-xs">
+                      Pickup group #{id.slice(-8)}
+                    </p>
                     {batch.courierId ? (
                       <p className="text-sm">
-                        Courier: {String(batch.courierId)}
+                        Courier:{" "}
+                        {couriers.find(
+                          (c) => c.userId === String(batch.courierId),
+                        )?.name ?? `#${String(batch.courierId).slice(-8)}`}
                       </p>
                     ) : null}
                     <ul className="space-y-1 text-sm">
                       {orderIds.map((orderId) => (
                         <li key={orderId}>
                           <Input
-                            label={<>{orderId}</>}
+                            label={<>Order #{orderId.slice(-8)}</>}
                             wrapperClassName="flex items-center gap-2"
                             type="checkbox"
+                            disabled={busy || batch.status !== "open"}
                             checked={(keepByBatch[id] ?? []).includes(orderId)}
                             onChange={() => toggleKeep(id, orderId)}
                           />
@@ -253,57 +367,36 @@ export default function BatchesPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      isDisabled={busy || batch.status !== "open"}
+                      isDisabled={
+                        busy ||
+                        batch.status !== "open" ||
+                        !keepByBatch[id]?.length ||
+                        keepByBatch[id]?.length === orderIds.length
+                      }
                       onPress={() => reduceBatch(id)}
                     >
-                      Reduce to checked
+                      Keep selected orders
                     </Button>
                     {batch.status === "open" && !batch.courierId ? (
                       <FormScope>
                         <div className="flex flex-col gap-2 pt-2">
-                          <Select
-                            searchable
-                            label={
-                              <>
-                                <span className="text-muted">
-                                  Assign courier
-                                </span>
-                                {!couriers.length ? (
-                                  <span>
-                                    No couriers on duty. Ask a courier to start
-                                    a shift, then refresh.
-                                  </span>
-                                ) : null}
-                              </>
-                            }
-                            wrapperClassName="flex flex-col gap-1 text-sm"
-                            aria-label="Assign courier"
+                          <RadioField
+                            label="Assign courier"
                             value={courierByBatch[id] ?? ""}
-                            onChange={(e) =>
-                              setCourierByBatch((prev) => ({
-                                ...prev,
-                                [id]: e.target.value,
-                              }))
-                            }
-                            className="border-border bg-background rounded-md border px-3 py-2"
-                          >
-                            <option value="">Choose an on-duty courier</option>
-                            {couriers.map((courier) => (
-                              <option
-                                key={courier.userId}
-                                value={courier.userId}
-                              >
-                                {courier.name}
-                                {courier.vehicleType
-                                  ? ` · ${courier.vehicleType}`
-                                  : ""}
-                              </option>
-                            ))}
-                          </Select>
+                            onChange={(value) => setCourierByBatch((previous) => ({ ...previous, [id]: value }))}
+                            options={couriers.map((courier) => ({
+                              id: courier.userId,
+                              label: `${courier.name}${courier.vehicleType ? ` · ${courier.vehicleType.replace("e-bike", "E-bike")}` : ""}`,
+                            }))}
+                            className="grid max-h-64 gap-3 overflow-y-auto rounded-2xl border border-border p-4 sm:grid-cols-2"
+                            required
+                            disabled={busy}
+                          />
+                          {!couriers.length && <p className="text-muted text-sm">No couriers on duty. Ask a courier to start a shift, then refresh.</p>}
                           <FormAction
                             size="sm"
                             variant="primary"
-                            isDisabled={busy}
+                            isDisabled={busy || !courierByBatch[id]}
                             onPress={() => assignCourier(id)}
                           >
                             Assign courier
@@ -315,8 +408,21 @@ export default function BatchesPage() {
                 </Card>
               );
             })}
-            {!batches.length ? (
-              <p className="text-muted text-sm">No batches yet</p>
+            {!loaded && !error && (
+              <p role="status" className="panel-notice">
+                Loading pickup groups…
+              </p>
+            )}
+            {loaded && batches.length > 0 && !visibleBatches.length && (
+              <p role="status" className="panel-notice">
+                No pickup groups match. Try another stage or clear your search.
+              </p>
+            )}
+            {loaded && !batches.length ? (
+              <p className="panel-notice">
+                No pickup groups yet. Finish the quality checks in the kitchen,
+                then find ready orders above.
+              </p>
             ) : null}
           </div>
         </div>

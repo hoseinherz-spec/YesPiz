@@ -17,7 +17,7 @@ export function LocationSharing() {
         const session = await couriersClient.currentSession({
           accessToken: token,
         });
-        if (!stopped) setOnDuty(!!session);
+        if (!stopped) setOnDuty(session?.status === "active");
       } catch {
         /* Keep sharing through transient disconnects; the server enforces active shifts. */
       }

@@ -1,4 +1,5 @@
 "use client";
+import { secureNonce } from "@/lib/secure-nonce";
 import { Capacitor } from "@capacitor/core";
 import { nativeSignIn, nativeAuthAvailable } from "@/lib/native-auth";
 import styles from "./SocialLogin.module.css";
@@ -187,7 +188,7 @@ export function SocialLogin({
 
   const initGoogle = () => {
     if (!googleId || !googleButton.current) return;
-    const nonce = crypto.randomUUID();
+    const nonce = secureNonce();
     const sdk = (window as IdentityWindow).google?.accounts.id;
     sdk?.initialize({
       client_id: googleId,
@@ -215,8 +216,8 @@ export function SocialLogin({
     }
     setBusy(true);
     setError(null);
-    const nonce = crypto.randomUUID();
-    const state = crypto.randomUUID();
+    const nonce = secureNonce();
+    const state = secureNonce();
     try {
       auth.init({
         clientId: appleId,
@@ -258,7 +259,7 @@ export function SocialLogin({
         void finish(
           "facebook",
           response.authResponse.accessToken,
-          crypto.randomUUID(),
+          secureNonce(),
         );
       },
       { scope: "public_profile,email" },

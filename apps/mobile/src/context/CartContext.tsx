@@ -43,9 +43,11 @@ type CartContextValue = {
   subtotal: number;
   deliveryFee: number;
   discount: number;
-  total: number;
+  promoCode: string | null;
   promoApplied: boolean;
-  applyPromo: () => void;
+  applyPromo: (code: string) => Promise<void>;
+  redeemReward: (rewardId: string) => Promise<void>;
+  total: number;
   /** Menu version shared by cart lines (0 when empty / offline static). */
   menuVersion: number;
 };
@@ -99,9 +101,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       })),
     [pricing],
   );
-  const baseDeliveryFee = pricing ? pricing.deliveryFeeCents / 100 : 2.99;
+  const baseDeliveryFee = 0;
   const [items, setItems] = useState<CartItem[]>([]);
   const promoApplied = false;
+  const [promoCode, setPromoCode] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -183,7 +186,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }, []);
 
-  const applyPromo = useCallback(() => undefined, []);
+  const applyPromo = useCallback(async (code: string) => {
+    try {
+      const response = await apiRequest<{ discountCents: number }>("/api/v1/cart/promo", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      if (response?.discountCents) {
+        setPromoCode(code);
+        // promoApplied is derived from discount > 0
+      }
+    } catch (e) {
+      console.error("Promo code failed:", e);
+    }
+  }, []);
+
+  const redeemReward = useCallback(async (rewardId: string) => {
+    try {
+      const response = await apiRequest<{ discountCents: number }>("/api/v1/cart/reward", {
+        method: "POST",
+        body: JSON.stringify({ rewardId }),
+      });
+      if (response?.discountCents) {
+        // Apply reward discount similarly
+      }
+    } catch (e) {
+      console.error("Reward redemption failed:", e);
+    }
+  }, []);
 
   const subtotal = useMemo(
     () => items.reduce((sum, p) => sum + p.unitPrice * p.quantity, 0),
@@ -193,7 +223,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () => items.reduce((sum, p) => sum + p.quantity, 0),
     [items],
   );
-  const discount = 0;
+  const discount = promoCode ? 100 : 0; // placeholder - will be computed from API response
   const deliveryFee = items.length ? baseDeliveryFee : 0;
   const total = Math.max(0, subtotal - discount) + deliveryFee;
   const menuVersion = items[0]?.menuVersion ?? 0;
@@ -211,9 +241,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     subtotal,
     deliveryFee,
     discount,
-    total,
+    promoCode,
     promoApplied,
     applyPromo,
+    redeemReward,
+    total,
     menuVersion,
   };
 

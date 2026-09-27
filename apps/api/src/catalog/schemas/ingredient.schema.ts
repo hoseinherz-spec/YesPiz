@@ -7,6 +7,8 @@ export class Ingredient {
   @Prop({ default: "", maxlength: 1000 }) description!: string;
   @Prop({ required: true, trim: true }) slug!: string;
   @Prop({ default: "" }) image!: string;
+  @Prop({ default: false }) isTopping!: boolean;
+  @Prop({ default: "" }) toppingImageUrl!: string;
   @Prop({ default: false }) deleted!: boolean;
 }
 export const IngredientSchema = SchemaFactory.createForClass(Ingredient);

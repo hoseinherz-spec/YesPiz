@@ -4,6 +4,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import { getConnectionToken } from "@nestjs/mongoose";
 import { Connection, Types } from "mongoose";
 import request from "supertest";
+import { RealtimeGateway } from "../src/realtime/realtime.gateway";
 import { AppModule } from "../src/app.module";
 import { I18nExceptionFilter } from "../src/common/filters/i18n-exception.filter";
 
@@ -471,6 +472,28 @@ describe("Full lifecycle all roles (e2e)", () => {
       .set("Authorization", `Bearer ${providerToken}`)
       .expect(404);
 
+    // Pickup coordination stays private to the assigned kitchen and courier.
+    const pickupMessage = { text: "Your sealed order is at counter two", clientId: "12f63193-1654-4e60-8a23-dc534301e597" };
+    const kitchenEvents = jest.spyOn(app.get(RealtimeGateway), "emitToUser");
+    for (let retry = 0; retry < 2; retry++) await request(server)
+      .post(`/api/v1/communications/orders/${orderId}/kitchen-messages`)
+      .set("Authorization", `Bearer ${providerToken}`).send(pickupMessage).expect(201);
+    expect(kitchenEvents).toHaveBeenCalledTimes(2);
+    expect(kitchenEvents).toHaveBeenCalledWith(providerUserId, "messages.updated", { orderId, channel: "kitchen" });
+    expect(kitchenEvents).toHaveBeenCalledWith(courierUserId, "messages.updated", { orderId, channel: "kitchen" });
+    kitchenEvents.mockRestore();
+    const kitchenMessages = await request(server)
+      .get(`/api/v1/communications/orders/${orderId}/kitchen-messages`)
+      .set("Authorization", `Bearer ${courierToken}`).expect(200);
+    expect(kitchenMessages.body).toHaveLength(1);
+    expect(kitchenMessages.body[0]).toMatchObject({ text: pickupMessage.text, senderRole: "kitchen", mine: false });
+    await request(server).get(`/api/v1/communications/orders/${orderId}/kitchen-messages`)
+      .set("Authorization", `Bearer ${customerToken}`).expect(404);
+    const customerMessages = await request(server).get(`/api/v1/communications/orders/${orderId}/messages`)
+      .set("Authorization", `Bearer ${customerToken}`).expect(200);
+    expect(customerMessages.body).toHaveLength(1);
+    expect(customerMessages.body[0].text).toBe(message.text);
+
     // Provider can read pickup codes; customer cannot
     const codes = await request(server)
       .get(`/api/v1/proof/orders/${orderId}/codes`)
@@ -539,6 +562,9 @@ describe("Full lifecycle all roles (e2e)", () => {
       .set("Authorization", `Bearer ${customerToken}`)
       .expect(200);
     expect(tracked.body.customerStatus).toBe("onway");
+    const movingBatches = await request(server).get("/api/v1/batches/assigned")
+      .set("Authorization", `Bearer ${courierToken}`).expect(200);
+    expect(movingBatches.body.find((batch: { id?: string; _id?: string }) => String(batch.id ?? batch._id) === batchId).status).toBe("in_progress");
     // A lost assignment response must never rewind an already collected order.
     await request(server)
       .post(`/api/v1/batches/${batchId}/assign-courier`)
@@ -992,7 +1018,7 @@ describe("Full lifecycle all roles (e2e)", () => {
     await request(server)
       .post(`/api/v1/proof/orders/${orderId}/cash-receipt`)
       .set("Authorization", `Bearer ${courierToken}`)
-      .send({ amountCents: 1298 })
+      .send({ amountCents: orderRes.body.totalCents })
       .expect(201);
 
     await request(server)
@@ -1046,7 +1072,7 @@ describe("Full lifecycle all roles (e2e)", () => {
     ).toBe(1);
   });
 
-  it("blocks expired scheduling, stale menus, unavailable pizza and outside-area addresses", async () => {
+  it("blocks invalid orders but allows outside-area addresses with a delivery hint", async () => {
     const server = app.getHttpServer();
     const body = {
       menuVersion,
@@ -1081,15 +1107,22 @@ describe("Full lifecycle all roles (e2e)", () => {
       process.env.SERVICE_AREA_RADIUS_METERS = "1000";
       process.env.SERVICE_AREA_LATITUDE = "0";
       process.env.SERVICE_AREA_LONGITUDE = "0";
-      const outside = await post(body).expect(400);
-      expect(outside.body.message).toContain("outside our delivery area");
+      const outside = await post(body).expect(201);
+      expect(outside.body.outsideDeliveryArea).toBe(true);
+      const order = await request(server)
+        .post("/api/v1/orders")
+        .set("Authorization", `Bearer ${customerToken}`)
+        .send(body)
+        .expect(201);
+      expect(order.body.id).toBeDefined();
     } finally {
       keys.forEach((key, index) => {
         if (previous[index] === undefined) delete process.env[key];
         else process.env[key] = previous[index];
       });
     }
-    await post(body).expect(201);
+    const inside = await post(body).expect(201);
+    expect(inside.body.outsideDeliveryArea).toBe(false);
   });
 
   it("quotes options, preserves delivery details and makes checkout retries idempotent", async () => {
@@ -1118,7 +1151,8 @@ describe("Full lifecycle all roles (e2e)", () => {
       .set("Authorization", `Bearer ${customerToken}`)
       .send(body)
       .expect(201);
-    expect(quote.body.totalCents).toBe((999 + 300 + 150 + 100) * 2 + 299);
+    expect(quote.body.deliveryFeeCents).toBe(0);
+    expect(quote.body.totalCents).toBe((999 + 300 + 150 + 100) * 2);
     const responses = await Promise.all(
       [1, 2].map(() =>
         request(server)

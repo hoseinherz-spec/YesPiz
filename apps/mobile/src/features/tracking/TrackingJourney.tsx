@@ -1,4 +1,5 @@
 "use client";
+import { Car1, Bicycle, Motorcycle, Scooter, type IconComponent } from "@repo/icons";
 import { JourneyStatus } from "./JourneyStatus";
 import Link from "next/link";
 import type { OrderTrackingView } from "@repo/api";
@@ -37,6 +38,28 @@ const labels = {
     "Lass es dir schmecken",
   ],
 };
+
+const vehicleTypeLabels = (de: boolean): Record<string, string> => ({
+  car: de ? "Auto" : "Car",
+  motorcycle: de ? "Motorrad" : "Motorcycle",
+  motorbike: de ? "Motorrad" : "Motorcycle",
+  scooter: de ? "Roller" : "Scooter",
+  bicycle: de ? "Fahrrad" : "Bicycle",
+  bike: de ? "Fahrrad" : "Bicycle",
+  "e-bike": "E-Bike",
+  ebike: "E-Bike",
+});
+
+const vehicleIconMap: Record<string, IconComponent> = {
+  car: Car1,
+  motorcycle: Motorcycle,
+  motorbike: Motorcycle,
+  scooter: Scooter,
+  bicycle: Bicycle,
+  bike: Bicycle,
+  "e-bike": Bicycle,
+  ebike: Bicycle,
+};
 export function TrackingJourney({
   data,
   accessToken,
@@ -67,11 +90,11 @@ export function TrackingJourney({
   const description = review
     ? de
       ? "Unser Team kümmert sich darum. Kontaktiere uns, wenn du Hilfe brauchst."
-      : "Our team is following up. We’ll update you here; contact support if you need a hand."
+      : "Our team is following up. We'll update you here; contact support if you need a hand."
     : scheduled
       ? de
         ? "Wir starten die Restaurantsuche rechtzeitig zu deiner Bestellung."
-        : "We’ll find your restaurant closer to your scheduled time."
+        : "We'll find your restaurant closer to your scheduled time."
       : matching
         ? de
           ? "Restaurants in deiner Nähe prüfen deine Anfrage. Sobald eines bestätigt, geht es los."
@@ -79,7 +102,7 @@ export function TrackingJourney({
         : index < 3
           ? de
             ? "Deine Bestellung wird mit Sorgfalt frisch zubereitet. Wir halten dich auf dem Laufenden."
-            : "Your order is getting the care it deserves. We’ll keep you posted, from oven to doorstep."
+            : "Your order is getting the care it deserves. We'll keep you posted, from oven to doorstep."
           : index === 3
             ? de
               ? "Alles ist bereit. Dein Fahrer holt deine Bestellung ab."
@@ -91,6 +114,9 @@ export function TrackingJourney({
               : de
                 ? "Verfolge deinen Fahrer auf der Karte. Halte deinen Übergabecode bereit."
                 : "Follow your rider on the map. Keep your handoff code ready for their arrival.";
+  const riderVehicleType = data.rider?.vehicleType ?? "";
+  const VehicleIcon = vehicleIconMap[riderVehicleType] || Bicycle;
+  const vehicleLabel = vehicleTypeLabels(de)[riderVehicleType] || "";
   return (
     <section
       className={`tracking-journey ${hero ? "tracking-journey--hero" : ""}`}
@@ -112,19 +138,31 @@ export function TrackingJourney({
       )}
       {hero && (
         <div className="journey-art">
-          <ProductImage
-            src={pizzaCraftAsset(
-              matching || scheduled
-                ? "Restaurant Service"
-                : index === 6
-                  ? "Pizza Box"
-                  : index < 4
-                    ? "Pizza Oven"
-                    : "Scooter",
-            )}
-            alt=""
-            className="journey-illustration"
-          />
+          {index >= 4 && index < 6 && data.rider?.vehicleType ? (
+            <div className="journey-vehicle-badge">
+              <VehicleIcon
+                size={130}
+                title={vehicleLabel}
+              />
+              {vehicleLabel && (
+                <span className="vehicle-label">{vehicleLabel}</span>
+              )}
+            </div>
+          ) : (
+            <ProductImage
+              src={pizzaCraftAsset(
+                matching || scheduled
+                  ? "Restaurant Service"
+                  : index === 6
+                    ? "Pizza Box"
+                    : index < 4
+                      ? "Pizza Oven"
+                      : "Scooter",
+              )}
+              alt=""
+              className="journey-illustration"
+            />
+          )}
         </div>
       )}
       {hero && (

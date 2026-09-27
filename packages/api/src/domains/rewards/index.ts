@@ -1,5 +1,6 @@
 import { apiRequest, withAuth, type AuthRequestOptions } from "../../core";
 export type RewardsSummary = {
+  mock?: boolean;
   rules: {
     version: number;
     ordersPerReward: number;

@@ -75,3 +75,6 @@ deploy/.env.staging
 screens/
 # Packaged Android exports
 /artifacts/apk/*.apk.zip
+
+# Isolated demo compilation
+**/.next-demo/

@@ -23,6 +23,8 @@ async function login(
 
 let shiftCode = "";
 test.beforeAll(async ({ request }) => {
+  // Compile the customer waiting route before opening the timed kitchen offer.
+  await request.get("http://localhost:8151/tracking/", { timeout: 120000 });
   const login = await request.post(
     "http://localhost:8158/api/v1/account/auth/admin/login",
     {
@@ -166,7 +168,7 @@ for (const method of ["card", "cash"] as const) {
       await cap.fill("12");
       await kitchen.getByRole("button", { name: "Save accept cap" }).click();
       await expect(
-        kitchen.getByText("12 spaces remaining before new offers stop."),
+        kitchen.getByText(/\d+ spaces remaining before new offers stop\./),
       ).toBeVisible();
       await cap.fill("");
       await kitchen.getByRole("button", { name: "Save accept cap" }).click();
@@ -174,14 +176,14 @@ for (const method of ["card", "cash"] as const) {
       const item = kitchen
         .getByRole("listitem")
         .filter({ hasText: "Margherita" });
-      await item.getByRole("button", { name: "86 item" }).click();
-      await expect(item.getByRole("button", { name: "Restore" })).toBeVisible();
+      await item.getByRole("button", { name: "Mark unavailable" }).click();
+      await expect(item.getByRole("button", { name: "Restore availability" })).toBeVisible();
       await kitchen.reload();
       await expect(
         kitchen.getByLabel("Accept cap (blank = no limit)"),
       ).toHaveValue("");
-      await item.getByRole("button", { name: "Restore" }).click();
-      await expect(item.getByRole("button", { name: "86 item" })).toBeVisible();
+      await item.getByRole("button", { name: "Restore availability" }).click();
+      await expect(item.getByRole("button", { name: "Mark unavailable" })).toBeVisible();
       await kitchen.goto("http://localhost:8184/offers/");
       await customer.bringToFront();
       console.log(`${method}: saving address and building cart`);
@@ -262,9 +264,9 @@ for (const method of ["card", "cash"] as const) {
       }
       await expect(paymentMethod).toBeChecked();
       const placeOrder = customer.getByRole("button", {
-        name: method === "cash" ? /Place order.*pay on delivery/ : /Pay.*16.48/,
+        name: method === "cash" ? /Place order.*pay on delivery/ : /Pay.*13.49/,
       });
-      // 8.99 pizza + 3.00 large + 1.50 extra cheese + 2.99 delivery.
+      // 8.99 pizza + 3.00 large + 1.50 extra cheese. Delivery is included.
       await expect(placeOrder).toBeEnabled();
       await customer.screenshot({
         path: `.qa/ui/customer-${method}.png`,
@@ -357,16 +359,14 @@ for (const method of ["card", "cash"] as const) {
         .click();
       await kitchen.goto("http://localhost:8184/batches");
       await kitchen
-        .getByRole("button", { name: /suggest/i })
+        .getByRole("button", { name: "Find ready orders", exact: true })
         .first()
         .click();
       await kitchen
-        .getByRole("button", { name: /create.*batch|create.*suggest/i })
+        .getByRole("button", { name: "Create pickup group", exact: true })
         .click();
-      await kitchen
-        .getByRole("combobox", { name: "Assign courier" })
-        .fill("Demo Courier");
-      await kitchen.getByRole("option", { name: /Demo Courier/ }).click();
+      await kitchen.getByText("Demo Courier · scooter", { exact: true }).click();
+      await expect(kitchen.getByRole("radio", { name: /Demo Courier/ })).toBeChecked();
       await kitchen
         .getByRole("button", { name: "Assign courier", exact: true })
         .click();
@@ -393,12 +393,23 @@ for (const method of ["card", "cash"] as const) {
         fullPage: true, animations: "disabled", timeout: 60_000,
       });
       await courier.locator('a[href*="/home/order/"]').click();
+      // Quality-control attestations gate the pickup button; both must be checked.
       await courier
-        .getByLabel("Pickup code", { exact: false })
-        .fill(pickupCode);
-      await courier
-        .getByRole("button", { name: "Confirm pickup", exact: true })
+        .getByText("Order label and number of bags match this order.", {
+          exact: true,
+        })
         .click();
+      await courier
+        .getByText("Packaging is secure and the seal is intact.", {
+          exact: true,
+        })
+        .click();
+      const pickupCodeInput = courier.getByLabel("Pickup code", { exact: false });
+      await pickupCodeInput.fill(pickupCode);
+      const confirmPickup = courier
+        .getByRole("button", { name: "Confirm pickup", exact: true });
+      await expect(confirmPickup).toBeEnabled();
+      await confirmPickup.click();
       await courier
         .getByRole("button", { name: "Mark en route", exact: true })
         .click();
@@ -451,7 +462,7 @@ for (const method of ["card", "cash"] as const) {
       expect(deliveryResult.ok(), await deliveryResult.text()).toBeTruthy();
       if (method === "cash") {
         await expect(courier.getByLabel("Amount received (€)")).toHaveValue(
-          "16.48",
+          "13.49",
         );
         await courier.screenshot({
           path: ".qa/ui/courier-cash-receipt.png",
@@ -468,7 +479,7 @@ for (const method of ["card", "cash"] as const) {
         customer.getByText(/delivered|arrived/i).first(),
       ).toBeVisible();
       await expect(courier.getByText(/completed/i).first()).toBeVisible();
-      expect(order.totalCents).toBe(1648);
+      expect(order.totalCents).toBe(1349);
       expect(courierErrors).toEqual([]);
       await courierContext.close();
       await stopRoleApp("courier-mobile");

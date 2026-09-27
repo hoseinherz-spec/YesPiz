@@ -61,7 +61,7 @@ export function priceIngredientChanges(
       );
       if (
         !option ||
-        change.action !== (option.includedByDefault ? "remove" : "add")
+        (change.action !== "add" && !(option.includedByDefault && change.action === "remove"))
       )
         throw new BadRequestException(
           "This ingredient cannot be changed on this product.",

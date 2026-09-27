@@ -1,3 +1,4 @@
+import { secureNonce } from "@/lib/secure-nonce";
 import { Capacitor } from "@capacitor/core";
 export function nativeAuthAvailable(provider: "google" | "apple") {
   if (!Capacitor.isNativePlatform()) return false;
@@ -24,7 +25,7 @@ export async function nativeSignIn(provider: "google" | "apple") {
         }
       : { apple: { clientId: "com.yespizz.mobile", redirectUrl: "" } },
   );
-  const nonce = crypto.randomUUID();
+  const nonce = secureNonce();
   if (provider === "google") {
     const response = await SocialLogin.login({
       provider: "google",

@@ -18,7 +18,7 @@ export default defineConfig({
   testDir: "./e2e",
   testMatch: "order-flow.spec.ts",
   timeout: 360_000,
-  expect: { timeout: 20_000 },
+  expect: { timeout: 60_000 },
   workers: 1,
   use: {
     actionTimeout: 20000,

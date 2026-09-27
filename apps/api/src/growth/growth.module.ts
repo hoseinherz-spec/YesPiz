@@ -43,6 +43,9 @@ import {
   Product,
   ProductDocument,
   ProductSchema,
+  ProductRevision,
+  ProductRevisionDocument,
+  ProductRevisionSchema,
 } from "../catalog/products/product.schema";
 import {
   CurrentUser,
@@ -138,6 +141,8 @@ export class GrowthService {
     @InjectModel(User.name) private readonly users: Model<UserDocument>,
     @InjectModel(Product.name)
     private readonly products: Model<ProductDocument>,
+    @InjectModel(ProductRevision.name)
+    private readonly revisions: Model<ProductRevisionDocument>,
   ) {}
   async discount(
     code: string | undefined,
@@ -192,6 +197,53 @@ export class GrowthService {
       new Date(),
       discountableSubtotal,
     );
+  }
+  async customerOffers(userId: string) {
+    const now = new Date();
+    const coupons = await this.coupons
+      .find({
+        active: true,
+        startAt: { $lte: now },
+        endAt: { $gt: now },
+        $or: [
+          { userScope: "all" },
+          { userScope: { $exists: false } },
+          { userScope: "specific", eligibleUserIds: userId },
+        ],
+      })
+      .sort({ endAt: 1 })
+      .limit(20)
+      .exec();
+    const productIds = [...new Set(coupons.flatMap((coupon) =>
+      coupon.productScope === "specific" ? coupon.eligibleProductIds ?? [] : [],
+    ))];
+    const products = productIds.length
+      ? await this.products.find({ _id: { $in: productIds } })
+          .select("currentRevisionId").lean().exec()
+      : [];
+    const revisions = products.length
+      ? await this.revisions.find({ _id: { $in: products.map((product) => product.currentRevisionId).filter(Boolean) } })
+          .select("content.name").lean().exec()
+      : [];
+    const namesByRevision = new Map(revisions.map((revision) => [String(revision._id), revision.content.name]));
+    const productNames = new Map(products.map((product) => [String(product._id),
+      product.currentRevisionId ? namesByRevision.get(String(product.currentRevisionId)) : undefined,
+    ]));
+    return coupons.map((coupon) => ({
+      code: coupon.code,
+      name: coupon.name,
+      kind: coupon.kind,
+      value: coupon.value,
+      minSubtotalCents: coupon.minSubtotalCents,
+      maxDiscountCents: coupon.maxDiscountCents,
+      endAt: coupon.endAt,
+      productScope: coupon.productScope ?? "all",
+      eligibleProducts: (coupon.eligibleProductIds ?? []).flatMap((id) => {
+        const name = productNames.get(id);
+        return name ? [{ id, name }] : [];
+      }),
+      minimumEligibleQuantity: coupon.minimumEligibleQuantity ?? 1,
+    }));
   }
   async listCoupons() {
     return this.coupons.find().sort({ createdAt: -1 }).limit(200).exec();
@@ -489,6 +541,15 @@ class GrowthController {
     return this.growth.updateTask(id, dto, user.userId);
   }
 }
+@Controller("offers")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.CUSTOMER)
+class CustomerOffersController {
+  constructor(private readonly growth: GrowthService) {}
+  @Get() list(@CurrentUser() user: JwtPayloadUser) {
+    return this.growth.customerOffers(user.userId);
+  }
+}
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -498,9 +559,10 @@ class GrowthController {
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
       { name: Product.name, schema: ProductSchema },
+      { name: ProductRevision.name, schema: ProductRevisionSchema },
     ]),
   ],
-  controllers: [GrowthController],
+  controllers: [GrowthController, CustomerOffersController],
   providers: [GrowthService],
   exports: [GrowthService],
 })

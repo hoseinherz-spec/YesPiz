@@ -1,4 +1,6 @@
 "use client";
+import { io } from "socket.io-client";
+import { realtimeUrl } from "../domains/realtime/realtime.helper";
 import { ChatAttachment } from "./chat-attachment";
 import { Form, TextArea } from "@repo/ui/forms";
 import { Button as FormButton } from "@heroui/react";
@@ -8,9 +10,11 @@ import { apiRequest, withAuth } from "../core";
 export function OrderChat({
   orderId,
   accessToken,
+  channel = "delivery",
 }: {
   orderId: string;
   accessToken: string;
+  channel?: "delivery" | "kitchen";
 }) {
   const [messages, setMessages] = useState<
     Array<{
@@ -138,11 +142,11 @@ export function OrderChat({
     async () =>
       setMessages(
         await apiRequest<typeof messages>(
-          `${base}/messages`,
+          `${base}/${channel === "kitchen" ? "kitchen-messages" : "messages"}`,
           withAuth({ accessToken }),
         ),
       ),
-    [base, accessToken],
+    [base, accessToken, channel],
   );
   useEffect(() => {
     void load().catch(() =>
@@ -152,8 +156,15 @@ export function OrderChat({
       if (document.visibilityState === "visible")
         void load().catch(() => undefined);
     }, 5000);
-    return () => clearInterval(timer);
-  }, [load]);
+    const socket = io(realtimeUrl(process.env.NEXT_PUBLIC_API_URL), { auth: { token: accessToken } });
+    const refresh = () => { if (!document.hidden) void load().catch(() => undefined); };
+    socket.on("connect", refresh);
+    socket.on("messages.updated", (event: { orderId?: string; channel?: string }) => {
+      if (event.orderId === orderId && event.channel === channel) refresh();
+    });
+    document.addEventListener("visibilitychange", refresh);
+    return () => { clearInterval(timer); socket.disconnect(); document.removeEventListener("visibilitychange", refresh); };
+  }, [load, accessToken, orderId, channel]);
   async function send() {
     if (busy || recording || (!text.trim() && !attachment)) return;
     setBusy(true);
@@ -169,7 +180,7 @@ export function OrderChat({
       };
     try {
       await apiRequest(
-        `${base}/messages`,
+        `${base}/${channel === "kitchen" ? "kitchen-messages" : "messages"}`,
         withAuth({
           accessToken,
           method: "POST",
@@ -196,7 +207,15 @@ export function OrderChat({
   }
   return (
     <section className="space-y-3 rounded-[28px] border border-border bg-card p-4">
-      <h2 className="font-semibold">Delivery chat</h2>
+      <h2 className="font-semibold">
+        {channel === "kitchen" ? "Kitchen ↔ courier" : "Delivery chat"}
+      </h2>
+      {channel === "kitchen" && (
+        <p className="text-sm text-muted">
+          Private pickup coordination. Customers cannot see these messages.
+          Verify the seal and pickup code before handoff.
+        </p>
+      )}
       <div className="max-h-80 overflow-auto space-y-2" aria-live="polite">
         {messages.map((message) => (
           <div
@@ -217,29 +236,31 @@ export function OrderChat({
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-full bg-surface-secondary px-4 text-xs">
-          Attach file
-          <input
-            type="file"
-            className="sr-only"
-            disabled={busy || recording}
-            accept="image/jpeg,image/png,application/pdf,audio/webm,audio/ogg,audio/mp4,video/mp4,video/webm"
-            onChange={(e) => {
-              void upload(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void record()}
-          className="min-h-11 rounded-full bg-surface-secondary px-4 text-xs"
-        >
-          {recording ? "Stop recording (max 60s)" : "Record voice"}
-        </button>
-      </div>
+      {channel !== "kitchen" && (
+        <div className="flex flex-wrap gap-2">
+          <label className="inline-flex min-h-11 cursor-pointer items-center rounded-full bg-surface-secondary px-4 text-xs">
+            Attach file
+            <input
+              type="file"
+              className="sr-only"
+              disabled={busy || recording}
+              accept="image/jpeg,image/png,application/pdf,audio/webm,audio/ogg,audio/mp4,video/mp4,video/webm"
+              onChange={(e) => {
+                void upload(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void record()}
+            className="min-h-11 rounded-full bg-surface-secondary px-4 text-xs"
+          >
+            {recording ? "Stop recording (max 60s)" : "Record voice"}
+          </button>
+        </div>
+      )}
       {attachment && (
         <div role="status" className="flex items-center gap-2 text-sm">
           <span>{attachment.name} ready to send</span>

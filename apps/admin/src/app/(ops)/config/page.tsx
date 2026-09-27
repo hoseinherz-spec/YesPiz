@@ -17,7 +17,6 @@ const FIELDS: Array<{
   label: string;
   step?: string;
 }> = [
-  { key: "deliveryFeeCents", label: "deliveryFeeCents (cents)", step: "1" },
   {
     key: "smallSizeDeltaCents",
     label: "smallSizeDeltaCents (cents)",

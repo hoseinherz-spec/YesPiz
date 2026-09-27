@@ -15,7 +15,7 @@ import {
 export class UpdateCourierProfileDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsIn(["car", "motorcycle", "scooter", "bicycle", "bike", "e-bike"])
   vehicleType?: string;
 
   @ApiPropertyOptional()

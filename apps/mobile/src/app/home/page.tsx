@@ -1,4 +1,5 @@
 "use client";
+import { OffersRail } from "@/components/OffersRail";
 import { HomeBanners } from "@/components/HomeBanners";
 import { HomeHeader } from "@/components/HomeHeader";
 import { FlowReveal } from "@/components/motion/FlowReveal";
@@ -68,9 +69,9 @@ function filterByCategory(
     case "Premium":
       return [...items]
         .sort((a, b) => b.price - a.price)
-        .slice(0, Math.max(3, items.length));
+        .filter(p => p.tags.some(tag => tag.toLowerCase() === "premium"));
     case "Popular":
-      return items.slice(0, Math.min(4, items.length));
+      return items.filter(p => p.tags.some(tag => ["popular", "bestseller"].includes(tag.toLowerCase())));
     case "Classic":
       return items.filter(
         (p) => !p.tags.some((tag) => tag.toLowerCase().includes("spicy")),
@@ -132,6 +133,7 @@ export default function HomePage() {
           loading={isLoading}
         />
       </FlowReveal>
+      <OffersRail />
       <nav className="mt-5 grid grid-cols-2 gap-3" aria-label="More ways to enjoy pizza">
         <Link
           href="/group/"
@@ -145,7 +147,7 @@ export default function HomePage() {
           className="home-shortcut"
         >
           <Gift aria-hidden="true" /><ArrowUpRight className="home-shortcut-arrow" aria-hidden="true" />
-          {language === "de" ? "Prämien & Plus" : "Rewards & Plus"}
+          {language === "de" ? "Prämien & Guthaben" : "Rewards & credit"}
         </Link>
       </nav>
       {(isLoading || matchingCombos.length > 0) && (

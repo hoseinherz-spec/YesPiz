@@ -271,7 +271,9 @@ export class AccountService {
     const provider = this.config.get<string>("AUTH_EMAIL_PROVIDER") || "mock";
     const mailKey = this.config.get<string>("RESEND_API_KEY");
     const mailFrom = this.config.get<string>("AUTH_EMAIL_FROM");
-    const useMock = provider === "mock" && !isProd;
+    const mockDomains = (this.config.get<string>("AUTH_EMAIL_MOCK_DOMAINS") || "").split(",").map(domain => domain.trim().toLowerCase()).filter(Boolean);
+    const demoEmail = mockDomains.includes(email.split("@")[1]);
+    const useMock = provider === "mock" && (!isProd || (this.config.get<string>("AUTH_EMAIL_MOCK_ENABLED") === "true" && demoEmail));
     if (!useMock && (!mailKey || !mailFrom))
       throw new ServiceUnavailableException(
         "Password recovery is temporarily unavailable. Please try again later.",

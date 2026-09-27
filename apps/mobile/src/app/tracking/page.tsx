@@ -1,4 +1,5 @@
 "use client";
+import { WaitingLounge } from "@/features/tracking/WaitingLounge";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +28,7 @@ function TrackingScreen() {
     requestedId ||
     activeOrderId ||
     orders.find((order) => order.status === "active")?.id;
-  const { data, loading, error, live, refresh, now } = useOrderTracking(
+  const { data, loading, error, live, refresh, now, lastUpdatedAt } = useOrderTracking(
     id,
     accessToken,
   );
@@ -110,6 +111,8 @@ function TrackingScreen() {
     return (
       <main className="tracking-screen tracking-preparation">
         <TrackingJourney data={data} accessToken={accessToken} hero />
+        <p className="tracking-sync" role="status">{error ? (de ? "Verbindung unterbrochen · letzter bestätigter Stand" : "Connection interrupted · showing the last confirmed update") : lastUpdatedAt ? (de ? "Automatisch aktualisiert" : "Updates automatically") : (de ? "Wird verbunden…" : "Connecting…")}{lastUpdatedAt && ` · ${new Date(lastUpdatedAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`}</p>
+        {data.order.orderState === "active" && data.order.fulfillmentStage !== "review" && <WaitingLounge key={data.order.id} orderId={data.order.id} />}
         {error && (
           <p role="alert" className="journey-error">
             {error}{" "}
@@ -236,6 +239,7 @@ function TrackingScreen() {
       >
         <TrackingJourney data={data} accessToken={accessToken} />
         <TrackingOrderDetails data={data} now={now} />
+        <WaitingLounge key={data.order.id} orderId={data.order.id} />
       </RiderSheet>
     </main>
   );

@@ -1,3 +1,4 @@
+import { Coupon } from "../growth/coupon";
 import { NestFactory } from "@nestjs/core";
 import type { INestApplicationContext } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
@@ -132,17 +133,8 @@ export async function seedApplication(app: INestApplicationContext) {
   console.log(`  customer  ${customerEmail}`);
 
   const courierProfile = await couriers.getOrCreateProfile(courierUser.id);
-  // Link courier to demo kitchen via vehicleType tag for ops demos
-  if (
-    !courierProfile.vehicleType ||
-    !courierProfile.vehicleType.includes("demo-provider:")
-  ) {
-    await couriers.updateProfile(courierUser.id, {
-      vehicleType: `bike|demo-provider:${existingProvider.id}`,
-    });
-    console.log(
-      `Linked courier ${courierEmail} to provider ${existingProvider.id}`,
-    );
+  if (!courierProfile.vehicleType || courierProfile.vehicleType.includes("demo-provider:")) {
+    await couriers.updateProfile(courierUser.id, { vehicleType: "scooter", vehicleModel: "Black city scooter" });
   }
 
   const customer = await users.findOne({ email: customerEmail }).exec();
@@ -429,6 +421,16 @@ export async function seedApplication(app: INestApplicationContext) {
     );
   }
 
+  // Idempotent, database-backed offers; existing campaign edits are preserved.
+  const coupons = app.get<Model<Coupon>>(getModelToken(Coupon.name));
+  for (const offer of [
+    { code: "PIZZA10", name: "A little pizza love", kind: "percent", value: 10, minSubtotalCents: 1500, maxDiscountCents: 500 },
+    { code: "NIGHT5", name: "Your next pizza night", kind: "fixed", value: 500, minSubtotalCents: 3000, maxDiscountCents: 500 },
+    { code: "TOGETHER15", name: "Better together", kind: "percent", value: 15, minSubtotalCents: 4500, maxDiscountCents: 1000 },
+  ]) await coupons.updateOne({ code: offer.code }, { $setOnInsert: { ...offer, active: true,
+    userScope: "all", productScope: "all", minimumEligibleQuantity: 1, createdBy: admin.id,
+    startAt: new Date(), endAt: new Date(Date.now() + 90 * 86400000),
+  } }, { upsert: true });
   console.log("Seed complete");
 }
 

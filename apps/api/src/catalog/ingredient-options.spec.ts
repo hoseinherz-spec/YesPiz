@@ -46,7 +46,7 @@ describe("Customer ingredient customization", () => {
       ],
     });
   });
-  it("rejects fixed ingredients, duplicate operations and forged opposite actions", () => {
+  it("rejects fixed ingredients, duplicate operations and removing extras", () => {
     expect(() =>
       priceIngredientChanges(
         [],
@@ -61,16 +61,16 @@ describe("Customer ingredient customization", () => {
     ).toThrow();
     expect(() =>
       priceIngredientChanges(
-        [cheese],
-        [{ ingredientId: cheese.ingredientId, action: "add" }],
-      ),
-    ).toThrow();
-    expect(() =>
-      priceIngredientChanges(
         [olive],
         Array(2).fill({ ingredientId: olive.ingredientId, action: "add" }),
       ),
     ).toThrow("duplicate");
+  });
+  it("charges extra portions of default ingredients and preserves the original recipe", () => {
+    const result = priceIngredientChanges([cheese], [{ ingredientId: cheese.ingredientId, action: "add" }]);
+    expect(result.priceCents).toBe(200);
+    const recipe = customizeRecipe({ ingredients: [{ name: "Cheese", weightGrams: 60 }], complete: true }, result.changes);
+    expect(recipe.ingredients.reduce((total, item) => total + item.weightGrams, 0)).toBe(90);
   });
   it("adds ingredient prices to configured variants using the real checkout pricing function", () => {
     const item = {

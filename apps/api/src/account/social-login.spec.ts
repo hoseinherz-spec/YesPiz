@@ -238,11 +238,13 @@ describe("Social sign-in verification", () => {
     parts[2] = Buffer.alloc(256).toString("base64url");
     await expect(service.socialLogin(dto(parts.join(".")))).rejects.toThrow();
   });
-  it("does not link an existing email to a new social identity", async () => {
-    users.exists.mockResolvedValue({ _id: "existing" });
-    await expect(service.socialLogin(dto(sign()))).rejects.toThrow(
-      "already exists",
-    );
+  it("links a provider-verified email to an existing customer without creating a duplicate", async () => {
+    const save = jest.fn().mockResolvedValue(undefined);
+    const existing = { id: "existing", email: "user@example.com", isActive: true, roles: [UserRole.CUSTOMER], save };
+    users.findOne.mockReturnValueOnce({ exec: async () => null }).mockReturnValueOnce({ exec: async () => existing });
+    await service.socialLogin(dto(sign()));
+    expect(save).toHaveBeenCalled();
+    expect(existing).toHaveProperty("appleSub");
     expect(users.create).not.toHaveBeenCalled();
   });
   it("rejects a disabled account", async () => {

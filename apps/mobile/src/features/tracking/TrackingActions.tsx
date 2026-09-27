@@ -34,16 +34,25 @@ export function TrackingActions({
       const response = await ordersClient.callCourier(data.order.id, {
         accessToken,
       });
-      setMessage(response.message);
+      setMessage(
+        response.message ||
+          (de ? "Anruf an Fahrer gesendet" : "Your rider is being called."),
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Call unavailable. Please use chat.",
+          : de
+            ? "Anruf nicht verfügbar. Bitte Chat nutzen."
+            : "Call unavailable. Please use chat.",
       );
     } finally {
       setBusy(false);
     }
+  }
+  async function startChat() {
+    setActiveOrderId(data.order.id);
+    router.push("/chat/");
   }
   async function confirm() {
     setBusy(true);
@@ -92,10 +101,7 @@ export function TrackingActions({
         </button>
         <button
           disabled={!active || !data.rider}
-          onClick={() => {
-            setActiveOrderId(data.order.id);
-            router.push("/chat/");
-          }}
+          onClick={() => startChat()}
           aria-label={de ? "Fahrer anschreiben" : "Chat with rider"}
         >
           <MessageCircle size={20} aria-hidden="true" />

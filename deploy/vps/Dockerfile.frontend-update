@@ -1,0 +1,12 @@
+# Prebuild admin and mobile with NEXT_PUBLIC_API_URL set to the VPS API.
+FROM yespizz-runtime:latest AS admin
+USER root
+RUN rm -rf /app/apps/admin/.next
+COPY --chown=node:node frontend-runtime/admin/next-build /app/apps/admin/.next
+COPY --chown=node:node frontend-runtime/admin/public /app/apps/admin/public
+USER node
+CMD ["npm", "run", "start", "--workspace=admin"]
+FROM yespizz-gateway:latest AS gateway
+RUN rm -rf /srv/customer
+COPY frontend-runtime/customer /srv/customer
+COPY deploy/vps/nginx.conf /etc/nginx/conf.d/default.conf

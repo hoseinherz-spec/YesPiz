@@ -14,7 +14,7 @@ type ProvidersProps = {
 export function Providers({ children }: ProvidersProps) {
   const pathname = usePathname();
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <ApiQueryProvider>
         <MobilePageTransition pathname={pathname} app="admin">
           {children}

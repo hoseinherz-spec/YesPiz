@@ -127,6 +127,16 @@ export class ProofService {
     order.pickedUpAt = now;
     order.proofId = proof._id as Types.ObjectId;
     await order.save();
+    if (order.batchId) {
+      const awaitingPickup = await this.orders.countDocuments({
+        batchId: order.batchId,
+        status: OrderStatus.ASSIGNED_TO_COURIER,
+      }).exec();
+      if (!awaitingPickup) await this.batches.updateOne(
+        { _id: order.batchId, status: "assigned" },
+        { $set: { status: "in_progress" } },
+      ).exec();
+    }
     this.emitStatus(order);
 
     return { orderId: order.id, status: order.status, proofId: proof.id };
@@ -215,6 +225,16 @@ export class ProofService {
     order.status = OrderStatus.DELIVERED;
     order.proofId = proof._id as Types.ObjectId;
     await order.save();
+    if (order.batchId) {
+      const awaitingPickup = await this.orders.countDocuments({
+        batchId: order.batchId,
+        status: OrderStatus.ASSIGNED_TO_COURIER,
+      }).exec();
+      if (!awaitingPickup) await this.batches.updateOne(
+        { _id: order.batchId, status: "assigned" },
+        { $set: { status: "in_progress" } },
+      ).exec();
+    }
     this.emitStatus(order);
     return { orderId: order.id, status: order.status, proofId: proof.id };
   }
@@ -381,6 +401,9 @@ export class ProofService {
   }
 
   private emitStatus(order: OrderDocument) {
+    const payload = { orderId: order.id, status: order.status };
+    if (order.providerId) this.realtime.emitToProvider(String(order.providerId), "order.status", payload);
+    if (order.courierId) this.realtime.emitToCourier(String(order.courierId), "order.status", payload);
     this.realtime.emitOrderStatus(
       order.id,
       String(order.customerId),

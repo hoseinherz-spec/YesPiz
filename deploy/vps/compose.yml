@@ -55,6 +55,7 @@ services:
     ports: ['8050:8050']
   admin:
     <<: *app
+    image: yespizz-admin:latest
     command: [npm, run, start, --workspace=admin]
     ports: ['8052:8052']
   kitchen:
@@ -66,6 +67,7 @@ services:
     restart: unless-stopped
     mem_limit: 64m
     ports: ['8051:8051', '8053:8053']
+    volumes: ['../../media/toppings:/srv/topping-media:ro']
 volumes:
   mongo:
   redis:

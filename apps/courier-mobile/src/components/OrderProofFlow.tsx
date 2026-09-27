@@ -20,6 +20,8 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { useActiveLocationSharing } from "@/hooks/use-active-location";
 import { formatApiError } from "@/lib/api-errors";
 import { requireCourierToken } from "@/lib/auth";
+import { getCourierToken } from "@/lib/auth";
+import { useLiveRefresh } from "@/lib/use-live-refresh";
 import {
   type CourierOrderProofView,
   formatOrderStatus,
@@ -54,6 +56,8 @@ export function OrderProofFlow({
   const [signatureUrl, setSignatureUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [cashEuros, setCashEuros] = useState("");
+  const [bagChecked, setBagChecked] = useState(false);
+  const [itemsChecked, setItemsChecked] = useState(false);
 
   const shareLocation = isActiveDeliveryStatus(view?.status ?? "DRAFT");
   const {
@@ -71,10 +75,12 @@ export function OrderProofFlow({
       incidentsClient.listMine({ accessToken: token }),
     ]);
     setView(proofRes);
-    setCashEuros((proofRes.totalCents / 100).toFixed(2));
+    setCashEuros((current) => current || (proofRes.totalCents / 100).toFixed(2));
     setIncidents(mine);
-    if (proofRes.sealId && !sealId) setSealId(proofRes.sealId);
-  }, [orderId, sealId]);
+    if (proofRes.sealId) setSealId((current) => current || proofRes.sealId || "");
+  }, [orderId]);
+
+  useLiveRefresh(getCourierToken(), undefined, load);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -108,6 +114,11 @@ export function OrderProofFlow({
   }
 
   async function handlePickup() {
+    if (busy) return;
+    if (!/^\d{6}$/.test(pickupCode.trim()) || !bagChecked || !itemsChecked) {
+      setError("Check the sealed bag and order label, then enter the six-digit pickup code.");
+      return;
+    }
     await withGeo(async (coords) => {
       const token = requireCourierToken();
       return proofClient.pickup(
@@ -143,6 +154,11 @@ export function OrderProofFlow({
   }
 
   async function handleDeliver() {
+    if (busy) return;
+    if (doorPin.trim() && !/^\d{4}$/.test(doorPin.trim())) {
+      setError("The customer PIN must contain four digits.");
+      return;
+    }
     const hasProof = doorPin.trim() || signatureUrl.trim() || photoUrl.trim();
     if (!hasProof) {
       setError("Enter the door PIN or upload delivery proof.");
@@ -338,7 +354,7 @@ export function OrderProofFlow({
             Live location
           </Typography>
           <p className={cn(hx.bodySm, "mt-1")}>
-            Sharing every 15s while this delivery is active.
+            Your active shift shares your location with dispatch and the customer. Keep location permission enabled.
           </p>
           {lastPosted ? (
             <p className={cn(hx.caption, "mt-2")}>Last: {lastPosted}</p>
@@ -370,6 +386,17 @@ export function OrderProofFlow({
               <p className={hx.caption}>Expected seal: {view.sealId}</p>
             ) : null}
             <ScanCode onScan={setPickupCode} />
+            <fieldset className="rounded-2xl bg-surface-tertiary p-4 space-y-3" disabled={busy}>
+              <legend className="sr-only">Kitchen handoff checks</legend>
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" className="mt-1 size-4 accent-current" checked={itemsChecked} onChange={(event) => setItemsChecked(event.target.checked)} />
+                <span>Order label and number of bags match this order.</span>
+              </label>
+              <label className="flex items-start gap-3 text-sm">
+                <input type="checkbox" className="mt-1 size-4 accent-current" checked={bagChecked} onChange={(event) => setBagChecked(event.target.checked)} />
+                <span>Packaging is secure and the seal is intact.</span>
+              </label>
+            </fieldset>
             <ProofField
               label="Pickup code"
               required
@@ -378,7 +405,8 @@ export function OrderProofFlow({
               onChange={setPickupCode}
               placeholder="6-digit code"
               inputMode="numeric"
-              hint="Manual entry OK — Capacitor QR scanner can replace this later."
+              maxLength={6}
+              hint="Scan the counter code or enter its six digits."
             />
             <ProofField
               label="Seal ID"
@@ -390,7 +418,7 @@ export function OrderProofFlow({
             <FormAction
               variant="primary"
               fullWidth
-              isDisabled={busy || !pickupCode.trim()}
+              isDisabled={busy || !/^\d{6}$/.test(pickupCode.trim()) || !bagChecked || !itemsChecked}
               onPress={() => void handlePickup()}
               className={cn(hx.btnPrimary, "h-14 text-base")}
             >
@@ -419,7 +447,21 @@ export function OrderProofFlow({
       ) : null}
 
       {shareLocation && (
-        <OrderChat orderId={orderId} accessToken={requireCourierToken()} />
+        <>
+          <details className="mb-4 rounded-3xl border border-border p-4">
+            <summary className="cursor-pointer font-semibold">
+              Kitchen pickup chat
+            </summary>
+            <div className="pt-3">
+              <OrderChat
+                orderId={orderId}
+                accessToken={requireCourierToken()}
+                channel="kitchen"
+              />
+            </div>
+          </details>
+          <OrderChat orderId={orderId} accessToken={requireCourierToken()} />
+        </>
       )}
       {status === "ON_THE_WAY" ? (
         <FormScope>
@@ -427,7 +469,7 @@ export function OrderProofFlow({
             <Typography type="h3" className={hx.title}>
               Deliver to customer
             </Typography>
-            <p className={hx.bodySm}>
+              <p className={hx.bodySm}>
               Enter the customer PIN or capture proof of delivery.
             </p>
             {view?.hasDoorPin ? (
@@ -438,6 +480,7 @@ export function OrderProofFlow({
                 onChange={setDoorPin}
                 placeholder="4-digit PIN"
                 inputMode="numeric"
+                maxLength={4}
               />
             ) : null}
             <ProofUpload
@@ -455,7 +498,7 @@ export function OrderProofFlow({
             <FormAction
               variant="primary"
               fullWidth
-              isDisabled={busy}
+              isDisabled={busy || !(doorPin.trim() || signatureUrl || photoUrl)}
               onPress={() => void handleDeliver()}
               className={cn(hx.btnPrimary, "h-14 text-base")}
             >
@@ -592,6 +635,7 @@ function StatusStep({ status }: { status: OrderStatus }) {
         return (
           <li
             key={step}
+            aria-current={active ? "step" : undefined}
             className={cn(
               "rounded-full px-3 py-1 text-xs font-semibold capitalize",
               done

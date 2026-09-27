@@ -11,6 +11,7 @@ export function useOrderTracking(
   const [snapshot, setSnapshot] = useState<{
     key: string;
     data: OrderTrackingView;
+    fetchedAt: number;
   } | null>(null);
   const [failure, setFailure] = useState<{
     key: string;
@@ -41,7 +42,7 @@ export function useOrderTracking(
           signal: controller.signal,
         });
         if (stopped) return;
-        setSnapshot({ key, data });
+        setSnapshot({ key, data, fetchedAt: Date.now() });
         setFailure(null);
         terminal =
           data.order.orderState === "completed" ||
@@ -110,6 +111,7 @@ export function useOrderTracking(
     live,
     refresh,
     now,
+    lastUpdatedAt: snapshot?.key === key ? snapshot.fetchedAt : null,
     loading: Boolean(
       orderId && !orderId.startsWith("o-") && accessToken && !data && !error,
     ),

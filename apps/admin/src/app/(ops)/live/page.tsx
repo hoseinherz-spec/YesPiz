@@ -19,6 +19,7 @@ import { useLoadOnMount } from "@/lib/load-on-mount";
 export default function LiveOpsPage() {
   const [live, setLive] = useState<LiveOperationsView | null>(null);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [data, setData] = useState<AtRiskDashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,18 +89,29 @@ export default function LiveOpsPage() {
 
       {live && (
         <section className="grid gap-4">
-          <div className="flex flex-wrap gap-4 text-sm">
-            <strong>{live.orders.length} active orders</strong>
-            <span>{live.couriers.length} on-duty couriers</span>
-            <span>
-              {live.last24Hours.reduce((n, s) => n + s.count, 0)} orders / 24h
-            </span>
-            <span>
-              {formatCents(
-                live.last24Hours.reduce((n, s) => n + s.revenueCents, 0),
-              )}{" "}
-              captured / 24h
-            </span>
+          <div className="panel-stat-grid">
+            <div className="panel-stat">
+              <strong>{live.orders.length}</strong>
+              <span>Active orders</span>
+            </div>
+            <div className="panel-stat">
+              <strong>{live.couriers.length}</strong>
+              <span>Couriers on duty</span>
+            </div>
+            <div className="panel-stat">
+              <strong>
+                {live.last24Hours.reduce((n, s) => n + s.count, 0)}
+              </strong>
+              <span>Orders in 24 hours</span>
+            </div>
+            <div className="panel-stat">
+              <strong>
+                {formatCents(
+                  live.last24Hours.reduce((n, s) => n + s.revenueCents, 0),
+                )}
+              </strong>
+              <span>Captured in 24 hours</span>
+            </div>
           </div>
           <OperationsMap
             points={[
@@ -129,7 +141,14 @@ export default function LiveOpsPage() {
               ),
             ]}
           />
-          <div className="text-sm">
+          <div className="panel-filter-bar text-sm">
+            <input
+              type="search"
+              aria-label="Search live orders"
+              placeholder="Find an order…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
             <Select
               label={<>Order status </>}
               className="ml-3 rounded-lg border p-2"
@@ -160,11 +179,21 @@ export default function LiveOpsPage() {
               </thead>
               <tbody>
                 {live.orders
-                  .filter((o) => filter === "all" || o.status === filter)
+                  .filter(
+                    (o) =>
+                      (filter === "all" || o.status === filter) &&
+                      o.orderId
+                        .toLowerCase()
+                        .includes(search.trim().toLowerCase()),
+                  )
                   .map((o) => (
                     <tr key={o.orderId} className="border-b">
                       <td className="py-3">{o.orderId.slice(-8)}</td>
-                      <td>{o.status}</td>
+                      <td>
+                        <span className="panel-status">
+                          {o.status.replaceAll("_", " ").toLowerCase()}
+                        </span>
+                      </td>
                       <td>{formatCents(o.totalCents)}</td>
                       <td>
                         <Link
@@ -176,6 +205,19 @@ export default function LiveOpsPage() {
                       </td>
                     </tr>
                   ))}
+                {!live.orders.some(
+                  (o) =>
+                    (filter === "all" || o.status === filter) &&
+                    o.orderId
+                      .toLowerCase()
+                      .includes(search.trim().toLowerCase()),
+                ) && (
+                  <tr>
+                    <td colSpan={4} className="text-muted">
+                      No orders match this search and status.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </AdminTable>
           </div>

@@ -43,10 +43,6 @@
 .reviewCount { display: inline-flex; align-items: center; white-space: pre; color: var(--muted); }
 .allergens { margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .allergens strong { color: var(--foreground); }
-.saveUsual { display: inline-flex; min-height: 44px; margin-top: 18px; padding: 10px 16px; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-secondary); color: var(--foreground); font: inherit; font-size: 13px; cursor: pointer; transition: background-color var(--app-motion-fast) var(--app-motion-ease), transform var(--app-motion-fast) var(--app-motion-ease); }
-.saveUsual:hover { background: var(--surface-tertiary); }
-.saveUsual:active { transform: scale(.98); }
-.saveUsual:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .title { margin: 0; padding-top: 0; font-size: 21px; line-height: 1.3; font-weight: 500; letter-spacing: -.7px; }
 .page :is(button,a):focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
 @media(min-width: 600px) { .page { border-radius: 42px; overflow: hidden; } }

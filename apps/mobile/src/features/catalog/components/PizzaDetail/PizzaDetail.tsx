@@ -30,7 +30,7 @@ import { PizzaDetailSkeleton } from "./PizzaSkeletons";
 import { PizzaComments } from "./PizzaComments";
 import { reviewMetrics } from "./review-metrics";
 import { ScrollHeader } from "@/components/ScrollHeader";
-import { saveUsualPizza, useUsualPizzas } from "@/lib/usual-pizzas";
+import { useUsualPizzas } from "@/lib/usual-pizzas";
 
 const currencyFormat: Intl.NumberFormatOptions = {
   style: "currency",
@@ -49,7 +49,6 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
   const hero = useRef<HTMLDivElement>(null);
   const sizeGroupId = useId();
   const [adding, setAdding] = useState(false);
-  const [usualSaved, setUsualSaved] = useState(false);
   const [ingredientState, setIngredientState] = useState<{ id: string; changes: IngredientChange[] | null }>({ id, changes: null });
   const [selections, setSelections] = useState<PizzaSelection[] | null>(null);
   const [sizeChoice, setSizeChoice] = useState<{
@@ -129,7 +128,7 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
     activeSelections,
   );
   const ingredientOptions = pizza.ingredientOptions ?? [];
-  const ingredientChanges = activeIngredientChanges.filter(change => ingredientOptions.some(option => option.ingredientId === change.ingredientId && change.action === (option.includedByDefault ? 'remove' : 'add')));
+  const ingredientChanges = activeIngredientChanges.filter(change => ingredientOptions.some(option => option.ingredientId === change.ingredientId && (change.action === 'add' || (option.includedByDefault && change.action === 'remove'))));
   const ingredientExtra = ingredientChanges.reduce((sum, change) => sum + (change.action === 'add' ? ingredientOptions.find(o => o.ingredientId === change.ingredientId)?.priceCents ?? 0 : 0), 0) / 100;
   const ingredientLabels = ingredientChanges.map(change => `${change.action === 'add' ? (language === 'de' ? 'Extra' : 'Add') : (language === 'de' ? 'Ohne' : 'No')} ${ingredientOptions.find(o => o.ingredientId === change.ingredientId)?.name ?? ''}`);
   const displayPrice =
@@ -160,6 +159,11 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
   const cookingTime = typeof pizza.cookTimeSeconds === "number" && Number.isFinite(pizza.cookTimeSeconds) && pizza.cookTimeSeconds > 0
     ? `${Math.max(1, Math.ceil(pizza.cookTimeSeconds / 60))} ${language === "de" ? "Min." : "min"}`
     : cookingTimeField || (language === "de" ? "Beim Checkout bestätigt" : "Confirmed at checkout");
+  const crispinessLabels: Record<string, string> = language === "de"
+    ? { soft: "Weich", lightly_crispy: "Leicht knusprig", crispy: "Knusprig", extra_crispy: "Extra knusprig" }
+    : { soft: "Soft", lightly_crispy: "Lightly crispy", crispy: "Crispy", extra_crispy: "Extra crispy" };
+  const crispiness = typeof pizza.attributes?.baseCrispiness === "string"
+    ? crispinessLabels[pizza.attributes.baseCrispiness] : undefined;
   const category =
     categories.find(({ id }) => id === pizza.categoryId)?.name ||
     pizza.presentation?.fields.find(({ name }) =>
@@ -179,13 +183,34 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
       <div
         ref={hero}
         inert={adding}
-        className={`${styles.hero} ${hasMultipleSizes ? styles.sizeHero : ""} ${ingredientOptions.length ? styles.customizableHero : ''}`}
+        className={`${styles.hero} ${hasMultipleSizes ? styles.sizeHero : ""}`}
       >
-        {!!ingredientOptions.length && <ToppingStudio key={`${id}:${menuVersion}`} heroId={heroId} name={pizza.name} image={image} baseImage={pizza.toppingBaseImageUrl} options={ingredientOptions} changes={ingredientChanges} onChange={changes => setIngredientState({ id, changes })} language={language} scale={.86 + selectedIndex / Math.max(1, sizeOptions.length - 1) * .22} />}
+        <FlowReveal variant="detail">
+          <ScrollHeader className={styles.header}>
+            <IconBadgeButton
+              aria-label={fromFeatured ? "Back to home" : "Back to menu"}
+              href={fromFeatured ? "/home/" : "/menu/"}
+              className={styles.iconButton}
+            >
+              <ChevronLeft size={23} />
+            </IconBadgeButton>
+            <span>Details</span>
+            <IconBadgeButton
+              aria-label={
+                fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
+              }
+              aria-pressed={fav}
+              onPress={() => toggleFavorite(favoriteId)}
+              className={styles.iconButton}
+            >
+              <Bookmark size={23} fill={fav ? "currentColor" : "none"} />
+            </IconBadgeButton>
+          </ScrollHeader>
+        </FlowReveal>
         {hasMultipleSizes ? (
           <>
-            <div className={styles.pizzaStage} hidden={!!ingredientOptions.length}>
-              <PageHero id={ingredientOptions.length ? `inactive-${heroId}` : heroId}>
+            <div className={styles.pizzaStage}>
+              <PageHero id={heroId}>
                 <div
                   className={`${styles.sizedPizza} t-resize`}
                   style={{
@@ -213,7 +238,7 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
               })}
             </div>
           </>
-        ) : !ingredientOptions.length ? (
+        ) : (
           <PageHero id={heroId}>
             <ProductImage
               src={image}
@@ -221,29 +246,8 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
               className={styles.heroImage}
             />
           </PageHero>
-        ) : null}
-        <FlowReveal variant="detail">
-          <ScrollHeader className={styles.header}>
-            <IconBadgeButton
-              aria-label={fromFeatured ? "Back to home" : "Back to menu"}
-              href={fromFeatured ? "/home/" : "/menu/"}
-              className={styles.iconButton}
-            >
-              <ChevronLeft size={23} />
-            </IconBadgeButton>
-            <span>Details</span>
-            <IconBadgeButton
-              aria-label={
-                fav ? `Remove ${pizza.name} from saved` : `Save ${pizza.name}`
-              }
-              aria-pressed={fav}
-              onPress={() => toggleFavorite(favoriteId)}
-              className={styles.iconButton}
-            >
-              <Bookmark size={23} fill={fav ? "currentColor" : "none"} />
-            </IconBadgeButton>
-          </ScrollHeader>
-        </FlowReveal>
+        )}
+
         {discountPercent !== null && (
           <div className={styles.discountFlag}>
             <PercentageCircle size={26} aria-hidden="true" />
@@ -324,6 +328,17 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
           <FlowReveal variant="detail" step={5}>
             <PizzaDescription key={description} text={description} language={language} />
           </FlowReveal>
+          {!!ingredientOptions.length && (
+            <ToppingStudio
+              key={`${id}:${menuVersion}`}
+              name={pizza.name}
+              image={image}
+              options={ingredientOptions}
+              changes={ingredientChanges}
+              onChange={(changes) => setIngredientState({ id, changes })}
+              language={language}
+            />
+          )}
           <FlowReveal variant="detail" step={6}>
             <dl className={styles.facts}>
               <div className={styles.fact}>
@@ -346,6 +361,9 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
                   <dd>{category}</dd>
                 </div>
               </div>
+              {crispiness && <div className={styles.fact}>
+                <div><dt>{language === "de" ? "Knusprigkeit" : "Crispiness"}</dt><dd>{crispiness}</dd></div>
+              </div>}
             </dl>
           </FlowReveal>
           <ProductOptions
@@ -359,17 +377,6 @@ export function PizzaDetail({ id }: PizzaDetailProps) {
             language={language}
             disabled={adding}
           />
-          <button
-            type="button"
-            className={styles.saveUsual}
-            onClick={() => {
-              const size = /small|klein|^s$/i.test(selectedSize?.label ?? "") ? "small" : /large|groß|^l$/i.test(selectedSize?.label ?? "") ? "large" : "medium";
-              setUsualSaved(saveUsualPizza({ pizzaId: pizza.pizzaId ?? pizza.id, name: pizza.name, size, extras: ingredientChanges.map((change) => change.ingredientId), variantId: pizza.customization ? selectedSize?.id : undefined, selections: activeSelections, label: [selectedSize?.label, ...options.labels, ...ingredientLabels].filter(Boolean).join(" · ") }));
-            }}
-          >
-            {usualSaved ? (language === "de" ? "Übliche Auswahl gespeichert" : "Usual saved") : (language === "de" ? "Als meine übliche Auswahl speichern" : "Save as my usual")}
-          </button>
-          <span className="sr-only" role="status" aria-live="polite">{usualSaved ? (language === "de" ? "Übliche Auswahl gespeichert" : "Usual saved") : ""}</span>
           {!options.valid && (
             <p className={styles.choiceHint} role="status">
               {language === "de"

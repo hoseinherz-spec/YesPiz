@@ -573,3 +573,23 @@
 
 .tracking-journey--hero .journey-notifications { margin-top: 20px; }
 .journey-complete-action { display: grid; place-items: center; min-height: 52px; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); font-weight: 650; }
+
+.waiting-lounge { margin: 18px auto; width: calc(100% - 32px); max-width: 560px; border: 1px solid var(--border); border-radius: 26px; background: var(--surface); padding: 20px; }
+.waiting-lounge-head { display: flex; align-items: center; width: 100%; gap: 12px; text-align: left; min-height: 48px; }
+.waiting-lounge-head > span:first-of-type { flex: 1; }
+.waiting-lounge-head strong { display: block; font-size: 15px; letter-spacing: -.035em; }
+.waiting-lounge-head small { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.waiting-game { padding-top: 18px; }
+.waiting-game p { font-size: 12px; line-height: 1.7; }
+.waiting-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-block: 16px; }
+.waiting-cards button { min-height: 100px; border-radius: 18px; background: var(--accent); color: var(--accent-foreground); overflow: hidden; transition: background-color var(--duration-fast) var(--ease-in-out); }
+.waiting-cards button[data-revealed="true"] { background: var(--background); color: var(--foreground); }
+.waiting-cards img { display: block; width: 64px; height: 64px; object-fit: contain; margin: auto; }
+.waiting-cards button > span:not(.waiting-card-back) { display: block; padding: 4px; font-size: 9px; }
+.waiting-card-back { font-size: 36px; }
+.waiting-game-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.waiting-game-footer button, .waiting-game-footer a { display: flex; align-items: center; gap: 6px; min-height: 44px; font-size: 12px; }
+.waiting-game > small { display: block; font-size: 10px; color: var(--muted); margin-top: 10px; }
+@media(prefers-reduced-motion: reduce) { .waiting-cards button { transition: none; } }
+
+.tracking-sync { text-align:center; color:var(--muted); font-size:11px; padding:8px 20px; }

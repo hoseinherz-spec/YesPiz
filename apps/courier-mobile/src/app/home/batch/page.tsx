@@ -23,10 +23,14 @@ import { formatOrderStatus, parseCourierProofView } from '@/lib/courier-proof';
 import { cn } from '@/lib/cn';
 import { hx } from '@/lib/heroui-classes';
 import { entityId } from '@/lib/ids';
+import { useLiveRefresh } from '@/lib/use-live-refresh';
+import { Input } from '@repo/ui/forms';
 
 type OrderSummary = {
   orderId: string;
-  status: OrderStatus;
+  status: OrderStatus | null;
+  address?: string;
+  paymentMethod?: string;
 };
 
 function BatchDetailInner() {
@@ -38,6 +42,8 @@ function BatchDetailInner() {
   const [batch, setBatch] = useState<Batch | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
 
   const load = useCallback(async () => {
     if (!batchId) return;
@@ -53,14 +59,16 @@ function BatchDetailInner() {
           const view = parseCourierProofView(
             await proofClient.get(id, { accessToken: token }),
           );
-          return { orderId: id, status: view.status };
+          return { orderId: id, status: view.status, address: [view.deliveryStreet, view.deliveryZipcode, view.deliveryCity].filter(Boolean).join(', '), paymentMethod: view.paymentMethod };
         } catch {
-          return { orderId: id, status: 'ASSIGNED_TO_COURIER' as OrderStatus };
+          return { orderId: id, status: null };
         }
       }),
     );
     setOrders(summaries);
   }, [batchId]);
+
+  useLiveRefresh(batchId ? getCourierToken() : null, undefined, load);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -97,6 +105,11 @@ function BatchDetailInner() {
   }
 
   const id = entityId(batch);
+  const completed = orders.filter((order) => order.status === 'COMPLETED').length;
+  const visibleOrders = orders.filter((order) => {
+    const matchesStatus = filter === 'all' || (filter === 'completed' ? order.status === 'COMPLETED' : order.status !== 'COMPLETED' && order.status !== 'CANCELLED');
+    return matchesStatus && `${order.orderId} ${order.address ?? ''}`.toLowerCase().includes(search.trim().toLowerCase());
+  });
 
   return (
     <>
@@ -117,14 +130,14 @@ function BatchDetailInner() {
                 {batch.orderIds?.length ?? 0} delivery stops
               </Typography>
               <p className={cn(hx.bodySm, 'mt-1')}>
-                Prep weight {batch.totalPrepWeight}
+                {completed} of {orders.length} stops completed
               </p>
             </div>
           </div>
           <p className={cn(hx.caption, 'relative z-10 mt-4 max-w-[300px]')}>
-            Complete stops in kitchen pickup order. Server may split the batch if a stop
-            becomes unsafe.
+            Check each sealed bag at the kitchen, then follow your stops below. Your progress stays in sync with dispatch.
           </p>
+          <progress className="mt-4 h-2 w-full accent-current" value={completed} max={Math.max(orders.length, 1)} aria-label="Completed delivery stops" />
         </div>
       ) : null}
 
@@ -132,6 +145,12 @@ function BatchDetailInner() {
         <Typography type="h3" className={hx.title}>
           Stops
         </Typography>
+        <Input label="Find a stop" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Address or order number" />
+        <div className="flex gap-2" aria-label="Filter delivery stops">
+          {(['all', 'active', 'completed'] as const).map((value) => (
+            <Button key={value} size="sm" variant={filter === value ? 'primary' : 'secondary'} aria-pressed={filter === value} onPress={() => setFilter(value)} className="capitalize">{value}</Button>
+          ))}
+        </div>
 
         {!orders.length ? (
           <div className="courier-card courier-empty">
@@ -140,7 +159,8 @@ function BatchDetailInner() {
           </div>
         ) : null}
 
-        {orders.map((o, index) => (
+        {orders.length > 0 && !visibleOrders.length ? <p className="courier-card text-sm text-muted">No stops match. Try another address or filter.</p> : null}
+        {visibleOrders.map((o) => (
           <Link
             key={o.orderId}
             href={`/home/order/?id=${encodeURIComponent(o.orderId)}&batch=${encodeURIComponent(batchId)}`}
@@ -149,9 +169,11 @@ function BatchDetailInner() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent">
-                  {formatOrderStatus(o.status)}
+                  {o.status ? formatOrderStatus(o.status) : 'Status unavailable · open to retry'}
                 </span>
-                <p className={cn(hx.title, 'mt-3')}>Stop {index + 1}</p>
+                <p className={cn(hx.title, 'mt-3')}>Stop {orders.findIndex((order) => order.orderId === o.orderId) + 1}</p>
+                {o.address ? <p className="mt-2 text-sm">{o.address}</p> : null}
+                {o.paymentMethod ? <p className="mt-1 text-xs text-muted">{o.paymentMethod === 'cash' ? 'Collect cash at delivery' : 'Paid online'}</p> : null}
                 <p className={cn(hx.caption, 'mt-1 truncate font-mono')}>{o.orderId}</p>
               </div>
               <span className="courier-icon-button size-10 min-w-10 bg-surface-tertiary">
@@ -165,7 +187,7 @@ function BatchDetailInner() {
           size="sm"
           variant="secondary"
           className={cn(hx.btnSecondary, 'mt-2')}
-          onPress={() => void load()}
+          onPress={() => void load().catch((err) => setError(formatApiError(err, 'Unable to refresh batch')))}
         >
           <RefreshCw size={17} /> Refresh batch
         </Button>

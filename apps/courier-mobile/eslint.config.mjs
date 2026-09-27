@@ -8,6 +8,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     ".next/**",
     ".next-e2e/**",
+    ".next-demo/**",
     "out/**",
     "build/**",
     "android/**",

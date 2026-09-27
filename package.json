@@ -36,7 +36,8 @@
     "sandbox:stripe": "node scripts/setup-stripe-sandbox.cjs",
     "sandbox:sms": "node scripts/setup-twilio-sandbox.cjs",
     "sms:setup": "node scripts/setup-twilio-sandbox.cjs",
-    "native:configure": "node scripts/configure-native-services.cjs"
+    "native:configure": "node scripts/configure-native-services.cjs",
+    "demo": "npm run build --workspace=@repo/i18n && node scripts/demo.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

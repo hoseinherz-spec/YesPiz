@@ -5,7 +5,7 @@ import { ThemeProvider } from '@repo/theme';
 import { MobilePageTransition } from "@repo/ui/mobile-page-transition";
 import { Toast } from "@heroui/react";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 
 import { OrderPushNavigation } from "@/features/tracking/OrderPushNavigation";
 import { AppProvider } from '@/context/AppContext';
@@ -23,7 +23,10 @@ export function Providers({ children }: ProvidersProps) {
         <AppProvider>
           <OrderPushNavigation />
           <CartProvider>
-            <MobilePageTransition pathname={pathname} app="customer">{children}</MobilePageTransition>
+            {/* A persistent boundary keeps the source image mounted while detail suspends. */}
+            <Suspense fallback={<div role="status" aria-busy="true">Loading…</div>}>
+              <MobilePageTransition pathname={pathname} app="customer">{children}</MobilePageTransition>
+            </Suspense>
             <Toast.Provider placement="top" maxVisibleToasts={3} />
           </CartProvider>
         </AppProvider>

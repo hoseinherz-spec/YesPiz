@@ -241,6 +241,8 @@ export class BatchesService {
       throw new BadRequestException("errors.badRequest");
     }
 
+    // A lost assignment response must not rewind a collected or delivered group.
+    if (["in_progress", "completed"].includes(batch.status) && String(batch.courierId) === dto.courierId) return batch;
     const retry =
       batch.status === "assigned" && String(batch.courierId) === dto.courierId;
     if (!retry && (batch.status !== "open" || batch.courierId))
@@ -289,6 +291,8 @@ export class BatchesService {
         String(order.customerId),
         order.status,
       );
+      this.realtime.emitToCourier(dto.courierId, "order.status", { orderId: order.id, status: order.status });
+      this.realtime.emitToProvider(String(order.providerId), "order.status", { orderId: order.id, status: order.status });
     }
 
     await this.push.notify({

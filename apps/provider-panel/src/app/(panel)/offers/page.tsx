@@ -12,6 +12,7 @@ import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useState } from "react";
 import { getProviderToken, requireProviderToken } from "@/lib/auth";
 import { formatCents } from "@/lib/ids";
+import { useLiveRefresh } from "@/lib/use-live-refresh";
 
 type WaveOutcome = {
   orderId: string;
@@ -55,6 +56,7 @@ function outcomeFromResponse(
 
 export default function OffersPage() {
   const [offers, setOffers] = useState<ProviderOffer[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [prepByOrder, setPrepByOrder] = useState<Record<string, string>>({});
   const [waveByOrder, setWaveByOrder] = useState<
@@ -76,17 +78,24 @@ export default function OffersPage() {
       const pid = profile.id ?? String((profile as { _id?: string })._id ?? "");
       setProviderId(pid);
       setOffers(list);
+      setLoaded(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load offers");
     }
   }, []);
+
+  useLiveRefresh(
+    getProviderToken(),
+    providerId ? `provider:${providerId}` : undefined,
+    load,
+  );
 
   useEffect(() => {
     const boot = window.setTimeout(() => {
       void load();
     }, 0);
     const poll = window.setInterval(() => {
-      load().catch(() => undefined);
+      if (!document.hidden) load().catch(() => undefined);
     }, 8000);
     const countdown = window.setInterval(() => {
       setTick((t) => t + 1);
@@ -103,7 +112,10 @@ export default function OffersPage() {
       if (document.hidden) return;
       const token = getProviderToken();
       if (!token) return;
-      for (const offer of offers) void dispatchClient.markViewed(offer.orderId, { accessToken: token }).catch(() => undefined);
+      for (const offer of offers)
+        void dispatchClient
+          .markViewed(offer.orderId, { accessToken: token })
+          .catch(() => undefined);
     };
     acknowledge();
     document.addEventListener("visibilitychange", acknowledge);
@@ -119,9 +131,9 @@ export default function OffersPage() {
 
   async function respondReady(orderId: string) {
     const raw = prepByOrder[orderId] ?? "20";
-    const quotedPrepMinutes = Number.parseInt(raw, 10);
-    if (!Number.isFinite(quotedPrepMinutes) || quotedPrepMinutes < 5) {
-      setError("Prep time must be at least 5 minutes");
+    const quotedPrepMinutes = Number(raw);
+    if (!Number.isSafeInteger(quotedPrepMinutes) || quotedPrepMinutes < 5) {
+      setError("Enter a whole number of at least 5 minutes for preparation.");
       return;
     }
 
@@ -201,8 +213,8 @@ export default function OffersPage() {
                 Offers inbox
               </Typography>
               <p className="text-muted text-sm">
-                Wave dispatch — declare readiness and prep time; server picks
-                the winner
+                Confirm your preparation time. Accepted orders appear on the
+                kitchen board once your kitchen is selected.
               </p>
             </div>
             <Button size="sm" variant="secondary" onPress={load}>
@@ -210,7 +222,11 @@ export default function OffersPage() {
             </Button>
           </div>
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
 
           {recentOutcomes.length ? (
             <Card className="p-4">
@@ -229,7 +245,12 @@ export default function OffersPage() {
             </Card>
           ) : null}
 
-          {!offers.length ? (
+          {!loaded && !error && (
+            <p role="status" className="panel-notice">
+              Checking for incoming orders…
+            </p>
+          )}
+          {loaded && !offers.length ? (
             <Card className="p-4">
               <Card.Content className="text-muted p-0 text-sm">
                 No pending offers
@@ -240,6 +261,7 @@ export default function OffersPage() {
           {offers.map((offer) => {
             const wave = waveByOrder[offer.orderId];
             const responded = Boolean(offer.respondedAt ?? wave?.respondedAt);
+            const expired = secondsLeft(offer.expiresAt) === 0;
             const countdown = formatCountdown(secondsLeft(offer.expiresAt));
             const outcomeLabel =
               wave?.outcome === "won"
@@ -314,19 +336,19 @@ export default function OffersPage() {
                           <FormAction
                             variant="primary"
                             size="sm"
-                            isDisabled={busyId === offer.orderId}
+                            isDisabled={busyId !== null || expired}
                             onPress={() => respondReady(offer.orderId)}
                           >
                             Declare ready
                           </FormAction>
-                          <FormAction
+                          <Button
                             variant="secondary"
                             size="sm"
-                            isDisabled={busyId === offer.orderId}
+                            isDisabled={busyId !== null || expired}
                             onPress={() => respondReject(offer.orderId)}
                           >
                             Decline
-                          </FormAction>
+                          </Button>
                         </div>
                       </>
                     ) : (

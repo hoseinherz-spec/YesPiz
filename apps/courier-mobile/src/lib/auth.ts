@@ -10,12 +10,14 @@ export function getCourierToken(): string | null {
 
 export function setCourierToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new Event("yespizz:shift"));
 }
 
 export function clearCourierToken() {
   const token = getCourierToken();
   if (token) void disableNotifications(token).catch(() => undefined);
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event("yespizz:shift"));
 }
 
 export function requireCourierToken(): string {

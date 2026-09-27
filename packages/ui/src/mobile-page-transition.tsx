@@ -1,7 +1,7 @@
 /// <reference types="react/canary" />
 "use client";
 
-import { useState, ViewTransition, type ReactNode } from "react";
+import { useState, useSyncExternalStore, ViewTransition, type ReactNode } from "react";
 import {
   mobileRouteMotion,
   normalizeRoute,
@@ -9,6 +9,20 @@ import {
   type TransitionApp,
 } from "./route-motion";
 export { mobileRouteMotion } from "./route-motion";
+
+function subscribeToVisibility(onChange: () => void) {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+}
+
+/** Browsers abort view transitions when the document is hidden; keep them out of the DOM. */
+function useDocumentVisible() {
+  return useSyncExternalStore(
+    subscribeToVisibility,
+    () => document.visibilityState === "visible",
+    () => true,
+  );
+}
 
 export function MobilePageTransition({
   children,
@@ -27,6 +41,14 @@ export function MobilePageTransition({
   // Keep the route pair across render retries. Mutating a ref during render
   // consumed the old route before commit and silently changed motion to fade.
   if (navigation.route !== route) setNavigation({ route, motion });
+  const visible = useDocumentVisible();
+  const page = (
+    <div className="mobile-transition-page" data-page-motion={motion}>
+      {children}
+    </div>
+  );
+  // While hidden, render without the transition so background tabs cannot abort one.
+  if (!visible) return page;
   return (
     <ViewTransition
       key={route}
@@ -34,9 +56,7 @@ export function MobilePageTransition({
       share={`mobile-${motion}`}
       default="none"
     >
-      <div className="mobile-transition-page" data-page-motion={motion}>
-        {children}
-      </div>
+      {page}
     </ViewTransition>
   );
 }

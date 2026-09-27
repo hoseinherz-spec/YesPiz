@@ -4,6 +4,8 @@ export type IngredientOptionConfig = { ingredientId: string; priceCents: number;
 export type IngredientOption = IngredientOptionConfig & { name: string; image: string; includedByDefault: boolean };
 export type IngredientChange = { ingredientId: string; action: 'add' | 'remove' };
 export type Ingredient = {
+  isTopping?: boolean;
+  toppingImageUrl?: string;
   id: string;
   name: string;
   description: string;
@@ -211,6 +213,8 @@ export type PublishedMenuItem = {
   comboComponents?: ComboComponent[];
   ingredientOptions?: IngredientOption[];
   toppingBaseImageUrl?: string;
+  attributes?: Record<string, unknown>;
+  attributesSchemaVersion?: number;
   ingredientIds?: string[];
   ingredientDetails?: Ingredient[];
   additionalCategoryIds?: string[];

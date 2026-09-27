@@ -46,12 +46,12 @@ export function OrderSummary({
             </dd>
           </div>
         )}
-        <div>
+        {deliveryFee > 0 && (<div>
           <dt>{t("common.delivery")}</dt>
           <dd>
             <AnimatedNumber currency value={deliveryFee} />
           </dd>
-        </div>
+        </div>)}
         <div>
           <dt>{t("common.total")}</dt>
           <dd>

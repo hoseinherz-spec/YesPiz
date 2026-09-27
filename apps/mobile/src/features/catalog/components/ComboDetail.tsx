@@ -11,11 +11,13 @@ import { useApp } from "@/context/AppContext";
 import { useCart } from "@/context/CartContext";
 import { usePublishedComboQuery } from "@repo/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./ComboDetail.module.css";
 
 export function ComboDetail({ id }: { id: string }) {
   const { language, isFavorite, toggleFavorite } = useApp();
   const { addItem } = useCart();
+  const router = useRouter();
   const query = usePublishedComboQuery(id, language);
   const de = language === "de";
 
@@ -100,7 +102,7 @@ export function ComboDetail({ id }: { id: string }) {
       <div className={styles.actionBar}>
         <Button
           className={styles.add}
-          onPress={() => addItem({
+          onPress={() => { addItem({
             menuItemId: combo.id,
             menuVersion: response.version.version,
             name: combo.name,
@@ -110,7 +112,7 @@ export function ComboDetail({ id }: { id: string }) {
             unitPrice: price,
             image: heroImage,
             selectionLabels: labels,
-          })}
+          }); router.push("/cart/"); }}
         >
           {de ? "Combo hinzufügen" : "Add combo"} · {formatPrice(price)}
         </Button>

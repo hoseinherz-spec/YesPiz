@@ -21,7 +21,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${poppins.variable} h-full antialiased`}
+      className={`${poppins.variable} dark h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground min-h-full flex flex-col">

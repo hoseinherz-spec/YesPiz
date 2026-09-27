@@ -32,6 +32,8 @@ function EditProfileForm({
   t: Translator;
   updateLocalUser: (patch: Partial<EditableProfile>) => Promise<void>;
 }) {
+  const { language } = useApp();
+  const de = language === "de";
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [email] = useState(user.email ?? "");
@@ -47,9 +49,10 @@ function EditProfileForm({
     if (
       !firstName.trim() ||
       !lastName.trim() ||
-      (email && !email.includes("@"))
+      firstName.trim().length > 80 ||
+      lastName.trim().length > 80
     ) {
-      setError(t("login.errorGeneric"));
+      setError(de ? "Bitte gib Vor- und Nachnamen mit jeweils 1–80 Zeichen ein." : "Enter your first and last name, each between 1 and 80 characters.");
       return;
     }
     setSaving(true);
@@ -57,8 +60,6 @@ function EditProfileForm({
       await updateLocalUser({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
       });
       setStatus(t("editProfile.saved"));
     } catch (cause) {
@@ -106,6 +107,8 @@ function EditProfileForm({
               autoComplete="given-name"
               placeholder={t("login.firstName")}
               value={firstName}
+              maxLength={80}
+              disabled={saving}
               onChange={(event) => setFirstName(event.target.value)}
               className="px-4"
             />
@@ -120,6 +123,8 @@ function EditProfileForm({
               autoComplete="family-name"
               placeholder={t("login.lastName")}
               value={lastName}
+              maxLength={80}
+              disabled={saving}
               onChange={(event) => setLastName(event.target.value)}
               className="px-4"
             />
@@ -149,8 +154,7 @@ function EditProfileForm({
           readOnly
         />
         <AppText as="p" className="text-center text-xs text-muted">
-          Names are saved to your account and synced across devices. Contact
-          changes require verification.
+          {de ? "Dein Name wird in deinem Konto gespeichert und auf allen Geräten synchronisiert. Kontaktänderungen müssen verifiziert werden." : "Names are saved to your account and synced across devices. Contact changes require verification."}
         </AppText>
         <Button
           type="submit"

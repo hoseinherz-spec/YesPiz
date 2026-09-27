@@ -1,3 +1,8 @@
+import {
+  Provider,
+  ProviderDocument,
+  ProviderSchema,
+} from "../providers/schemas/provider.schema";
 import { MediaService } from "../media/media.module";
 import { Schema as MongoSchema } from "mongoose";
 import {
@@ -44,12 +49,14 @@ import {
   type JwtPayloadUser,
 } from "../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { PushService } from "../push/push.service";
 
 @Schema({ timestamps: true, collection: "order_messages" })
 class OrderMessage {
   @Prop({ type: MongoSchema.Types.ObjectId, required: true, index: true })
   orderId!: Types.ObjectId;
+  @Prop({ default: "delivery" }) channel!: string;
   @Prop({ required: true }) senderId!: string;
   @Prop({ required: true }) senderRole!: string;
   @Prop({ required: true }) clientId!: string;
@@ -67,14 +74,17 @@ class MessageDto {
   @IsUUID() clientId!: string;
 }
 @Injectable()
-class CommunicationsService {
+export class CommunicationsService {
   constructor(
     @InjectModel(Order.name) private readonly orders: Model<OrderDocument>,
     @InjectModel(User.name) private readonly users: Model<UserDocument>,
+    @InjectModel(Provider.name)
+    private readonly providers: Model<ProviderDocument>,
     @InjectModel(OrderMessage.name)
     private readonly messages: Model<HydratedDocument<OrderMessage>>,
     private readonly config: ConfigService,
     private readonly push: PushService,
+    private readonly realtime: RealtimeGateway,
     private readonly media: MediaService,
   ) {}
   private async authorize(userId: string, id: string) {
@@ -105,7 +115,7 @@ class CommunicationsService {
   async list(userId: string, id: string) {
     await this.authorize(userId, id);
     const rows = await this.messages
-      .find({ orderId: id })
+      .find({ orderId: id, channel: { $ne: "kitchen" } })
       .sort({ createdAt: -1 })
       .limit(100)
       .exec();
@@ -149,13 +159,87 @@ class CommunicationsService {
       throw new ConflictException(
         "This message reference was already used. Start a new message.",
       );
-    if (result.upsertedCount)
+    if (result.upsertedCount) {
+      const payload = { orderId: id, channel: "delivery" };
+      this.realtime.emitToUser(String(order.customerId), "messages.updated", payload);
+      this.realtime.emitToUser(String(order.courierId), "messages.updated", payload);
       await this.push.notify({
         userId: String(customer ? order.courierId : order.customerId),
         title: "New delivery message",
         body: "Open your order to read the message.",
         data: { type: "order.message", orderId: id },
       });
+    }
+    return { sent: true };
+  }
+  private async kitchenAccess(userId: string, id: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException();
+    const order = await this.orders.findById(id).exec();
+    if (!order?.providerId || !order.courierId) throw new NotFoundException();
+    const provider = await this.providers.findById(order.providerId).exec();
+    if (
+      !provider ||
+      ![String(provider.userId), String(order.courierId)].includes(userId)
+    )
+      throw new NotFoundException();
+    return { order, provider, courier: String(order.courierId) === userId };
+  }
+  async listKitchen(userId: string, id: string) {
+    await this.kitchenAccess(userId, id);
+    const rows = await this.messages
+      .find({ orderId: id, channel: "kitchen" })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .exec();
+    return rows
+      .reverse()
+      .map((row) => ({
+        id: row.id,
+        text: row.text,
+        mine: row.senderId === userId,
+        senderRole: row.senderRole,
+      }));
+  }
+  async sendKitchen(userId: string, id: string, dto: MessageDto) {
+    const { order, provider, courier } = await this.kitchenAccess(userId, id);
+    this.active(order);
+    if (dto.mediaId)
+      throw new BadRequestException("Pickup chat supports text messages only.");
+    const text = dto.text.trim();
+    if (!text) throw new BadRequestException("Enter a message.");
+    // Prefix avoids collisions with a retried customer-chat message UUID.
+    const key = {
+      orderId: id,
+      senderId: userId,
+      clientId: `kitchen:${dto.clientId}`,
+    };
+    const result = await this.messages
+      .updateOne(
+        key,
+        {
+          $setOnInsert: {
+            text,
+            channel: "kitchen",
+            senderRole: courier ? "courier" : "kitchen",
+          },
+        },
+        { upsert: true },
+      )
+      .exec();
+    const stored = await this.messages.findOne(key);
+    if (stored?.text !== text)
+      throw new ConflictException("This message reference was already used.");
+    if (result.upsertedCount) {
+      const payload = { orderId: id, channel: "kitchen" };
+      this.realtime.emitToUser(String(provider.userId), "messages.updated", payload);
+      this.realtime.emitToUser(String(order.courierId), "messages.updated", payload);
+      await this.push.notify({
+        userId: String(courier ? provider.userId : order.courierId),
+        title: "Pickup coordination",
+        body: "A new message is waiting in your pickup chat.",
+        data: { type: "order.message", orderId: id },
+      });
+    }
     return { sent: true };
   }
   async call(userId: string, id: string) {
@@ -208,6 +292,21 @@ class CommunicationsService {
 @UseGuards(JwtAuthGuard)
 class CommunicationsController {
   constructor(private readonly service: CommunicationsService) {}
+  @Get("kitchen-messages") listKitchen(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+  ) {
+    return this.service.listKitchen(user.userId, id);
+  }
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post("kitchen-messages")
+  sendKitchen(
+    @CurrentUser() user: JwtPayloadUser,
+    @Param("id") id: string,
+    @Body() dto: MessageDto,
+  ) {
+    return this.service.sendKitchen(user.userId, id, dto);
+  }
   @Get("messages") list(
     @CurrentUser() user: JwtPayloadUser,
     @Param("id") id: string,
@@ -234,6 +333,7 @@ class CommunicationsController {
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
       { name: User.name, schema: UserSchema },
+      { name: Provider.name, schema: ProviderSchema },
       { name: OrderMessage.name, schema: MessageSchema },
     ]),
   ],

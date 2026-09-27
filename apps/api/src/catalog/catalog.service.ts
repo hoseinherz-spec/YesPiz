@@ -603,6 +603,7 @@ export class CatalogService {
               )
             : i.priceCents,
           prepWeight: i.prepWeight,
+          cookTimeSeconds: i.cookTimeSeconds,
           imageUrl: i.imageUrl,
           tags: i.tags,
           ingredientIds: (i.ingredientIds ?? []).map(String),
@@ -749,17 +750,17 @@ export class CatalogService {
 
   private async includeBaseIngredientsAsOptions(items: MenuItemDocument[]) {
     const ingredientMap = await this.ingredientLibrary.resolve(
-      items.flatMap((item) => (item.ingredientIds ?? []).map(String)),
+      items.flatMap((item) => [...(item.ingredientIds ?? []).map(String), ...(item.ingredientOptions ?? []).map(option => option.ingredientId)]),
     );
     for (const item of items) {
-      const configured = item.ingredientOptions ?? [];
+      const configured = (item.ingredientOptions ?? []).filter(option => ingredientMap.get(option.ingredientId)?.isTopping !== false);
       const configuredIds = new Set(
         configured.map((option) => option.ingredientId),
       );
       const defaults = (item.ingredientIds ?? []).flatMap((id) => {
         const ingredientId = String(id);
         const ingredient = ingredientMap.get(ingredientId);
-        if (!ingredient || configuredIds.has(ingredientId)) return [];
+        if (!ingredient?.isTopping || configuredIds.has(ingredientId)) return [];
         const recipeWeight = item.recipeIngredients?.find(
           (entry) =>
             entry.name.trim().toLowerCase() ===
@@ -770,6 +771,7 @@ export class CatalogService {
             ingredientId,
             name: ingredient.name,
             image: ingredient.image,
+            toppingImageUrl: ingredient.toppingImageUrl,
             includedByDefault: true,
             priceCents: 0,
             portionGrams:

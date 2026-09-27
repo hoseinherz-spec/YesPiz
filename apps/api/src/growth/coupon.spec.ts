@@ -65,6 +65,7 @@ describe("Targeted coupon eligibility", () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
   const targeted = {
     ...offer(),

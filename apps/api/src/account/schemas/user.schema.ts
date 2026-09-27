@@ -45,6 +45,7 @@ const UserLocationSchema = SchemaFactory.createForClass(UserLocation);
 
 @Schema({ timestamps: true, collection: "users" })
 export class User {
+  @Prop({ type: Number }) demoRewardCompleted?: number;
   @Prop({ type: [String], default: undefined }) adminPermissions?: string[];
   @Prop({ default: 0 }) adminPermissionsRevision!: number;
   @Prop({ type: [Object], default: [] }) adminAccessAudit!: {

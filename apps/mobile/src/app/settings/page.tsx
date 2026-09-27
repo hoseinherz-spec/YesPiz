@@ -1,4 +1,5 @@
 "use client";
+import { useWaitingPreference } from "@/lib/waiting-preference";
 import { AppText } from "@/components/Text";
 
 import { Button } from "@heroui/react";
@@ -74,17 +75,31 @@ function SettingsRow({
 
 export default function SettingsPage() {
   const router = useRouter();
+  const waiting = useWaitingPreference();
   const { t, mode, toggleMode, language, setLanguage, authed, logout } =
     useApp();
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   const clearCache = async () => {
-    if ("caches" in window) {
-      const keys = await window.caches.keys();
-      await Promise.all(keys.map((key) => window.caches.delete(key)));
+    if (clearing) return;
+    setClearing(true);
+    try {
+      if ("caches" in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((key) => window.caches.delete(key)));
+      }
+      // Preserve checkout recovery and payment idempotency state.
+      setCacheStatus(t("settings.cacheCleared"));
+    } catch {
+      setCacheStatus(
+        language === "de"
+          ? "Cache konnte nicht geleert werden. Bitte erneut versuchen."
+          : "Could not clear the cache. Please try again.",
+      );
+    } finally {
+      setClearing(false);
     }
-    sessionStorage.clear();
-    setCacheStatus(t("settings.cacheCleared"));
   };
 
   return (
@@ -134,6 +149,53 @@ export default function SettingsPage() {
           </div>
         </section>
         <SettingsRow
+          title={
+            language === "de"
+              ? "Spielzeit beim Warten"
+              : "A little play while you wait"
+          }
+          detail={
+            language === "de"
+              ? "Zeige das optionale Pizza-Spiel beim Tracking. Deine Lieferung läuft immer weiter."
+              : "Show the optional pizza game in tracking. Delivery updates always stay on."
+          }
+          control={
+            <input
+              type="checkbox"
+              role="switch"
+              aria-label={
+                language === "de" ? "Spiele beim Warten" : "Waiting games"
+              }
+              checked={waiting.enabled}
+              onChange={(e) => {
+                try {
+                  waiting.setEnabled(e.target.checked);
+                } catch {
+                  setCacheStatus(
+                    language === "de"
+                      ? "Einstellung konnte nicht gespeichert werden."
+                      : "This browser could not save your preference.",
+                  );
+                }
+              }}
+              className="size-6 accent-[var(--accent)]"
+            />
+          }
+        />
+        <SettingsRow
+          title={
+            language === "de"
+              ? "Profil & Kontaktdaten"
+              : "Profile & contact details"
+          }
+          detail={
+            language === "de"
+              ? "Halte deine Daten für die Lieferung aktuell."
+              : "Keep your details up to date for a smooth delivery."
+          }
+          href="/profile/edit/"
+        />
+        <SettingsRow
           title={t("notifications.title")}
           detail={t("settings.notificationsDetail")}
           href="/notifications/"
@@ -171,7 +233,13 @@ export default function SettingsPage() {
         />
         <SettingsRow
           title={t("settings.cache")}
-          detail={cacheStatus ?? t("settings.cacheDetail")}
+          detail={
+            clearing
+              ? language === "de"
+                ? "Wird geleert…"
+                : "Clearing…"
+              : (cacheStatus ?? t("settings.cacheDetail"))
+          }
           onPress={() => void clearCache()}
         />
         <SettingsRow

@@ -1,7 +1,8 @@
 /* Dribbble 887cdd35: tracking ~3s, detail ~9.5s, return ~15s.
    Content overlaps the artwork flight instead of waiting for it to finish. */
 :root {
-  --food-travel: 720ms;
+  --food-travel: var(--duration-very-slow, 500ms);
+  --food-hero-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --food-reveal: var(--duration-very-slow, 500ms);
   --food-detail-reveal: var(--duration-very-slow, 500ms);
   --food-stagger: var(--duration-stagger, 40ms);
@@ -66,15 +67,17 @@
   animation: food-page-out 240ms ease-out both;
 }
 ::view-transition-group(.mobile-hero) {
-  animation-duration: var(--food-travel);
-  animation-timing-function: var(--food-ease);
+  /* Keep the requested hero morph active regardless of the motion preference. */
+  animation-duration: var(--food-travel) !important;
+  animation-timing-function: var(--food-hero-ease);
 }
 ::view-transition-image-pair(.mobile-hero) {
-  animation: food-turn var(--food-travel) var(--food-ease) both;
+  animation: none;
 }
-/* Use one artwork during travel, avoiding a double pizza while rotating. */
+/* Crossfade quickly to one crisp artwork during the size and position morph. */
 ::view-transition-old(.mobile-hero) {
-  animation: food-page-out 100ms ease-out both;
+  animation: food-artwork-out var(--duration-micro, 80ms) var(--ease-out, ease-out) both;
+  animation-duration: var(--duration-micro, 80ms) !important;
 }
 ::view-transition-new(.mobile-hero) {
   animation: none;
@@ -116,7 +119,7 @@
 @keyframes food-sheet-in {
   from {
     opacity: 0;
-    transform: translateY(48px);
+    transform: translateY(var(--distance-medium, 12px));
   }
   to {
     opacity: 1;
@@ -135,11 +138,9 @@
     filter: blur(0);
   }
 }
-/* A small intermediate turn keeps the final artwork orientation unchanged. */
-@keyframes food-turn {
-  45% {
-    transform: rotate(-18deg);
-  }
+/* Position and size morph together using the shared group’s smooth-out easing. */
+@keyframes food-artwork-out {
+  to { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

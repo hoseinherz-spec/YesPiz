@@ -12,7 +12,7 @@ sequenceDiagram
   participant O as Admin
   C->>A: Published menu + saved delivery location
   C->>A: Quote pizza sizes, extras and quantities
-  A-->>C: Item prices + delivery fee + total
+  A-->>C: Item prices + discounts + total
   C->>A: Create order with checkout idempotency key
   C->>A: Initiate cash or card payment
   Note over C,A: Live cards require Stripe confirmation before dispatch
@@ -57,7 +57,7 @@ The courier root route opens the connected `/home/` workflow. The older simulate
 - Each line supports `size` (`small`, `medium`, `large`) and unique `extras`
   (`extra-cheese`, `jalapenos`, `olives`, `garlic-dip`). The API computes and saves
   their prices and selections. Quantities must be integers from 1 to 99.
-- Delivery is €2.99. The previous client-only promotion has been removed. The
+- New orders have no delivery fee. Discounts are validated by the API. The
   payment screen presents the server quote; if creation returns a changed price,
   it asks the customer to review it before payment.
 - Delivery addresses require real coordinates. Customers can use geolocation or

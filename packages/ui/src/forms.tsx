@@ -508,13 +508,13 @@ function SelectField({
         onInputChange={onSearchChange}
         allowsEmptyCollection={!!onSearchChange}
         defaultFilter={onSearchChange ? () => true : undefined}
-        selectedKey={String((props.value ?? field.value) || "__empty_option__")}
+        selectedKey={(props.value ?? field.value) ? String(props.value ?? field.value) : null}
         onSelectionChange={(v) => change(v === "__empty_option__" ? "" : v)}
         validationBehavior="aria"
       >
         {label && <Label>{label}</Label>}
         <ComboBox.InputGroup>
-          <HeroInput ref={field.ref} className={props.className} />
+          <HeroInput ref={field.ref} className={props.className} placeholder={textContent(options.find((option) => !option.id)?.label ?? "")} />
           <ComboBox.Trigger />
         </ComboBox.InputGroup>
         <ComboBox.Popover>{list}</ComboBox.Popover>

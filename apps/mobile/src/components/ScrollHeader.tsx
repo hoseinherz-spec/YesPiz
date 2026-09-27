@@ -13,7 +13,7 @@ export function ScrollHeader({ children, className = "" }: { children: ReactNode
   useEffect(() => {
     const measure = () => {
       const rect = slot.current?.getBoundingClientRect();
-      if (rect) setFrame({ left: rect.left, top: Math.max(0, rect.top), width: rect.width, height: content.current?.offsetHeight || 72 });
+      if (rect) setFrame({ left: rect.left, top: 0, width: rect.width, height: content.current?.offsetHeight || 72 });
     };
     measure();
     const observer = new ResizeObserver(measure);

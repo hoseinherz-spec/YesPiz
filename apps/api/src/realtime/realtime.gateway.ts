@@ -25,7 +25,8 @@ export type RealtimeEvent =
   | "offer.created"
   | "offer.expired"
   | "courier.location"
-  | "incident.created";
+  | "incident.created"
+  | "messages.updated";
 
 @WebSocketGateway({
   cors: { origin: true, credentials: true },

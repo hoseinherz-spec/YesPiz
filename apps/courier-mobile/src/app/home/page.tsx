@@ -1,6 +1,8 @@
 "use client";
 import { FormAction, FormScope, Input } from "@repo/ui/forms";
 
+import { useLiveRefresh } from "@/lib/use-live-refresh";
+import { VehicleProfile } from "@/components/VehicleProfile";
 import { ScanCode } from "@/components/ScanCode";
 import { Notifications } from "@repo/api/components/notifications";
 
@@ -24,6 +26,7 @@ import {
   RefreshCw,
   Route,
   WalletCards,
+  UserRound,
 } from "lucide-react";
 
 import { AppFrame } from "@/components/AppFrame";
@@ -62,6 +65,8 @@ export default function CourierHomePage() {
     setBatches(assigned);
   }, []);
 
+  useLiveRefresh(getCourierToken(), profile?.userId ? `courier:${profile.userId}` : undefined, load);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!getCourierToken()) {
@@ -77,16 +82,6 @@ export default function CourierHomePage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [load, router]);
-
-  useEffect(() => {
-    if (!ready) return;
-    const timer = window.setInterval(() => {
-      void load().catch((err) =>
-        setError(formatApiError(err, "Unable to refresh deliveries")),
-      );
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, [load, ready]);
 
   async function startSession() {
     setBusy(true);
@@ -142,6 +137,7 @@ export default function CourierHomePage() {
       <AppFrame className="courier-screen">
         <header className="mb-6 flex items-center justify-between gap-3">
           <CourierBrand />
+          <Link href="/profile/" className="courier-icon-button ms-auto" aria-label="Profile and settings"><UserRound size={19} /></Link>
           <Button
             isIconOnly
             variant="secondary"
@@ -219,6 +215,7 @@ export default function CourierHomePage() {
             </div>
           </div>
 
+          {profile && <VehicleProfile profile={profile} onSaved={setProfile} />}
           {!profile?.onDuty ? (
             <>
               <ScanCode onScan={setCode} />
@@ -285,7 +282,7 @@ export default function CourierHomePage() {
               variant="secondary"
               aria-label="Refresh assigned batches"
               className="courier-icon-button border-0"
-              onPress={() => void load()}
+              onPress={() => void load().catch((err) => setError(formatApiError(err, "Unable to refresh deliveries")))}
             >
               <RefreshCw size={18} />
             </Button>

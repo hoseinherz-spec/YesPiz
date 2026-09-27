@@ -88,6 +88,7 @@ describe("OrderTrackingService customer projection", () => {
     const view = await service.get(owner, id);
     expect(view.rider).toEqual({
       name: "Sam Rider",
+      vehicleType: null,
       avatarUrl: null,
       vehicleModel: "City bike",
       plateNumber: "AB12",

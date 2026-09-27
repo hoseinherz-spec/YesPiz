@@ -475,6 +475,7 @@ describe("Extensible product catalog HTTP and persistence", () => {
       .create({
         name: "Black olives",
         slug: "black-olives",
+        isTopping: true,
         image: "/olive.png",
       });
     const cheese = await db
@@ -487,19 +488,20 @@ describe("Extensible product catalog HTTP and persistence", () => {
       ingredientIds: [String(cheese._id)],
       ingredientOptions: [
         { ingredientId: String(olive._id), priceCents: 100, portionGrams: 15 },
-        { ingredientId: String(cheese._id), priceCents: 0, portionGrams: 30 },
       ],
       toppingBaseImageUrl: "/pizza-base.png",
     }).expect(201);
+    await patch(`/catalog/items/${created.body.id}`, {
+      ingredientOptions: [{ ingredientId: String(cheese._id), priceCents: 150, portionGrams: 30 }],
+    }).expect(400);
     await catalog.publish(version.id);
     const item = (await catalog.getPublishedMenu(menu.id)).items[0];
     expect(item.ingredientOptions).toMatchObject([
       { name: "Black olives", includedByDefault: false },
-      { name: "Cheese", includedByDefault: true },
     ]);
     expect(
       (await catalog.getVersionDetail(version.id)).items[0].ingredientOptions,
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     await patch(`/catalog/items/${created.body.id}`, {
       ingredientOptions: [
         { ingredientId: String(olive._id), priceCents: -1, portionGrams: 15 },
@@ -510,13 +512,7 @@ describe("Extensible product catalog HTTP and persistence", () => {
     }).expect(200);
     expect(
       (await catalog.getPublishedMenu(menu.id)).items[0].ingredientOptions,
-    ).toMatchObject([
-      {
-        name: "Cheese",
-        includedByDefault: true,
-        priceCents: 0,
-      },
-    ]);
+    ).toEqual([]);
   });
   it("accepts one of two concurrent product edits and retains a consistent current revision", async () => {
     const created = await products.create({ type: "pizza", name: "Original" });

@@ -1,6 +1,9 @@
 "use client";
 import { FormAction, FormScope, Input } from "@repo/ui/forms";
 
+import { useLiveRefresh } from "@/lib/use-live-refresh";
+import Link from "next/link";
+import { OrderChat } from "@repo/api/components/order-chat";
 import { QrCode } from "@repo/api/components/qr-code";
 import { ProofUpload } from "@repo/api/components/proof-upload";
 
@@ -15,7 +18,7 @@ import {
 } from "@repo/api";
 import { Button, Card, Typography } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { requireProviderToken } from "@/lib/auth";
+import { requireProviderToken, getProviderToken } from "@/lib/auth";
 import { entityId, formatCents } from "@/lib/ids";
 
 const BASE_CHECKS = [
@@ -57,6 +60,9 @@ function checklistItemsForOrder(order: Order): string[] {
 }
 
 export default function KitchenPage() {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [loaded, setLoaded] = useState(false);
   const [pickupCodes, setPickupCodes] = useState<Record<string, string>>({});
   const [orders, setOrders] = useState<Order[]>([]);
   const [quality, setQuality] = useState<ProviderQualityView | null>(null);
@@ -83,13 +89,14 @@ export default function KitchenPage() {
         qualityClient.getMe({ accessToken: token }),
       ]);
       setOrders(list);
+      setLoaded(true);
       setQuality(me);
 
       setQualityByOrder((prev) => {
         const next = { ...prev };
         for (const order of list) {
           const id = entityId(order);
-          if (!next[id]) {
+          {
             next[id] = {
               checklistDone: Boolean(order.checklistCompletedAt),
               sealDone: Boolean(order.sealId),
@@ -105,6 +112,12 @@ export default function KitchenPage() {
       );
     }
   }, []);
+
+  useLiveRefresh(
+    getProviderToken(),
+    quality?.id ? `provider:${quality.id}` : undefined,
+    load,
+  );
 
   useEffect(() => {
     const boot = window.setTimeout(() => {
@@ -286,6 +299,27 @@ export default function KitchenPage() {
     }
   }
 
+  const filters = [
+    { key: "all", label: "All orders", statuses: [] },
+    { key: "new", label: "To prepare", statuses: ["ACCEPTED_BY_PROVIDER"] },
+    { key: "preparing", label: "Preparing", statuses: ["PREPARING"] },
+    {
+      key: "handoff",
+      label: "Handoff",
+      statuses: ["READY_FOR_PICKUP", "ASSIGNED_TO_COURIER"],
+    },
+  ];
+  const visible = orders.filter((order) => {
+    const statuses =
+      filters.find((item) => item.key === filter)?.statuses ?? [];
+    return (
+      (!statuses.length || statuses.includes(order.status)) &&
+      [entityId(order), ...(order.lines ?? []).map((line) => line.name)]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
+    );
+  });
   return (
     <FormScope>
       {
@@ -304,6 +338,47 @@ export default function KitchenPage() {
             </Button>
           </div>
 
+          <div className="panel-stat-grid" aria-label="Kitchen overview">
+            {filters.map((item) => (
+              <div className="panel-stat" key={item.key}>
+                <strong>
+                  {loaded
+                    ? orders.filter(
+                        (order) =>
+                          !item.statuses.length ||
+                          item.statuses.includes(order.status),
+                      ).length
+                    : "—"}
+                </strong>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="panel-filter-bar">
+            <input
+              type="search"
+              aria-label="Search kitchen orders"
+              placeholder="Search order or item…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {filters.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                aria-pressed={filter === item.key}
+                onClick={() => setFilter(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {!loaded && !error && <p role="status">Loading your kitchen…</p>}
+          {loaded && orders.length > 0 && !visible.length && (
+            <p role="status">
+              No orders match. Try another stage or clear your search.
+            </p>
+          )}
           {quality ? (
             <Card className="p-4">
               <Card.Content className="flex flex-col gap-1 p-0 text-sm">
@@ -324,9 +399,13 @@ export default function KitchenPage() {
             </Card>
           ) : null}
 
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
 
-          {!orders.length ? (
+          {loaded && !orders.length ? (
             <Card className="p-4">
               <Card.Content className="text-muted p-0 text-sm">
                 No active kitchen orders
@@ -334,7 +413,7 @@ export default function KitchenPage() {
             </Card>
           ) : null}
 
-          {orders.map((order) => {
+          {visible.map((order) => {
             const id = entityId(order);
             const items = checklistByOrderId[id] ?? [];
             const q = qualityByOrder[id];
@@ -345,7 +424,7 @@ export default function KitchenPage() {
                 <Card.Content className="flex flex-col gap-2 p-0">
                   <div className="flex flex-wrap justify-between gap-2">
                     <Typography type="h3" className="font-medium">
-                      {order.status}
+                      {order.status.replaceAll("_", " ").toLowerCase()}
                     </Typography>
                     <span className="text-sm">
                       {formatCents(order.totalCents)}
@@ -405,6 +484,28 @@ export default function KitchenPage() {
                       )}
                     </div>
                   ) : null}
+                  {order.status === "READY_FOR_PICKUP" && (
+                    <Link
+                      className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground"
+                      href="/batches/"
+                    >
+                      Assign a courier →
+                    </Link>
+                  )}
+                  {order.status === "ASSIGNED_TO_COURIER" && (
+                    <details className="rounded-2xl border border-border p-3">
+                      <summary className="cursor-pointer font-semibold">
+                        Coordinate pickup with courier
+                      </summary>
+                      <div className="pt-3">
+                        <OrderChat
+                          orderId={id}
+                          accessToken={requireProviderToken()}
+                          channel="kitchen"
+                        />
+                      </div>
+                    </details>
+                  )}
                   {preparing ? (
                     <FormScope>
                       <div className="border-border flex flex-col gap-3 rounded-md border p-3">

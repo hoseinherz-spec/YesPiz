@@ -2,6 +2,7 @@ import { PartialType } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import {
   IsString,
+  IsBoolean,
   Length,
   Matches,
   MaxLength,
@@ -28,5 +29,13 @@ export class CreateIngredientDto {
     message: "Image must be an HTTP or HTTPS URL.",
   })
   image?: string;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsString()
+  @MaxLength(2048)
+  @Matches(/^(?:https?:\/\/[^\s]+)?$/)
+  toppingImageUrl?: string;
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  isTopping?: boolean;
 }
 export class UpdateIngredientDto extends PartialType(CreateIngredientDto) {}

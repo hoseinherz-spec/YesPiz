@@ -1,7 +1,7 @@
 import type { AppConfig } from "../app-config/schemas/app-config.schema";
 export function pricingOptions(config: Partial<AppConfig>) {
   return {
-    deliveryFeeCents: config.deliveryFeeCents ?? 299,
+    deliveryFeeCents: 0,
     sizes: {
       small: config.smallSizeDeltaCents ?? -200,
       medium: config.mediumSizeDeltaCents ?? 0,

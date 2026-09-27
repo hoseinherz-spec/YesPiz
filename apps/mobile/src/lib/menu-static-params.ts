@@ -14,7 +14,11 @@ export async function generateStaticParams() {
     if (process.env.NODE_ENV === "development") return null;
     throw error;
   });
-  if (!response) return PIZZAS.map(({ id }) => ({ id }));
+  if (!response) {
+    // API unavailable at build time: fall back to the bundled product ids so
+    // the app still builds. Runtime screens fetch the real catalog again.
+    return PIZZAS.map(({ id }) => ({ id }));
+  }
   if (!response.ok)
     throw new Error(
       "Cannot generate menu detail routes: catalog API unavailable.",

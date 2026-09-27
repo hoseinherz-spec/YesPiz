@@ -212,14 +212,19 @@ export function PizzaBrowse() {
               <MenuPizzaCard key={pizza.id} pizza={pizza} language={language} />
             ))}
       </motion.div>
-      {!isLoading && list.length === 0 && combos.length === 0 && (
+      {!isLoading && !list.length && !combos.length && (
         <div className={styles.empty}>
           <h2>{de ? "Keine Pizza gefunden" : "No pizzas found"}</h2>
           <p>
-            {de
-              ? "Versuche einen anderen Namen oder eine Zutat."
-              : "Try another name or ingredient."}
+            {query || category !== "all"
+              ? de
+                ? "Versuche einen anderen Namen oder eine Zutat."
+                : "Try another name or ingredient."
+              : de
+                ? "Aktuell ist kein Produkt veröffentlicht."
+                : "No products are published right now."}
           </p>
+          {query || category !== "all" ? (
           <button
             type="button"
             onClick={() => {
@@ -229,6 +234,7 @@ export function PizzaBrowse() {
           >
             {de ? "Filter zurücksetzen" : "Reset search & filters"}
           </button>
+          ) : null}
         </div>
       )}
 

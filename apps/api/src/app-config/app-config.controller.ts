@@ -33,7 +33,7 @@ export class AppConfigController {
       id: doc.id ?? String(doc._id),
       key: doc.key,
       slaCompensationCents: doc.slaCompensationCents,
-      deliveryFeeCents: doc.deliveryFeeCents,
+      deliveryFeeCents: 0,
       smallSizeDeltaCents: doc.smallSizeDeltaCents,
       mediumSizeDeltaCents: doc.mediumSizeDeltaCents,
       largeSizeDeltaCents: doc.largeSizeDeltaCents,
